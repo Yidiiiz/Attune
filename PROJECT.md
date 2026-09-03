@@ -8,7 +8,7 @@ This file is the complete specification. `BUILD_PROMPT.md` is the brief it was w
 
 ## Decisions
 
-Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–43 were added after review rounds on 2026-09-03.
+Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–44 were added after review rounds on 2026-09-03.
 
 **Data model**
 
@@ -67,6 +67,7 @@ Every call the brief left open, or where this spec deviates from it. One line of
 41. **`npm run publish` drops `BUILD_PROMPT.md` and `HANDOFF-CHAT.md` alongside `data/`.** The handoff documents a separate private project and the brief carries the owner's repo, timezone, and location. `PROJECT.md` and `AGENTS.md` stay public and stand without them. `publish-check` greps the published file set only, so if `BUILD_PROMPT.md` ever trips the AI-authorship grep the fix is that it should not be in the set, not a longer skip list.
 42. **Line endings are LF on every platform.** `.gitattributes` says `* text=auto eol=lf`, and the store normalizes CRLF to LF before writing. `text=auto` alone checks out CRLF on Windows while Node writes LF, so app-rewritten files end up mixed, and `git diff --exit-code` normalizes before comparing, so a byte-for-byte check could pass while the bytes on disk changed. Byte-for-byte acceptance checks therefore compare SHA-256 hashes, never `git diff`.
 43. **The shutdown push flush is owned by `scripts/dev.mjs` alone and is synchronous.** Windows has no `SIGTERM` and `Ctrl+C` can orphan a child tree, so the wrapper handles `SIGINT`, `SIGBREAK`, and `SIGHUP`, kills the child tree (`taskkill /T /F` on Windows, `SIGTERM` elsewhere), then runs `git push` through `execFileSync` before exiting, because Node's `'exit'` event cannot await anything. `instrumentation.ts` does not push on `beforeExit`; one owner, one path. The pre-commit hook is a `#!/bin/sh` script with LF endings and the executable bit set in the index, which is what Git for Windows needs to run it.
+44. **Node's type stripping is load-bearing, so `lib/` avoids every TypeScript feature that needs code generation.** The CLI scripts import `lib/**/*.ts` through plain Node, which strips types and runs the result rather than compiling it. No `enum`, `const enum`, `namespace`, or parameter properties (`constructor(private x)`) anywhere under `lib/`; all four need emitted runtime code and Node refuses them. The trap is not the error message — Node 24 names the feature (`TypeScript enum is not supported in strip-only mode`) — it is *when* the message arrives: `tsc` and `next build` accept all four, so the failure surfaces only once a CLI script runs, long after the code looked correct. `--experimental-transform-types` would compile them, but it would have to be passed on every script invocation forever to buy back features the project does not need. Two settings keep the seam explicit: `allowImportingTsExtensions` with a `.ts` extension on every `lib/`→`lib/` import, because Node will not resolve an extensionless specifier, and `verbatimModuleSyntax`, so a type-only import is spelled `import type` and stripping is never a judgment call.
 
 ---
 
@@ -87,7 +88,7 @@ These override anything else in this document.
 ## 2. Stack
 
 - **Next.js 15, App Router, TypeScript strict**, single process. `npm run dev` serves UI and API on one port.
-- **Node 24** (the machine has 24.14). Type stripping is not relied on; `tsc` and Next's compiler do the work.
+- **Node 24** (the machine has 24.14). Next's compiler builds the app, but the CLI scripts under `scripts/` import `lib/**/*.ts` through plain Node, so **type stripping is a hard requirement**, not a convenience — Decision 44 records the constraint that puts on `lib/`. `tsc` is the type check and emits nothing.
 - **Client components + `fetch` to API routes.** No server actions. Every API route is a thin adapter: parse input, call a `lib/` function, return JSON or a stream.
 - **Plain CSS.** `app/theme.css` defines the tokens (§11.3); each component has a CSS module. No Tailwind, no CSS-in-JS.
 - **Tests:** `vitest`, files beside the code as `*.test.ts`. Only pure modules are required to have tests (§16.10); everything else is a manual checklist in `docs/CHECKLIST.md` written during Phase 11.
@@ -506,7 +507,7 @@ interface BatchSpec {
   actor: "user" | "agent";
   scope: "user" | "project";
   summary: string;                         // becomes the commit message body
-  commitPrefix: "task" | "knowledge" | "chat" | "settings" | "file" | "code";
+  commitPrefix: "task" | "knowledge" | "chat" | "settings" | "file" | "code" | "docs";
   actions: ActionSpec[];                   // one or more; all undo together
   commit?: boolean;                        // default true; false only for streaming writes (§8)
   meta?: Record<string, unknown>;
@@ -558,7 +559,7 @@ redoBatch(batch: string): Promise<UndoResult>
 
 ## 8. Git sync (`lib/history/git.ts`)
 
-- One commit per batch, immediately, message `<prefix>: <summary>` (e.g. `task: add 6 tasks from prompt`, `settings: change theme to dark`, `code: add week view to calendar`). Commits use the repo's configured git identity. No trailers of any kind.
+- One commit per batch, immediately, message `<prefix>: <summary>` (e.g. `task: add 6 tasks from prompt`, `settings: change theme to dark`, `code: add week view to calendar`). The vocabulary is `task`, `knowledge`, `chat`, `settings`, `file`, `code`, `docs`. The first five describe a change to data under `data/` and are what the mirror renders as `· task ·`; `code` and `docs` describe a change to the project itself — source and written spec respectively — and are also the prefixes for the by-hand commits of a build phase, which do not go through `runBatch` at all. Commits use the repo's configured git identity. No trailers of any kind.
 - **Never commit a streaming message.** `writeMessage` during streaming runs through `runBatch` with `commit: false` and a `chat.message` action whose log entry is written once, at finalize. Concretely: the streaming write path calls the store directly from `lib/agent/chat.ts` through a `history.streamingWrite(path, content)` helper that bypasses logging, and finalize calls `runBatch` with the complete message. This is the one sanctioned bypass, and it exists only for `data/chats/*/messages/*.md` with `status: streaming`.
 - **Push is debounced** `settings.sync.pushDebounceMs` (default 30 s) after the last commit. `flush()` pushes immediately if there are unpushed commits. It is called from `POST /api/sync/flush` (triggered by `navigator.sendBeacon` on `beforeunload`), from **Sync now**, and on shutdown by `scripts/dev.mjs` as described next. The Next server process does nothing on shutdown; a debounce timer that dies with the process is caught by the wrapper.
 - **Shutdown (Decision 43).** `scripts/dev.mjs` spawns `next dev` with `stdio: "inherit"` and registers one idempotent handler for `SIGINT`, `SIGBREAK`, `SIGHUP`, and the child's `exit` event. The handler: (1) kills the child tree, `taskkill /pid <pid> /T /F` on Windows and `child.kill("SIGTERM")` elsewhere, ignoring errors because the console usually delivered `Ctrl+C` to the child already; (2) if `git remote get-url origin` succeeds and `git rev-list --count @{u}..HEAD` is non-zero, runs `git push` with `execFileSync` (synchronous, 20 s timeout, stdio inherited so a failure is visible in the terminal); (3) exits with the child's code. Nothing asynchronous runs after a signal. On Windows, Node raises `SIGINT` for `Ctrl+C` and `SIGBREAK` for `Ctrl+Break`; closing the console window raises `SIGHUP` and force-terminates roughly ten seconds later, which the synchronous push fits inside. Verified on Windows in Phase 1.

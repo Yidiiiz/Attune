@@ -2,13 +2,13 @@
 
 A personal to-do and scheduling app, run locally, whose entire state is plain files in a private git repository. An assistant is part of the interface: it creates and edits tasks, answers questions, maintains a knowledge base, and can modify the app's own code.
 
-This file is the complete specification. `BUILD_PROMPT.md` is the brief it was written from; `HANDOFF-CHAT.md` is a reference extraction from an earlier project and is cited here for code to port rather than restated. Where this file and the brief differ, this file wins, and the difference is listed under Decisions.
+This file is the complete specification. `BUILD_PROMPT.md` is the brief it was written from; `HANDOFF-CHAT.md` is a reference extraction from an earlier project and is cited here for code to port rather than restated. Where this file and the brief differ, this file wins, and the difference is listed under Decisions. Both of those files are private: `npm run publish` drops them together with `data/` (§12), so a public clone has only this file and `AGENTS.md`. The spec stands without them; the handoff citations are a convenience on the owner's machines.
 
 ---
 
 ## Decisions
 
-Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–40 were added after the first review on 2026-09-03.
+Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–43 were added after review rounds on 2026-09-03.
 
 **Data model**
 
@@ -64,6 +64,9 @@ Every call the brief left open, or where this spec deviates from it. One line of
 38. **The public seed ships with weather off.** `seed/settings/settings.json` has `weather.query: ""` and no coordinates; the first-run card asks for a location. The timezone stays `America/New_York` because the brief names it as the shipped default and the first-run card confirms it. A stranger's clone should not fetch New York weather until they ask for it.
 39. **The pre-commit hook path is installed by an npm `postinstall` script, not by `npm run init`.** `init` refuses to run when `data/` is non-empty, which is every clone of the private repo, so hook setup inside `init` would silently never happen on a second machine. `postinstall` runs on every `npm install`.
 40. **Frontmatter keys are camelCase everywhere**, matching the TypeScript field names exactly. The first draft had tasks, notes, and collections in snake_case and chats in camelCase. One convention means no mapping layer at the store boundary and no guessing when hand-editing a file.
+41. **`npm run publish` drops `BUILD_PROMPT.md` and `HANDOFF-CHAT.md` alongside `data/`.** The handoff documents a separate private project and the brief carries the owner's repo, timezone, and location. `PROJECT.md` and `AGENTS.md` stay public and stand without them. `publish-check` greps the published file set only, so if `BUILD_PROMPT.md` ever trips the AI-authorship grep the fix is that it should not be in the set, not a longer skip list.
+42. **Line endings are LF on every platform.** `.gitattributes` says `* text=auto eol=lf`, and the store normalizes CRLF to LF before writing. `text=auto` alone checks out CRLF on Windows while Node writes LF, so app-rewritten files end up mixed, and `git diff --exit-code` normalizes before comparing, so a byte-for-byte check could pass while the bytes on disk changed. Byte-for-byte acceptance checks therefore compare SHA-256 hashes, never `git diff`.
+43. **The shutdown push flush is owned by `scripts/dev.mjs` alone and is synchronous.** Windows has no `SIGTERM` and `Ctrl+C` can orphan a child tree, so the wrapper handles `SIGINT`, `SIGBREAK`, and `SIGHUP`, kills the child tree (`taskkill /T /F` on Windows, `SIGTERM` elsewhere), then runs `git push` through `execFileSync` before exiting, because Node's `'exit'` event cannot await anything. `instrumentation.ts` does not push on `beforeExit`; one owner, one path. The pre-commit hook is a `#!/bin/sh` script with LF endings and the executable bit set in the index, which is what Git for Windows needs to run it.
 
 ---
 
@@ -173,7 +176,8 @@ seed/                        # blank-slate copy of every data file — SHIPPED
 data/                        # yours — private repo only (layout in §4.7)
 docs/
   CHECKLIST.md               # manual acceptance checklist (Phase 11)
-.githooks/pre-commit         # runs check-secrets on staged files
+.githooks/pre-commit         # #!/bin/sh, LF, +x in the index; runs check-secrets on staged files
+.gitattributes               # * text=auto eol=lf
 .env.local                   # gitignored
 ```
 
@@ -450,6 +454,7 @@ onWrite(cb: (paths: string[]) => void): () => void
 Rules:
 
 - **Atomic writes:** write to `<path>.tmp` then `rename`. A crash never leaves a half-written file.
+- **LF only:** every text write replaces `\r\n` with `\n` first (Decision 42). A file hand-edited in a CRLF editor becomes LF on its next save through the app; no CR byte is ever written.
 - **No component or route calls `writeTask` etc. directly.** They call `runBatch()` (§7), which calls the store. The store functions are exported so the history layer and scripts can use them; that is the whole audience.
 - `listTasks` ignores files whose frontmatter fails to parse, and returns their paths in a side channel (`listTasks.errors`) that the Today tab shows as a one-line warning.
 - Every store write emits `events.onWrite` with the relative paths written. `lib/knowledge/index.ts` subscribes to invalidate its cache.
@@ -555,7 +560,8 @@ redoBatch(batch: string): Promise<UndoResult>
 
 - One commit per batch, immediately, message `<prefix>: <summary>` (e.g. `task: add 6 tasks from prompt`, `settings: change theme to dark`, `code: add week view to calendar`). Commits use the repo's configured git identity. No trailers of any kind.
 - **Never commit a streaming message.** `writeMessage` during streaming runs through `runBatch` with `commit: false` and a `chat.message` action whose log entry is written once, at finalize. Concretely: the streaming write path calls the store directly from `lib/agent/chat.ts` through a `history.streamingWrite(path, content)` helper that bypasses logging, and finalize calls `runBatch` with the complete message. This is the one sanctioned bypass, and it exists only for `data/chats/*/messages/*.md` with `status: streaming`.
-- **Push is debounced** `settings.sync.pushDebounceMs` (default 30 s) after the last commit. `flush()` pushes immediately if there are unpushed commits. Flush is called: from `scripts/dev.mjs` on `SIGINT`/`SIGTERM` and child exit; from `instrumentation.ts` on `beforeExit`; from `POST /api/sync/flush` triggered by `navigator.sendBeacon` on `beforeunload`.
+- **Push is debounced** `settings.sync.pushDebounceMs` (default 30 s) after the last commit. `flush()` pushes immediately if there are unpushed commits. It is called from `POST /api/sync/flush` (triggered by `navigator.sendBeacon` on `beforeunload`), from **Sync now**, and on shutdown by `scripts/dev.mjs` as described next. The Next server process does nothing on shutdown; a debounce timer that dies with the process is caught by the wrapper.
+- **Shutdown (Decision 43).** `scripts/dev.mjs` spawns `next dev` with `stdio: "inherit"` and registers one idempotent handler for `SIGINT`, `SIGBREAK`, `SIGHUP`, and the child's `exit` event. The handler: (1) kills the child tree, `taskkill /pid <pid> /T /F` on Windows and `child.kill("SIGTERM")` elsewhere, ignoring errors because the console usually delivered `Ctrl+C` to the child already; (2) if `git remote get-url origin` succeeds and `git rev-list --count @{u}..HEAD` is non-zero, runs `git push` with `execFileSync` (synchronous, 20 s timeout, stdio inherited so a failure is visible in the terminal); (3) exits with the child's code. Nothing asynchronous runs after a signal. On Windows, Node raises `SIGINT` for `Ctrl+C` and `SIGBREAK` for `Ctrl+Break`; closing the console window raises `SIGHUP` and force-terminates roughly ten seconds later, which the synchronous push fits inside. Verified on Windows in Phase 1.
 - **Status:** `GET /api/sync/status` → `{ state: "synced" | "pending" | "offline" | "error" | "conflict", ahead: number, lastError?: string }`. `ahead` is `git rev-list --count @{u}..HEAD`. The shell shows a dot with a tooltip and a **Sync now** button.
 - **Failures never block.** Offline (`Could not resolve host`) → `offline`, retry on next commit. Auth or unknown → `error` with the message. Non-fast-forward → `conflict`: pushing stops, and the indicator shows: "Remote has changes. Run: `git pull --rebase && git push` in `<repo dir>`." No automatic resolution.
 - If `git remote get-url origin` fails, sync state is `local` and push is skipped silently. A fresh clone with no remote still works.
@@ -800,8 +806,8 @@ Adding a provider = one file implementing `Provider`, one entry in `PROVIDERS`, 
 - `npm run init` copies `seed/` → `data/` and refuses if `data/` exists and is non-empty (exit 1, message names the directory). It does not touch git configuration; the hook path is installed by `postinstall` (§11.5), which is what makes it land on a clone whose `data/` is already populated.
 - Every batch carries `scope`. Under `data/` is `user`; everything else is `project`. `code.change` is `project` unless every touched path is under `data/`.
 - **When the assistant cannot tell** (a new theme, a new category, a seed change), the Build-mode prompt tells it to ask "Should this ship with the project or stay yours?" before writing, and the answer sets where the file goes (`seed/` vs `data/`).
-- `npm run publish-check`: greps `app/ components/ lib/ scripts/` for `data/` string literals outside `lib/store/paths.ts`; greps for the identity name and weather label from the current `settings.json`; verifies every path `lib/store` reads has a counterpart in `seed/`; verifies `.env.local` is ignored; runs `check-secrets --all`; greps the repo for AI-authorship strings (`Co-Authored-By`, `Generated with`, `Claude Code`, `Anthropic`) skipping `lib/agent/`, `package.json`, `package-lock.json`, and the three reference documents `PROJECT.md`, `AGENTS.md`, `HANDOFF-CHAT.md`, which name providers and SDKs legitimately; then, in a temp directory, clones the repo, runs `init`, `build`, and starts the server to hit `/api/tasks` once. Exit 1 on any failure.
-- `npm run publish` (Decision 22): creates a temporary worktree, removes `data/` from the index, adds `data/` to `.gitignore` in that tree, commits as a single orphan commit `Publish`, and force-pushes to the `public` remote's `main`. Refuses if `publish-check` fails.
+- `npm run publish-check`: greps `app/ components/ lib/ scripts/` for `data/` string literals outside `lib/store/paths.ts`; greps for the identity name and weather label from the current `settings.json`; verifies every path `lib/store` reads has a counterpart in `seed/`; verifies `.env.local` is ignored; runs `check-secrets --all`; greps the **published file set** (the repo minus `data/`, `BUILD_PROMPT.md`, and `HANDOFF-CHAT.md`, exactly what `publish` ships) for AI-authorship strings (`Co-Authored-By`, `Generated with`, `Claude Code`, `Anthropic`), skipping only `lib/agent/`, `package.json`, `package-lock.json`, `PROJECT.md`, and `AGENTS.md`, which name providers and SDKs legitimately. `BUILD_PROMPT.md` would trip this grep if it were included; that is a symptom of it being published at all, never a reason to lengthen the skip list; then, in a temp directory, clones the repo, runs `init`, `build`, and starts the server to hit `/api/tasks` once. Exit 1 on any failure.
+- `npm run publish` (Decisions 22, 41): creates a temporary worktree, removes `data/`, `BUILD_PROMPT.md`, and `HANDOFF-CHAT.md` from the index, adds all three to `.gitignore` in that tree, commits as a single orphan commit `Publish`, and force-pushes to the `public` remote's `main`. Refuses if `publish-check` fails. Everything else, including `PROJECT.md` and `AGENTS.md`, ships.
 - `README.md` (Phase 11): setup, layout, bring-your-own-key, no personal content.
 
 ---
@@ -916,9 +922,9 @@ All of these pass before the project is called finished; each is also an accepta
 - Fresh clone + `npm install` + `npm run init` + `npm run dev` produces a working empty app with no personal data.
 - Six tasks from one prompt, then one undo, removes all six; `actions.jsonl` retains the create entries and gains one `undo`.
 - Every task file opens in a text editor; an edit there appears in the app on refresh.
-- Editing a note in the browser, saving, then undoing restores the previous content byte-for-byte (verified with `git diff --exit-code`).
+- Editing a note in the browser, saving, then undoing restores the previous content byte-for-byte (SHA-256 of the file before the edit equals SHA-256 after the undo; never `git diff`, which normalizes line endings).
 - A collection with 200 items produces zero rows on Today.
-- An equation sheet with LaTeX renders in preview and survives edit-and-save unchanged (`git diff --exit-code`).
+- An equation sheet with LaTeX renders in preview and survives edit-and-save unchanged (SHA-256 before and after are equal).
 - The graph opens on an empty `data/` without crashing and shows the empty state.
 - Killing the network mid-response leaves the message `failed`, not `complete`, with a Retry button.
 - A rejected send (invalid key) leaves no message file behind and the composer keeps the text.
@@ -929,9 +935,10 @@ All of these pass before the project is called finished; each is also an accepta
 - Deleting `settings.json` and reloading restores defaults without a crash.
 - Clearing the weather location removes the element with no layout shift.
 - The + button is absent on Chat, present on Today and Calendar.
-- `Ctrl+C` on `npm run dev` leaves `git rev-list --count @{u}..HEAD` at 0 when a remote is configured.
+- `Ctrl+C` on `npm run dev` leaves `git rev-list --count @{u}..HEAD` at 0 when a remote is configured and no orphaned `node` process behind. Verified on Windows.
+- Every tracked text file checks out with LF (`git ls-files --eol` shows `w/lf` throughout), and no file written by the app contains a CR byte.
 - `git log -p | grep -c sk-ant` is 0; `check-secrets --all` passes.
-- `grep -ri` for `co-authored-by`, `generated with`, and assistant names returns nothing outside `lib/agent/`, lockfiles, and model-id strings.
+- `grep -ri` for `co-authored-by`, `generated with`, and assistant names over the published file set returns nothing outside `lib/agent/`, lockfiles, and model-id strings.
 
 ---
 
@@ -1061,8 +1068,8 @@ Each phase ends in a working, committed app. Plan → approve → build → run 
 
 ### Phase 1 — Skeleton
 
-Next.js app, TypeScript strict, `app/theme.css` with both base themes, the shell with three empty tabs and the settings page stub, `seed/` complete per §12, `scripts/init.mjs`, `scripts/postinstall.mjs` wired as `postinstall`, `scripts/dev.mjs`, `.gitignore` (`data/` is **not** ignored; `.env.local`, `node_modules`, `.next` are), `.githooks/pre-commit` + `scripts/check-secrets.mjs`, `lib/store/paths.ts`, `frontmatter.ts`, `settings.ts`, `vitest` configured.
-**Checks:** `npm run init` on an empty `data/` succeeds and refuses a second time; `npm run dev` serves three tabs; `GET /api/settings` returns defaults; deleting `settings.json` and reloading restores defaults; a staged file containing `sk-ant-…` is refused by the hook; on a second clone whose `data/` is already non-empty, a fresh `npm install` alone installs the hook (`git config core.hooksPath` prints `.githooks`) and a staged `sk-ant-…` is still refused; frontmatter round-trip test passes with a LaTeX body.
+Next.js app, TypeScript strict, `app/theme.css` with both base themes, the shell with three empty tabs and the settings page stub, `seed/` complete per §12, `.gitattributes` with `* text=auto eol=lf` followed by `git add --renormalize .`, `scripts/init.mjs`, `scripts/postinstall.mjs` wired as `postinstall`, `scripts/dev.mjs` with the shutdown handling of §8, `.gitignore` (`data/` is **not** ignored; `.env.local`, `node_modules`, `.next` are), `.githooks/pre-commit` (`#!/bin/sh`, LF, executable bit set with `git update-index --chmod=+x`) + `scripts/check-secrets.mjs`, `lib/store/paths.ts`, `frontmatter.ts`, `settings.ts`, `vitest` configured.
+**Checks:** `npm run init` on an empty `data/` succeeds and refuses a second time; `npm run dev` serves three tabs; `GET /api/settings` returns defaults; deleting `settings.json` and reloading restores defaults; a staged file containing `sk-ant-…` is refused by the hook, **verified on Windows from both PowerShell and Git Bash**; on a second clone whose `data/` is already non-empty, a fresh `npm install` alone installs the hook (`git config core.hooksPath` prints `.githooks`) and a staged `sk-ant-…` is still refused; a settings write through the store yields a file with zero CR bytes, and `git ls-files --eol` shows `w/lf` for every tracked text file; with a local bare repository as `origin`, `Ctrl+C` on `npm run dev` after a commit leaves `git rev-list --count @{u}..HEAD` at 0 and no surviving `node` process from the dev tree, **verified on Windows in both PowerShell and Git Bash**; frontmatter round-trip test passes with a LaTeX body.
 
 ### Phase 2 — Store, history, git
 
@@ -1098,7 +1105,7 @@ This is the largest phase; if (c) or (f) grows past a day of work, it splits int
 ### Phase 8 — Knowledge browser
 
 Rail, Tree (both panels), document view with edit/save/frontmatter table/checkboxes/backlinks/KaTeX, file operations, search. **Graph view last**, after backlinks have proven the index.
-**Checks:** edit-save-undo restores byte-for-byte; LaTeX survives a round trip; clicking a checkbox in a collection saves one action; backlinks list the linking files; the graph opens on empty `data/` with the empty state and on a populated one shows edges matching backlinks; a document open in the main pane is in the next turn's context (debug view shows it).
+**Checks:** edit-save-undo restores the file byte-for-byte (SHA-256 equal); LaTeX survives a round trip (SHA-256 equal); clicking a checkbox in a collection saves one action; backlinks list the linking files; the graph opens on empty `data/` with the empty state and on a populated one shows edges matching backlinks; a document open in the main pane is in the next turn's context (debug view shows it).
 
 ### Phase 9 — Build mode
 

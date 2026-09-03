@@ -42,6 +42,7 @@ npm run publish-check  # readiness for the public remote
 - **Timers are never correctness.** Wait on the observable consequence; a timeout is a failure guard.
 - **Dirty-check writes.** Never write a value that is already set.
 - **Atomic file writes** (tmp + rename) in the store; whole-file writes, never read-modify-write of shared arrays.
+- **LF everywhere.** `.gitattributes` forces `eol=lf`; the store normalizes CRLF to LF before writing. Byte-for-byte checks compare hashes, not `git diff`.
 - **Frontmatter keys are camelCase and identical to the TypeScript field names** (`createdAt`, `estimateMin`, `parentId`). One convention for every file under `data/`; there is no mapping layer at the store boundary.
 - Dates: date-only `YYYY-MM-DD`, date-time `YYYY-MM-DDTHH:mm` in `settings.timezone`; timestamps ISO with offset. Paths in data files are relative to `data/`.
 - Model IDs and effort come from `data/settings/settings.json`; nothing hardcodes a model.
@@ -50,6 +51,6 @@ npm run publish-check  # readiness for the public remote
 ## Where to look things up
 
 - Data shapes and file formats: `PROJECT.md` §4. Store surface: §5. History and undo: §7. Git sync: §8.
-- Chat tree, streaming, annotations: `PROJECT.md` §16, with code to port cited from `HANDOFF-CHAT.md` (read only its `PORTABLE`/`ADAPT` parts).
+- Chat tree, streaming, annotations: `PROJECT.md` §16, with code to port cited from `HANDOFF-CHAT.md` (read only its `PORTABLE`/`ADAPT` parts). `HANDOFF-CHAT.md` and `BUILD_PROMPT.md` are private and are dropped by `npm run publish`; never make the spec depend on them.
 - Claude API: `@anthropic-ai/sdk` — `messages.stream`, `messages.parse`, `output_config.effort`; adaptive thinking is the default, send no `thinking` param. Agent SDK: `@anthropic-ai/claude-agent-sdk` `query()`; verify option names against the installed version before use.
 - Weather: Open-Meteo forecast and geocoding endpoints, no key, attribution required (`PROJECT.md` §10.1).

@@ -1,0 +1,1116 @@
+# Attune — build specification
+
+A personal to-do and scheduling app, run locally, whose entire state is plain files in a private git repository. An assistant is part of the interface: it creates and edits tasks, answers questions, maintains a knowledge base, and can modify the app's own code.
+
+This file is the complete specification. `BUILD_PROMPT.md` is the brief it was written from; `HANDOFF-CHAT.md` is a reference extraction from an earlier project and is cited here for code to port rather than restated. Where this file and the brief differ, this file wins, and the difference is listed under Decisions.
+
+---
+
+## Decisions
+
+Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–40 were added after the first review on 2026-09-03.
+
+**Data model**
+
+1. **No per-day file (`data/days/`).** Ordering lives entirely in the ranking function; the manual override is the task's own `scheduled` field, which may carry a time. A second ordering source of truth would need its own undo semantics and would fight the ranker.
+2. **Recurring tasks: yes, minimal.** A `repeat` field; completing an instance materializes the next one in the same batch. No virtual instances, so ranking, calendar, and undo see only real files.
+3. **Subtasks are checkboxes in the body.** Separate files would turn one problem set into six ranked rows. The row shows `2/4` progress from the body.
+4. **Dropped the brief's `blocked_by`.** Nothing in v1 reads it; a field no code consumes is a field that rots. Add it when a scheduler needs it.
+5. **Kept `createdBy`** even though the action log also records the actor. It is the one place the fact is visible when reading the file in a text editor.
+6. **Added `repeat`, `source`, and `collection` to tasks; added `tasks` to collections.** `source` records the prompt or conversation that produced the task; `collection` and `tasks` are the two ends of the promote-to-task link.
+7. **Task filenames are fixed at creation.** Changing `due` does not rename the file. Renames churn git and break links; the date prefix is a hint, not an index.
+8. **Message deletion:** hard delete is refused for any message with children. Leaves soft-delete (`deleted: true` in frontmatter, body kept). Childless *failed* assistant messages may be hard-deleted because they never held content worth keeping. Conversation deletion removes the directory as one batch, recoverable through git.
+9. **No message index file.** A directory scan of a few hundred small files is milliseconds. If a conversation ever needs thousands, add `messages.index.json` then, not now.
+10. **Chats in the graph: one node per conversation, never per message.** Conversation nodes are on by default; edges come from task ids and `data/` paths referenced in messages.
+11. **`activeLeafId` changes are ordinary logged, committed actions** (`chat.update`). Consistency with "everything is reversible" wins over commit noise; the history view hides this type by default.
+12. **Schema version on every frontmatter record from the first commit** (`schema: 1`). Cheapest possible insurance.
+
+**Behavior**
+
+13. **Weather provider: Open-Meteo.** Terms confirmed 2026-09-03: free for non-commercial use, no key, 10,000 calls/day, CC-BY 4.0 attribution. The Settings weather section carries the attribution. Forecasts are cached server-side for 30 minutes.
+14. **The + button becomes the close affordance** while the sheet is open (rotates to ×). One element, one position, no reflow.
+15. **`Ctrl/Cmd+Z` outside a text field opens the history sheet with the latest batch focused; it does not undo instantly.** A silent undo of a six-task batch is worse than one extra keypress.
+16. **Build mode "Plan first" has two gates, and the diff is real.** Gate 1: the agent runs in `plan` permission mode and returns a plan; you approve or reject. Gate 2: the agent applies the plan to the working tree with `acceptEdits`, you see `git diff`, and you commit or revert. The brief says "nothing is written until I approve"; files *are* written between gate 1 and gate 2 but nothing is committed, and revert is one click. Showing a genuine diff without writing would need a second checkout, which is not boring.
+17. **Ask-mode prompts from the floating composer create real conversations** under `data/chats/` so they appear in the Chats panel. Tasks-mode prompts are ephemeral; the prompt text is preserved in the batch's log entry.
+18. **Session summaries are made on demand** ("Distill to knowledge" in the conversation menu), not automatically. Automatic distillation would write knowledge nobody reviewed.
+19. **Per-device UI state lives in `localStorage`**, not `settings.json`: active panel, expanded folders, scroll positions, sidebar collapse, composer drafts. A collapsed sidebar on one machine is not user data. Settings that are yours (name, timezone, models, theme choice) live in `settings.json` and sync.
+20. **External file edits are picked up on the next request plus a refetch on window focus.** No filesystem watcher in v1.
+21. **`npm run dev` is a thin wrapper script around `next dev`** so the push flush on shutdown is guaranteed by the parent process rather than by Next internals.
+22. **Publishing uses two remotes.** `origin` is the private repo with `data/`; `npm run publish` builds an orphan `public` branch without `data/` and force-pushes it to a `public` remote. The brief specifies `publish-check` but not the mechanism; this is the smallest one that keeps the two repos honest. Confirmed in Decision 35.
+
+**Assistant**
+
+23. **Default model `claude-opus-5`, effort `high`, adaptive thinking (SDK default, nothing sent).** Task extraction defaults to the same model at effort `medium` rather than a cheaper model: same cache namespace, lower cost, one prompt-caching story. Change it in Settings if you want a cheaper model.
+24. **One conversation loop, three tool sets.** Tasks, Ask, and knowledge proposals all run through `runChatTurn()`; modes differ only in system prompt and which tools are offered. Proposals (`propose_tasks`, `propose_knowledge_write`, `propose_collection_append`) are collected, never executed, and shown in the preview panel.
+25. **Knowledge retrieval is a tool the model calls** (`read_knowledge(path)`, `search_knowledge(query)`), not a retriever we build. `index.md` and `profile/` are always in the system prompt; everything else the model asks for by path.
+26. **Refusal fallbacks are not wired in v1.** A to-do app is unlikely to trip a safety classifier; if it does, the message fails visibly and can be retried on another model.
+27. **Structured output through the SDK's `messages.parse` + `zod`** for anything that must be a fixed shape. Zod also validates settings and frontmatter, which is why it earns a dependency slot.
+
+**Stack**
+
+28. **Runtime dependencies (8 of 12):** `@anthropic-ai/sdk`, `@anthropic-ai/claude-agent-sdk`, `marked`, `dompurify`, `katex`, `yaml`, `d3-force`, `zod`. Frontmatter splitting is ten lines on top of `yaml`; UUIDv7 is ported from the handoff; git is shelled out to; search is a scan; drag and drop is native.
+29. **Tests use `vitest`** (dev dependency, not budgeted). Node's built-in runner would need extension-suffixed imports that Next code does not use.
+30. **Tree math, text matching, and anchoring live in `lib/chat/`**, a directory the brief's layout did not have, because they must be pure, importable from both server and client, and unit-tested without a DOM.
+31. **Markdown pipeline is `marked` → math pre-pass with `katex` → `dompurify`.** Math spans are stashed behind NUL placeholders before `marked` runs and rendered by KaTeX after, the same trick the handoff uses for code spans.
+32. **Units default to Fahrenheit and first day of week to Monday.** Fahrenheit because the seed location is New York; Monday because it is a school planner. Both are one-line settings. Confirmed in Decision 36.
+33. **This file is long.** Hard rule 5 caps *source* files at ~300 lines; the brief asks for a spec someone can build from alone. It is one file because the brief asked for exactly two.
+
+**After the first review (2026-09-03)**
+
+34. **Priority weights are `{1: 11, 2: 6, 3: 2, 4: 0}`**, up from `{8, 5, 2, 0}`. With urgency capped at 10, the old weights let any near deadline beat any importance: a someday errand due tomorrow outranked a critical task with no date. Now a critical undated task (11) beats a someday task due tomorrow (9), while a high-priority task due tomorrow (9 + 6) beats both. Urgency and importance interleave instead of one always winning.
+35. **Two-remote publishing with a squashed `public` branch: yes.** Public history would either leak the private repo's commit messages, which name personal tasks, or need a rewritten history on every publish. A single `Publish` commit per release is honest about what the public repo is: a snapshot.
+36. **Fahrenheit and Monday stay the defaults.** Both are one-line settings and the first-run card makes them visible.
+37. **Ask-mode conversations started from the floating composer are listed in the Chats panel like any other.** A hidden class of conversations is a second concept for no gain; a quick question that turns out to matter should already be findable.
+38. **The public seed ships with weather off.** `seed/settings/settings.json` has `weather.query: ""` and no coordinates; the first-run card asks for a location. The timezone stays `America/New_York` because the brief names it as the shipped default and the first-run card confirms it. A stranger's clone should not fetch New York weather until they ask for it.
+39. **The pre-commit hook path is installed by an npm `postinstall` script, not by `npm run init`.** `init` refuses to run when `data/` is non-empty, which is every clone of the private repo, so hook setup inside `init` would silently never happen on a second machine. `postinstall` runs on every `npm install`.
+40. **Frontmatter keys are camelCase everywhere**, matching the TypeScript field names exactly. The first draft had tasks, notes, and collections in snake_case and chats in camelCase. One convention means no mapping layer at the store boundary and no guessing when hand-editing a file.
+
+---
+
+## 1. Hard rules
+
+These override anything else in this document.
+
+1. **Do not overcomplicate.** Prefer the boring solution. No abstraction until there are three concrete uses. No state-management library, ORM, component library, or CSS framework. If a feature can be a function in an existing file, it does not get a new file.
+2. **Dependency budget: 12 runtime dependencies**, not counting `next`, `react`, `react-dom`. Eight are allocated (Decision 28). Adding one requires writing down what it replaces and why hand-rolling is worse.
+3. **No AI-authorship attribution anywhere.** No `Co-Authored-By`, no "generated with", no assistant name in commits, docs, comments, or UI copy. Model IDs in code and settings are fine.
+4. **Secrets never touch `data/`.** See §11.5.
+5. **No source file over ~300 lines.** Split by feature, not by layer.
+6. **Every write goes through the history layer.** No component or route writes to disk directly. There are exactly three exceptions: `.env.local` (through `lib/store/env.ts`, logged by key name); files the Agent SDK writes in Build mode, captured afterward as one `code.change` batch; and `history.streamingWrite()`, which may write only `data/chats/*/messages/*.md` files whose `status` is `streaming`, and whose final content is always logged and committed through `runBatch` at finalize (§8).
+7. **`lib/store/` is the only module that touches the filesystem; `lib/agent/` is the only module that talks to a model provider.** Everything else calls async functions.
+
+---
+
+## 2. Stack
+
+- **Next.js 15, App Router, TypeScript strict**, single process. `npm run dev` serves UI and API on one port.
+- **Node 24** (the machine has 24.14). Type stripping is not relied on; `tsc` and Next's compiler do the work.
+- **Client components + `fetch` to API routes.** No server actions. Every API route is a thin adapter: parse input, call a `lib/` function, return JSON or a stream.
+- **Plain CSS.** `app/theme.css` defines the tokens (§11.3); each component has a CSS module. No Tailwind, no CSS-in-JS.
+- **Tests:** `vitest`, files beside the code as `*.test.ts`. Only pure modules are required to have tests (§16.10); everything else is a manual checklist in `docs/CHECKLIST.md` written during Phase 11.
+- **Git** is shelled out to with `child_process.execFile('git', [...])`. No git library.
+
+Two seams and nothing more:
+
+- **`lib/store/`** exports named functions (`listTasks`, `writeTask`, `readSettings`, …). Replacing local files with object storage means replacing this module's internals.
+- **`lib/agent/`** exports `runChatTurn`, `extractProposals`, `runBuild`. A hosted version runs these on a worker.
+
+---
+
+## 3. Repository layout
+
+```
+app/
+  layout.tsx                 # shell: tabs, search, sync indicator, theme loader
+  page.tsx                   # Today
+  chat/page.tsx
+  calendar/page.tsx
+  settings/page.tsx
+  theme.css
+  api/                       # every route is <10 lines of adapter; see §14
+components/
+  shell/                     # Tabs, SearchBox, SyncStatus, Toast
+  today/                     # DayHeader, TaskRow, TaskMenu, Timeline
+  calendar/                  # CalendarGrid, DayCell
+  composer/                  # ComposerButton, ComposerSheet, ModeSelector, PreviewPanel, TaskCard
+  chat/                      # Conversation, MessageView, ChatComposer, Sidebar, Annotations, QuoteRefs
+  browser/                   # Rail, Tree, DocumentView, FrontmatterTable, GraphView
+  history/                   # HistorySheet
+  settings/                  # one file per settings section
+  markdown/                  # Markdown.tsx (marked + katex + dompurify), Checklist toggling
+lib/
+  store/                     # ONLY module that touches the filesystem
+    paths.ts                 # DATA_DIR, SEED_DIR, REPO_DIR, resolveData(rel) with traversal guard
+    frontmatter.ts           # split(text) → {data, body}; join(data, body); yaml parse/stringify
+    tasks.ts                 # Task schema, defaults, listTasks/readTask/writeTask/deleteTask
+    settings.ts              # Settings schema, defaults, readSettings/writeSettings
+    files.ts                 # listTree, readFile, writeFile, deleteFile, rename, mkdir, manifest
+    chats.ts                 # conversations, messages, annotations
+    knowledge.ts             # notes, maps, collections, index.md regeneration
+    env.ts                   # .env.local read/write, key masking
+    events.ts                # onWrite(cb): store emits {paths} after any write
+  history/
+    log.ts                   # appendAction, readActions, nextSeq, regenerateMirror
+    batch.ts                 # runBatch(): the one entry point every mutation uses
+    undo.ts                  # undoBatch, redoBatch, conflict check
+    git.ts                   # commit, push (debounced), flush, status, show, revert
+    queue.ts                 # in-process serial queue for all writes
+  schedule/
+    dates.ts                 # timezone helpers, today(), daysBetween, minutesFromMidnight
+    rank.ts                  # score(), rankDay()
+    timeline.ts              # packDay()
+  chat/                      # pure functions, no fs, no DOM
+    tree.ts                  # activePath, siblingsOf, latestLeafUnder, buildPairs
+    text-match.ts            # ported verbatim from HANDOFF Part E
+    anchoring.ts             # findQuote, findAnchorText (pure half)
+    refs.ts                  # extractRefs(text), parseQuoteReply(text)
+    uuid.ts                  # uuidv7(), ported verbatim from HANDOFF Part B
+  agent/                     # ONLY module that talks to a provider
+    registry.ts              # model registry + Provider type
+    anthropic.ts             # Provider implementation
+    context.ts               # assembleContext()
+    tools.ts                 # tool definitions + read-only executors + proposal collectors
+    prompts.ts               # system prompt text per mode
+    chat.ts                  # runChatTurn(): the streaming loop
+    build.ts                 # Agent SDK: plan, apply, capture
+    memory.ts                # the remembering heuristic as prompt text + proposal filter
+  knowledge/
+    links.ts                 # extractLinks(md, fromPath)
+    index.ts                 # LinkIndex build/cache/invalidate
+    check.ts                 # kb:check rules
+    search.ts                # scan search
+  weather.ts                 # Open-Meteo geocode + forecast, cached
+scripts/
+  dev.mjs                    # spawns next dev; flushes push on exit
+  init.mjs                   # seed/ → data/
+  postinstall.mjs            # git config core.hooksPath .githooks; runs on every npm install
+  history.mjs                # CLI: list | undo <batch> | redo <batch>
+  kb-check.mjs
+  check-secrets.mjs
+  publish-check.mjs
+  publish.mjs
+seed/                        # blank-slate copy of every data file — SHIPPED
+data/                        # yours — private repo only (layout in §4.7)
+docs/
+  CHECKLIST.md               # manual acceptance checklist (Phase 11)
+.githooks/pre-commit         # runs check-secrets on staged files
+.env.local                   # gitignored
+```
+
+Anything a component needs from disk arrives through an API route that calls `lib/`. Components never import from `lib/store/` or `lib/history/` directly; they may import pure modules (`lib/chat/`, `lib/schedule/`).
+
+---
+
+## 4. Data model
+
+All dates are interpreted in `settings.timezone`. Timestamps are ISO 8601 with offset. Date-only fields are `YYYY-MM-DD`. Date-time fields are `YYYY-MM-DDTHH:mm` (local to the timezone, no offset, so hand-editing is easy).
+
+### 4.1 Task
+
+Path: `data/tasks/<date>-<slug>.md`, where `<date>` is `due` if set at creation, else the creation date. The filename never changes afterward.
+
+```markdown
+---
+schema: 1
+id: t_20260903_7fa2
+title: Linear algebra problem set 4
+status: todo            # todo | doing | done | archived
+priority: 2             # 1 critical | 2 high | 3 normal | 4 someday
+estimateMin: 90
+due: 2026-09-10         # date or date-time, or empty
+scheduled: 2026-09-08   # date or date-time; empty = auto
+completedAt:
+category: school
+context: MATH 221
+tags: [pset, weekly]
+links:
+  - files/docs/2026-09/pset4.pdf
+repeat:                 # none | daily | weekly | biweekly | monthly
+repeatUntil:
+source:                 # chat:<conv-id> | prompt | collection:<path> | manual
+collection:             # knowledge/collections/movies.md#dune (promote-to-task backlink)
+createdAt: 2026-09-03T14:12:00-04:00
+updatedAt: 2026-09-03T14:12:00-04:00
+createdBy: agent       # user | agent
+---
+
+Chapters 4.1–4.3. Office hours Thursday if 4.3 is still unclear.
+
+- [ ] 4.1 problems
+- [ ] 4.2 problems
+```
+
+**Required:** `id`, `title`, `status`, `createdAt`, `updatedAt`. A file with only `title` loads: `readTask` fills `id` from the filename hash, `status: todo`, timestamps from file mtime, and writes the completed frontmatter back on the next save (not on read).
+
+**Defaults for optional fields:** `priority: 3`, `estimateMin: null` (ranker treats as 30), `due: null`, `scheduled: null`, `completedAt: null`, `category: null`, `context: null`, `tags: []`, `links: []`, `repeat: null`, `repeatUntil: null`, `source: "manual"`, `collection: null`, `createdBy: "user"`.
+
+**Id format:** `t_<YYYYMMDD>_<4 lowercase hex>`; hex from `crypto.randomBytes(2)`. Regenerate on collision (check `listTasks()`).
+
+**Slug rules:** title → NFKD → strip diacritics → lowercase → replace runs of non `[a-z0-9]` with `-` → trim `-` → truncate to 40 chars at a hyphen boundary → fall back to `task` if empty. **Collision:** append `-2`, `-3`, … until free.
+
+**Links** are relative to `data/` (`files/docs/...`, `knowledge/notes/...`, `tasks/...`) so they are the same string in the graph, in backlinks, and in the file tree. Markdown links in bodies may be relative to the file instead; the link extractor normalizes both.
+
+**Completion** sets `status: done` and `completedAt: now`. If `repeat` is set and (`repeatUntil` is empty or next due ≤ `repeatUntil`), the same batch creates the next instance: new id, new file, `due` and `scheduled` advanced by the interval, body copied with checkboxes unticked, `source` unchanged. Undoing the completion removes the new instance because they share a batch. Monthly adds one calendar month clamped to the last day.
+
+**Subtask progress:** `- [ ]` / `- [x]` lines in the body are counted for the `2/4` indicator. Clicking a checkbox in preview writes the body with that line toggled (a `task.update`).
+
+### 4.2 Knowledge note
+
+Path: `data/knowledge/notes/<slug>.md`.
+
+```markdown
+---
+schema: 1
+id: n_20260903_1a2b
+title: Office hours for MATH 221
+type: fact              # fact | how-to | reference | decision | person | course | project
+tags: [math221]
+links: [knowledge/maps/courses.md]
+source: chat:c_20260903_9f1c    # chat:<id> | file:<path> | manual
+confidence: high        # low | medium | high
+updatedAt: 2026-09-03T15:00:00-04:00
+---
+
+Thursdays 3–5pm, Room 204. Go with specific questions written down.
+```
+
+Body cap ~200 words (reported by `kb:check`, not enforced on write).
+
+### 4.3 Map
+
+Path: `data/knowledge/maps/<name>.md`. Frontmatter: `schema`, `id`, `title`, `updatedAt`. Body is hand-curated markdown: a list of links, each with a one-line reason. Maps are edited, never generated. The seed ships `courses.md`, `projects.md`, `people.md`, `tools.md`, each with a one-line description and no links.
+
+### 4.4 `index.md`
+
+`data/knowledge/index.md` is regenerated by `lib/store/knowledge.ts` whenever a map or profile file is written. Content: a heading, one link per profile file, one link per map with its `title`, one link per collection. It is a generated view; edits to it are overwritten.
+
+### 4.5 Collection
+
+Path: `data/knowledge/collections/<slug>.md`.
+
+```markdown
+---
+schema: 1
+id: k_20260903_3c4d
+title: Movies to watch
+kind: list              # list | reference
+context:                # same field as tasks
+tags: []
+links: [knowledge/maps/projects.md]
+tasks: []               # task ids created from this collection
+createdAt: 2026-09-03T15:10:00-04:00
+updatedAt: 2026-09-03T15:10:00-04:00
+---
+
+- [ ] Dune — the 2021 one first
+- [ ] Arrival
+```
+
+Items in a `list` collection are body checkboxes. **Collection items never enter the ranker.** "Make this a task" creates a task with `source: collection:<path>` and `collection: <path>#<item-slug>`, appends the task id to the collection's `tasks`, and appends ` → [[t_…]]` to the item line, all in one batch. The item slug is the slug of the item text.
+
+### 4.6 Session summary
+
+Path: `data/knowledge/sessions/<conv-id>.md`. Frontmatter: `schema`, `id` (= conversation id), `title`, `createdAt`, `messageCount`. Body: the distilled summary. Never loaded into context unless the user references a past conversation by name or the model calls `read_knowledge` on it.
+
+### 4.7 Chats
+
+```
+data/chats/<conv-id>/
+  conversation.md
+  messages/<uuidv7>.md
+  annotations/<uuidv7>.md
+  attachments/<sha256-8>-<name>
+```
+
+`conversation.md`:
+
+```markdown
+---
+schema: 1
+id: c_20260903_9f1c
+title: Change of basis
+activeLeafId: 019f3e54-bcd7-7b52-b5c6-c08c663367f5
+pinned: false
+model: claude-opus-5
+context:
+  file: knowledge/collections/equations-math221.md
+  taskIds: [t_20260903_7fa2]
+createdAt: 2026-09-03T16:00:00-04:00
+updatedAt: 2026-09-03T16:20:00-04:00
+---
+```
+
+The body is empty. `activeLeafId` is the entire branch state. `context` is the association from §16.9: it is set when the conversation is started from a document view or "Ask about this", and reopening the conversation reopens that context.
+
+`messages/<id>.md`:
+
+```markdown
+---
+schema: 1
+id: 019f3e54-bcd7-7b52-b5c6-c08c663367f5
+parentId: 019f3e54-bcd7-790e-8728-9143e4799a2c    # null for a root
+role: assistant                                    # user | assistant
+status: complete                                   # streaming | complete | failed
+createdAt: 2026-09-03T16:01:12.410-04:00
+model: claude-opus-5
+attachments: []                                    # relative to the conversation dir
+refs: [t_20260903_7fa2, knowledge/notes/office-hours-math221.md]
+deleted: false
+error:                                             # set when status = failed
+---
+
+The message text, verbatim markdown.
+```
+
+`refs` is computed at finalize by `extractRefs(text)` (§16.9) and stored so the link index does not have to parse every message body.
+
+`annotations/<id>.md`: frontmatter exactly the `Annotation` type in §16.4 plus `schema: 1`; body is the annotation text.
+
+### 4.8 Files and manifest
+
+`data/files/<images|docs|other>/<YYYY-MM>/<sha256-8>-<sanitized-name>`. The eight-hex-char content prefix prevents collisions and makes re-uploads idempotent. `data/files/index.md` is a generated table: `| path | added | source | description | used-by |`. `used-by` is filled from the link index on regeneration.
+
+### 4.9 Settings
+
+`data/settings/settings.json`, validated by a zod schema in `lib/store/settings.ts`. Unknown keys are preserved; missing keys get defaults; an unparsable file is renamed to `settings.json.broken-<ts>` and replaced with defaults, with a toast. The example below is a populated user file; the seed copy differs only in `weather` (`query: ""`, no `lat`/`lon`/`label`), so a fresh clone ships with weather off (Decision 38).
+
+```jsonc
+{
+  "schema": 1,
+  "identity": { "name": "", "nickname": "" },
+  "timezone": "America/New_York",
+  "weather": { "query": "New York City", "lat": 40.7128, "lon": -74.006, "label": "New York", "units": "fahrenheit" },
+  "theme": "light",
+  "day": { "startMin": 600, "endMin": 1440, "blocks": [[600, 780], [840, 1080]], "breakMin": 10 },
+  "list": { "focusSize": 5, "lookaheadDays": 14, "showCompleted": true },
+  "categories": ["school", "personal"],
+  "firstDayOfWeek": "monday",
+  "models": {
+    "default": { "model": "claude-opus-5", "effort": "high" },
+    "extract": { "model": "claude-opus-5", "effort": "medium" },
+    "build": { "model": "claude-opus-5" }
+  },
+  "sync": { "pushDebounceMs": 30000, "autoPush": true }
+}
+```
+
+`day.endMin` may exceed 1440 (1560 = 2:00 next day). `weather.query` empty means weather off; `lat`/`lon` are cleared with it.
+
+### 4.10 Themes
+
+`data/settings/themes/<name>.json`: `{ "schema": 1, "name": "…", "base": "light" | "dark", "tokens": { "--bg": "#…", … } }`. Tokens omitted fall through to the base. `light` and `dark` are defined in `app/theme.css` and are protected: no file, cannot be edited or deleted. The token list is in §11.3.
+
+### 4.11 Action log
+
+`data/history/actions.jsonl`, one object per line:
+
+```json
+{"schema":1,"seq":142,"ts":"2026-09-03T14:12:00-04:00","batch":"b_20260903_141200_7fa2","actor":"user","scope":"user","type":"task.update","summary":"Moved 'Pset 4' due to Sep 12","targets":["tasks/2026-09-10-pset-4.md"],"before":{"tasks/2026-09-10-pset-4.md":{"fields":{"due":"2026-09-10"}}},"after":{"tasks/2026-09-10-pset-4.md":{"fields":{"due":"2026-09-12"}}},"commit":"a1b2c3d","meta":{}}
+```
+
+Types: `task.create`, `task.update`, `task.delete`, `task.complete`, `knowledge.write`, `chat.create`, `chat.message`, `chat.update`, `chat.delete`, `annotation.write`, `file.add`, `file.write`, `settings.update`, `code.change`, `undo`, `redo`.
+
+`before` / `after` map each target path to a **snapshot**:
+
+```ts
+type Snapshot =
+  | { fields: Record<string, unknown> }   // small frontmatter edits; undo re-applies fields
+  | { content: string }                   // whole text file ≤ 64 KB; undo writes content
+  | { git: true }                         // reconstruct from `commit` (code.change, binaries, large files)
+  | null;                                 // file did not / does not exist
+```
+
+`meta` holds type-specific extras: the prompt text for extraction batches, key names for `settings.update`, the plan text for `code.change`.
+
+---
+
+## 5. Store (`lib/store/`)
+
+Function surface. Every function is async, takes and returns plain objects, and throws typed errors (`StoreError` with `code: "not_found" | "exists" | "invalid" | "forbidden_path"`).
+
+```ts
+// paths.ts
+resolveData(rel: string): string           // throws forbidden_path on `..` escape or absolute input
+// frontmatter.ts
+splitFrontmatter(text: string): { data: Record<string, unknown>; body: string }
+joinFrontmatter(data: Record<string, unknown>, body: string): string
+// tasks.ts
+listTasks(): Promise<Task[]>               // cached by (path → mtime); re-parses only changed files
+readTask(id: string): Promise<Task>
+writeTask(task: Task): Promise<{ path: string }>       // creates or replaces; sets updatedAt
+deleteTask(id: string): Promise<void>
+newTaskId(): Promise<string>; slugFor(title: string, existing: Set<string>): string
+// settings.ts
+readSettings(): Promise<Settings>; writeSettings(s: Settings): Promise<void>
+listThemes(): Promise<Theme[]>; writeTheme(t: Theme): Promise<void>; deleteTheme(name: string): Promise<void>
+// files.ts
+listTree(rel: string, opts: { wholeRepo?: boolean }): Promise<TreeNode[]>
+readText(rel: string): Promise<string>; readBinary(rel: string): Promise<Buffer>
+writeText(rel: string, text: string): Promise<void>; deleteFile(rel: string): Promise<void>
+rename(from: string, to: string): Promise<void>; mkdir(rel: string): Promise<void>
+addFile(kind: "images"|"docs"|"other", name: string, bytes: Buffer, source: string): Promise<{ rel: string }>
+regenerateManifest(): Promise<void>
+// chats.ts
+listConversations(): Promise<ConversationMeta[]>
+readConversation(id: string): Promise<{ conversation: Conversation; messages: Message[]; annotations: Annotation[] }>
+writeConversation(c: Conversation): Promise<void>; deleteConversation(id: string): Promise<void>
+writeMessage(convId: string, m: Message): Promise<void>     // whole-file write, atomic (tmp + rename)
+deleteMessage(convId: string, id: string): Promise<void>
+writeAnnotation(convId: string, a: Annotation): Promise<void>
+// knowledge.ts
+readNote / writeNote / listNotes; readMap / writeMap / listMaps; readCollection / writeCollection / listCollections
+regenerateIndex(): Promise<void>
+// env.ts
+readKeys(): Promise<Record<string, string>>; writeKey(name: string, value: string | null): Promise<void>
+maskKey(v: string): string   // "••••" + last 4
+// events.ts
+onWrite(cb: (paths: string[]) => void): () => void
+```
+
+Rules:
+
+- **Atomic writes:** write to `<path>.tmp` then `rename`. A crash never leaves a half-written file.
+- **No component or route calls `writeTask` etc. directly.** They call `runBatch()` (§7), which calls the store. The store functions are exported so the history layer and scripts can use them; that is the whole audience.
+- `listTasks` ignores files whose frontmatter fails to parse, and returns their paths in a side channel (`listTasks.errors`) that the Today tab shows as a one-line warning.
+- Every store write emits `events.onWrite` with the relative paths written. `lib/knowledge/index.ts` subscribes to invalidate its cache.
+
+---
+
+## 6. Knowledge base
+
+### 6.1 Structure
+
+`profile/` (always loaded; `about-me.md`, `habits.md`, `preferences.md`; cap 150 lines each), `notes/` (§4.2), `maps/` (§4.3), `index.md` (§4.4), `collections/` (§4.5), `sessions/` (§4.6).
+
+### 6.2 Retrieval contract
+
+Implemented in `lib/agent/context.ts` and `lib/agent/tools.ts`:
+
+1. **Always in the system prompt:** a settings preamble (name, timezone, current local time, day shape), `knowledge/index.md`, and all three profile files. Target under 2,000 tokens; `assembleContext` reports the estimate (chars / 4) and the debug view shows it in red past 2,500.
+2. **Selective loading is model-driven.** Tools `read_knowledge({ path })` and `search_knowledge({ query })` are offered on every turn. The system prompt says: read a map before reading its notes; read only what the question needs; do not read `sessions/` unless the user refers to a past conversation.
+3. **When relevant, also in the prompt:** the current view's tasks (Today or Calendar range) as a compact table, the open document's full text (document view), the referenced task (Ask about this).
+4. **A missing note may be proposed** via `propose_knowledge_write` so the same thing is not re-derived next time.
+
+### 6.3 Write rules
+
+- A new note must carry at least one map in `links`, and the proposal must include the map edit (`append` of a link line). `runBatch` rejects a `knowledge.write` batch that creates a note without a map link.
+- Before proposing a new note, the model must `search_knowledge` for the topic; the prompt says so, and `memory.ts` drops a proposal whose title fuzzy-matches an existing note above 0.8 and converts it to an `append` on that note.
+- Proposals appear in the preview panel (§9.5). **Auto-apply** is allowed only for `append` to `profile/habits.md` or `profile/preferences.md` of at most three lines; those are applied immediately, logged as `knowledge.write` with `actor: agent`, and shown as a toast with an Undo button.
+- A profile file over 150 lines makes the next assistant turn include a distillation proposal: rewrite the file shorter and move detail into notes.
+
+### 6.4 What is worth remembering
+
+The heuristic, verbatim in the prompt (`memory.ts`):
+
+> Remember: stable facts about the user (school, courses, people, tools, constraints); recurring patterns you observe across turns; preferences the user states explicitly. Do not remember: one-off task content, anything already in a task file, transient state ("I'm tired today"), or anything the user asked you to forget. When unsure, do not propose.
+
+### 6.5 `npm run kb:check`
+
+Reports: notes linked from no map (orphans); links to paths that do not exist; notes over 200 words; profile files over 150 lines; collections with `tasks` ids that do not exist. Exit code 1 if anything is reported. Uses the same `LinkIndex` as backlinks and the graph.
+
+---
+
+## 7. Action history and undo (`lib/history/`)
+
+### 7.1 `runBatch`
+
+The single entry point for every mutation:
+
+```ts
+interface BatchSpec {
+  actor: "user" | "agent";
+  scope: "user" | "project";
+  summary: string;                         // becomes the commit message body
+  commitPrefix: "task" | "knowledge" | "chat" | "settings" | "file" | "code";
+  actions: ActionSpec[];                   // one or more; all undo together
+  commit?: boolean;                        // default true; false only for streaming writes (§8)
+  meta?: Record<string, unknown>;
+}
+interface ActionSpec {
+  type: ActionType;
+  summary: string;
+  apply: (store: Store) => Promise<{ targets: string[]; before: Snapshots; after: Snapshots }>;
+}
+runBatch(spec: BatchSpec): Promise<{ batch: string; commit: string | null; seq: number[] }>
+```
+
+Sequence, inside the serial queue (`queue.ts`):
+
+1. Reserve `batch` id `b_<YYYYMMDD>_<HHmmss>_<4hex>`.
+2. For each action: compute `before` snapshots (read current files), call `apply`, compute `after`, append a log line with `commit: null`.
+3. Regenerate `action-history.md`.
+4. If `commit`: `git add -A data` (plus repo paths for `code.change`), `git commit -m "<prefix>: <summary>"`, then rewrite the `commit` field of this batch's lines. The log is append-only for *entries*; filling the `commit` field of just-written lines is the one in-place edit, done by rewriting the file's tail.
+5. Schedule a debounced push.
+
+If `apply` throws, files written by earlier actions in the batch are restored from their `before` snapshots, nothing is logged, and the error propagates. If git fails, the batch is logged with `commit: null`, the sync indicator shows `error`, and the entry remains undoable because `before` snapshots are inline (the `{git: true}` snapshot is used only for code changes and binaries, which cannot be undone without a commit; the UI says so).
+
+### 7.2 Undo and redo
+
+```ts
+undoBatch(batch: string, opts: { force?: boolean }): Promise<UndoResult>
+redoBatch(batch: string): Promise<UndoResult>
+```
+
+- Undo applies each action's inverse **newest first**: `{fields}` → re-apply `before.fields`; `{content}` → write `before.content`; `null` → delete the file; `{git: true}` → `git revert --no-commit <commit>` restricted to that batch's targets.
+- Undo appends an `undo` entry whose `meta.undoes = batch`, then commits `undo: <original summary>`. Redo applies `after` snapshots and appends `redo`.
+- **Conflict check:** if any later batch touched the same targets, `undoBatch` returns `{ conflict: [batchIds] }` without acting unless `force`. The UI shows the warning and a "Undo anyway" button.
+- A batch is undoable if it has no later `undo` pointing at it, or if the latest such `undo` was itself redone. Redo is available only for a batch whose latest `undo` has no later `redo`. New actions do not clear anything; the UI simply reports "redo unavailable" when the check fails.
+- History is never truncated or rewritten.
+
+### 7.3 Mirror
+
+`data/history/action-history.md` is regenerated on every log write: reverse-chronological, grouped by day (`## 2026-09-03`), one line per batch: `- 14:12 · task · Moved 'Pset 4' due to Sep 12 · a1b2c3d`. Undo entries render as `- 14:15 · undo · ↶ Moved 'Pset 4' …`.
+
+### 7.4 CLI
+
+`npm run history -- list [--n 20]`, `npm run history -- undo <batch>`, `npm run history -- redo <batch>`. Phase 2 proves undo here before any UI exists.
+
+### 7.5 History UI
+
+`components/history/HistorySheet.tsx`, opened from Settings → History and by `Ctrl/Cmd+Z` when focus is not in an editable element. Lists batches newest first with filters for scope and type (`chat.update` hidden by default), an Undo/Redo button per batch, and the conflict warning inline. Selecting a batch shows its actions and targets.
+
+---
+
+## 8. Git sync (`lib/history/git.ts`)
+
+- One commit per batch, immediately, message `<prefix>: <summary>` (e.g. `task: add 6 tasks from prompt`, `settings: change theme to dark`, `code: add week view to calendar`). Commits use the repo's configured git identity. No trailers of any kind.
+- **Never commit a streaming message.** `writeMessage` during streaming runs through `runBatch` with `commit: false` and a `chat.message` action whose log entry is written once, at finalize. Concretely: the streaming write path calls the store directly from `lib/agent/chat.ts` through a `history.streamingWrite(path, content)` helper that bypasses logging, and finalize calls `runBatch` with the complete message. This is the one sanctioned bypass, and it exists only for `data/chats/*/messages/*.md` with `status: streaming`.
+- **Push is debounced** `settings.sync.pushDebounceMs` (default 30 s) after the last commit. `flush()` pushes immediately if there are unpushed commits. Flush is called: from `scripts/dev.mjs` on `SIGINT`/`SIGTERM` and child exit; from `instrumentation.ts` on `beforeExit`; from `POST /api/sync/flush` triggered by `navigator.sendBeacon` on `beforeunload`.
+- **Status:** `GET /api/sync/status` → `{ state: "synced" | "pending" | "offline" | "error" | "conflict", ahead: number, lastError?: string }`. `ahead` is `git rev-list --count @{u}..HEAD`. The shell shows a dot with a tooltip and a **Sync now** button.
+- **Failures never block.** Offline (`Could not resolve host`) → `offline`, retry on next commit. Auth or unknown → `error` with the message. Non-fast-forward → `conflict`: pushing stops, and the indicator shows: "Remote has changes. Run: `git pull --rebase && git push` in `<repo dir>`." No automatic resolution.
+- If `git remote get-url origin` fails, sync state is `local` and push is skipped silently. A fresh clone with no remote still works.
+
+---
+
+## 9. The composer
+
+### 9.1 Button and sheet
+
+`components/composer/ComposerButton.tsx`: fixed, bottom-right (`right: 24px; bottom: 24px`), 56 px circle, z-tier 30. Rendered by the Today and Calendar pages only; the Chat page never mounts it. While the sheet is open the same button rotates 45° and closes it.
+
+`ComposerSheet.tsx`: slides up from the bottom edge (transform transition 180 ms), rests along the bottom, max height 70vh, z-tier 30. Closes on `Esc`, on button click, and on outside click **only if the textarea is empty** (HANDOFF §G). A sheet with typed text stays open and its draft persists in `localStorage` under `composer.draft`.
+
+### 9.2 Input
+
+Auto-growing textarea (1–10 rows). `Enter` sends, `Shift+Enter` newlines, `Esc` closes. Paste of text inserts; paste of files or images attaches. Drag-and-drop anywhere on the window while the sheet is open attaches (a full-window drop overlay appears on `dragenter`). An attach button opens a file picker. **Voice input:** if `window.SpeechRecognition ?? window.webkitSpeechRecognition` exists, a mic button toggles dictation into the textarea; otherwise the button is absent.
+
+Attachments are uploaded immediately to `POST /api/files/upload` → `data/files/<kind>/<YYYY-MM>/…`, registered in the manifest as one `file.add` batch, and shown as chips. Removing a chip does not delete the file.
+
+### 9.3 Modes
+
+Segmented control: **Tasks** (default) · **Ask** · **Build**. The last-used mode is remembered per tab in `localStorage`. Build mode shows the approval toggle beside the mode control:
+
+- **Plan first** (default): amber label.
+- **Auto**: red label. Switching to Auto shows a one-time confirmation dialog ("Auto applies code changes without review. Git is the safety net. Every change is a commit you can revert.") with "Don't show again".
+
+The toggle is sticky per mode (stored in `localStorage` as `composer.buildApproval`).
+
+### 9.4 Routing within Tasks mode
+
+`POST /api/agent/extract` returns one of:
+
+```ts
+type ExtractResult =
+  | { kind: "tasks"; items: TaskDraft[]; note?: string }
+  | { kind: "collection"; collection: string /* rel path or "new:<title>" */; items: string[]; note?: string }
+  | { kind: "question"; text: string };
+```
+
+The prompt instructs: default to tasks; if the content is plainly list or reference material, propose a collection write and name it; if a phrase is genuinely ambiguous (e.g. "read Dune"), return a question rather than guessing. `TaskDraft` is the task frontmatter minus `id`, timestamps, and `createdBy`, plus `body: string` and `inferred: string[]` naming the fields the model filled in from context rather than the prompt.
+
+### 9.5 Preview-and-approve loop
+
+`components/composer/PreviewPanel.tsx` renders inside the sheet above the textarea:
+
+1. Send → spinner in place of the send button; the textarea is disabled but keeps its text until the response arrives.
+2. `question` → shown as a message; the textarea becomes the answer box. The next send includes the prior prompt and the answer.
+3. `tasks` → one `TaskCard` per item with every field editable inline (title text, priority select, estimate number, due and scheduled date inputs, category select from settings, context text, tags chips, body textarea). Inferred fields carry a dotted underline and a tooltip "Inferred from: <source>".
+4. A follow-up typed into the textarea sends `{ prompt, followUp, draft: items }` to the same endpoint; the model returns a revised `items` array and the panel **replaces** its cards in place, preserving any inline edits the model did not touch (matched by index).
+5. **Add all** / **Add selected** (checkbox per card) → `POST /api/tasks` → one `task.create` batch, summary `add N tasks from prompt`, `meta.prompt`. **Discard** → confirm dialog → the preview is dropped. Discards are not written to the action log: nothing reached disk, so there is nothing to undo, and a log type that exists for one button is clutter. This is a deliberate deviation from the brief; if discards should be audited, say so and they become a `note` entry carrying the prompt in `meta`.
+6. `collection` → the panel shows the target collection name and the items as a checklist; **Add** appends to the collection (`knowledge.write`) or creates it (`knowledge.write` for the file plus the map link).
+
+Ask mode and Build mode reuse the same panel for proposals they produce.
+
+### 9.6 Ask mode from the sheet
+
+Creates (or continues, if the sheet was opened via "Ask about this" on the same task within the session) a conversation with `context.taskIds` set, streams the reply into the sheet, and offers "Open in Chat". Proposals collected during the turn appear in the preview panel.
+
+### 9.7 Build mode from the sheet
+
+Identical to Build mode in the Chat tab (§13.4); the sheet shows the plan, the diff, and the gates.
+
+---
+
+## 10. The three tabs
+
+### 10.0 Shell
+
+`app/layout.tsx`: top bar with the three tabs (`/`, `/chat`, `/calendar`), a search field, the sync indicator, and a settings gear (`/settings`). Global keyboard: `Ctrl/Cmd+K` focuses search, `Ctrl/Cmd+Z` opens history (outside inputs), `1`/`2`/`3` switch tabs when focus is on the body.
+
+**Search:** `GET /api/search?q=` scans task titles and bodies, note titles and bodies, collection titles and items, conversation titles. Scoring: exact title substring 100, title subsequence match 60 (chars of the query appear in order), body substring 30, body subsequence 10; ties by `updatedAt` desc; top 20. Results open in the document view (`/chat?open=<rel path>`) or the conversation. No index; the scan reads files through the store's mtime cache.
+
+**Toasts:** one component, `components/shell/Toast.tsx`, at most one toast per `id` per page load (HANDOFF §G), auto-dismiss by CSS animation with removal on `animationend`. Every toast names what broke and what still works.
+
+### 10.1 Today
+
+`app/page.tsx` with `?date=YYYY-MM-DD` (default today in the settings timezone).
+
+**Header:** `←` at top-left, `→` at top-right, date and weekday centered, a "Today" button when not on today, and weather (temperature + condition icon) when `settings.weather.query` is non-empty and the date is within the forecast window (today + 6 days). With no location the weather element is not rendered at all; the header layout is a three-column grid so nothing shifts. A "Schedule" toggle switches between the list and the timeline.
+
+**Body:**
+
+1. **Overdue** — `status ∈ {todo, doing}` and `due < viewDate`, sorted by `due` asc. Red left border. Absent when empty.
+2. **Today's focus** — the top `settings.list.focusSize` of the eligible ranked list.
+3. **Also possible** — the remaining eligible tasks, grayed, collapsed by default with a count.
+4. **Done today** — tasks with `completedAt` on `viewDate`, shown struck through when `settings.list.showCompleted`.
+
+**Row:** checkbox (left) · title · context subheader · metadata chips (due as relative text, estimate, priority glyph, subtask progress) · `⋯` menu: Edit (inline form), Duplicate, Reschedule (date picker), Delete (confirm), **Ask about this** (opens the composer in Ask mode with `context.taskIds=[id]`). Clicking the title opens the task in the document view.
+
+**Ranking** (`lib/schedule/rank.ts`), deterministic, no model:
+
+```ts
+rankDay(tasks: Task[], viewDate: string, settings: Settings, now: Date): {
+  overdue: Task[]; focus: Task[]; alsoPossible: Task[]; doneToday: Task[];
+}
+```
+
+Eligible: `status ∈ {todo, doing}`, not overdue, and (`scheduled` empty or `scheduled ≤ viewDate`). A task whose `scheduled` is in the future is not shown on earlier days.
+
+```
+daysUntil     = calendar days from viewDate to due (null if no due)
+urgency       = due == null ? 0 : daysUntil <= 0 ? 10 : max(0, 10 - daysUntil)
+priorityW     = {1: 11, 2: 6, 3: 2, 4: 0}[priority]
+scheduledB    = scheduled != null && scheduled ≤ viewDate ? 6 : 0
+doingB        = status == "doing" ? 3 : 0
+fitB          = (estimateMin ?? 30) <= availableMinutes ? 1 : 0
+score         = urgency + priorityW + scheduledB + doingB + fitB
+```
+
+`availableMinutes` for today is `day.endMin − max(nowMin, day.startMin)`, clamped at 0; for other days it is the sum of `day.blocks`. Tasks whose `due` is beyond `lookaheadDays` and have no `scheduled` on `viewDate` are excluded from focus regardless of score and go to Also possible. **Tie-break**, in order: `due` asc (nulls last), `priority` asc, `createdAt` asc, `id` asc. Focus = first `focusSize`; Also possible = the rest.
+
+*Worked example*, viewDate 2026-09-08 (Monday), `focusSize` 3, `lookaheadDays` 14, 240 minutes available:
+
+| Task | due | priority | scheduled | est | urgency | prio | sched | fit | score | section |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pset 4 | 09-10 | 2 | 09-08 | 90 | 8 | 6 | 6 | 1 | **21** | focus 1 |
+| Email advisor | — | 1 | — | 10 | 0 | 11 | 0 | 1 | **12** | focus 2 |
+| Buy notebook | 09-09 | 4 | — | 20 | 9 | 0 | 0 | 1 | **10** | focus 3 |
+| Read ch. 5 | 09-15 | 3 | — | 60 | 3 | 2 | 0 | 1 | 6 | also possible |
+| Plan spring courses | 10-30 | 3 | — | 60 | 0 | 2 | 0 | 1 | 3 | also possible (beyond lookahead) |
+| Lab report | 09-05 | 2 | — | 120 | — | — | — | — | — | overdue |
+
+The weights are chosen so that a critical task with no deadline (11) outranks a someday task due tomorrow (9), and a high-priority task due tomorrow (9 + 6) outranks both (Decision 34).
+
+**Schedule mode** (`lib/schedule/timeline.ts`):
+
+```ts
+packDay(input: { focus: Task[]; fixed: Task[]; now: Date; viewDate: string; settings: Settings }): Block[]
+type Block = { kind: "task" | "break" | "gap" | "fixed"; taskId?: string; startMin: number; endMin: number }
+```
+
+Timeline from `max(nowMin, day.startMin)` (or `day.startMin` for other days) to `day.endMin`. Fixed blocks = tasks whose `scheduled` carries a time on `viewDate`, placed first. Focus tasks are placed in rank order into the first gap that fits `estimateMin ?? 30`, followed by a `breakMin` break. Unplaced tasks are listed under the timeline as "Didn't fit". Dragging a block's edges or body changes the task's `scheduled` to a date-time and is logged as `task.update`. **Refine with AI** sends the packed day and the tasks to `POST /api/agent/schedule` and shows the proposed order with the model's reasoning; accepting writes `scheduled` times as one batch.
+
+**Weather** (`lib/weather.ts`): geocode `https://geocoding-api.open-meteo.com/v1/search?name=<q>&count=1` on save in Settings; forecast `https://api.open-meteo.com/v1/forecast?latitude&longitude&daily=weather_code,temperature_2m_max,temperature_2m_min&current=temperature_2m,weather_code&timezone=<tz>&temperature_unit=<unit>`. Cached in module memory for 30 minutes keyed by `lat,lon,unit`. WMO weather codes map to eight icons. A fetch failure hides the element and logs once.
+
+### 10.2 Chat and knowledge browser
+
+`app/chat/page.tsx`. Layout: a 44 px icon rail on the far left, a resizable panel (240–420 px, collapsible, width in `localStorage`), and the main pane.
+
+**Rail panels:**
+
+1. **Chats** — `listConversations()` grouped Pinned / Today / Yesterday / This week / Older, search box filtering by title, context menu: Rename, Pin, Delete (confirm), Distill to knowledge (§6, creates a session summary proposal).
+2. **Knowledge** — a curated tree built from the maps: top level is each map by `title` plus **Collections**; expanding a map lists the notes it links to, in the map's order. Built by `GET /api/knowledge/tree`, which parses map bodies through the link index.
+3. **Files** — the raw tree under `data/` with a "Whole repo" toggle. Context menu: New file, New folder, Rename, Delete, Reveal in graph. Outside `data/` the tree is read-only unless the composer is in Build mode; the context menu says so.
+4. **Graph** — opens the graph view in the main pane.
+
+Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed different `TreeNode[]` arrays; the Knowledge panel simply passes a curated tree. Expanded-set, active panel, and scroll positions persist in `localStorage`.
+
+**Main pane** shows a conversation or a document, never both, never tabs. Opening anything from the rail swaps in the document view with a strip at the top: the path, an Edit/Preview toggle, Save, and a "← Back to chat" control. The chat composer stays docked at the bottom in document view; sends in document view set `conversation.context.file` to the open path and the document's full text is in context (§6.2). If no conversation is active, a new one is created with that context.
+
+**Document view** (`components/browser/DocumentView.tsx`):
+
+- Preview renders markdown through `components/markdown/Markdown.tsx`. Edit is a monospace textarea. `Ctrl/Cmd+S` saves; the toggle and navigation warn when dirty (`beforeunload` and an in-app confirm).
+- Frontmatter renders as `FrontmatterTable.tsx`: one row per key, value editable as text (arrays as comma-separated, booleans as checkboxes). Body and table save together as one `file.write` (or `task.update` / `knowledge.write` by path).
+- Checkboxes in preview are clickable and save immediately (one action per click).
+- Links to `data/` paths navigate in place. **Backlinks** ("Linked from") from the link index at the bottom.
+- Images inline; PDFs in an `<iframe>` to `GET /api/files/raw?path=`; anything else a download link.
+- **Math:** `$…$` inline and `$$…$$` display through KaTeX; the raw text is never touched by the renderer, so edit-and-save round-trips byte-for-byte.
+- A task file's document view adds a Complete button and the `⋯` menu from Today.
+
+**Graph view** (`components/browser/GraphView.tsx`):
+
+- Nodes: every file under `data/` except `history/`, `settings/`, and message/annotation files; conversations are one node each. Colored by type token (`--node-task` …), radius `4 + 2·√degree`.
+- Edges from `LinkIndex`: markdown links in bodies, `links:` arrays, task `links`, note-to-map membership, message `refs` aggregated to the conversation, collection `tasks`.
+- `d3-force` simulation (`forceLink`, `forceManyBody`, `forceCenter`), drawn on a `<canvas>` with device-pixel-ratio scaling. Click opens the node; hover highlights neighbors; a type filter row; a search box dims non-matches.
+- Over 400 nodes: render only the 2-hop neighborhood of the focused node (default: the most connected), with a "Show all" override.
+- Empty `data/` renders "Nothing here yet" and no simulation.
+
+**Conversation behavior** is in §16. **Per-message actions:** copy, edit-and-resend, regenerate, branch from here, annotate, delete, read aloud (`speechSynthesis`, per-message play/stop). The model that produced each assistant message is shown under it. A model selector in the conversation header sets `conversation.model` from the registry.
+
+**Context debug view:** a "Context" toggle in the conversation header shows the exact blocks `assembleContext` sent for the last turn, with per-block token estimates and total.
+
+### 10.3 Calendar
+
+`app/calendar/page.tsx`. Views: **Rolling** (default: today plus the next 27 days as 4 rows of 7, scrolling by a week with ↑/↓), **Month**, **Week**. Arrows move by the current unit; a Today button returns.
+
+- Each cell lists tasks by `due` (or `scheduled` if set and no due) for future days, and by `completedAt` for past days. Past days are darkened; today is outlined. A cell scrolls internally past five items with a "+N more" line that expands it.
+- Clicking an item selects it and shows the Today `⋯` menu actions in a small toolbar.
+- Native HTML5 drag: dropping an item on another day sets `scheduled` (or `due` when `Shift` is held, and the drop hint says so). One `task.update` batch per drop.
+- `GET /api/calendar?from&to` returns `{ days: Record<date, { due: Task[]; completed: Task[] }> }`.
+
+---
+
+## 11. Settings
+
+`app/settings/page.tsx` edits `settings.json` through `PUT /api/settings`, each section saving on blur as one `settings.update` batch with a summary naming the section.
+
+### 11.1 Sections
+
+Identity · Timezone (select from `Intl.supportedValuesOf("timeZone")`) · Weather (query text, Resolve button, geolocation button that asks browser permission on first use, units, Clear; attribution line "Weather data by Open-Meteo, CC-BY 4.0") · Theme (§11.3) · Day shape (start, end allowing past midnight, blocks editor, break length) · List behavior (focus size, lookahead, show completed) · Categories (editable chips) · First day of week · Models (§11.4) · API keys (§11.5) · History (opens the sheet) · Sync (push toggle, debounce, Sync now, remote URL read-only).
+
+### 11.2 First run
+
+If `settings.identity.name` is empty, the Today header shows a one-time card: name field, timezone confirm, weather location with "Use my location" (browser geolocation → reverse geocode via Open-Meteo) or "No weather". Dismissable; never shown again once name is set.
+
+### 11.3 Themes and tokens
+
+`app/theme.css` defines `:root` (light) and `[data-theme="dark"]`. The token list, all required in a theme file's base and all overridable:
+
+```
+--bg --bg-elevated --bg-sunken --fg --fg-muted --fg-faint
+--border --border-strong --accent --accent-fg --accent-soft
+--danger --danger-soft --warning --success --overdue --focus-ring --selection
+--shadow --radius-sm --radius-md --radius-lg
+--font-sans --font-mono --font-size --line-height
+--priority-1 --priority-2 --priority-3 --priority-4
+--node-task --node-note --node-map --node-collection --node-chat --node-file
+```
+
+Custom themes are applied by `app/layout.tsx` injecting a `<style>` with `[data-theme="<name>"] { … }` from the theme file. Theme picker: base themes marked protected; **Duplicate to new theme** writes `data/settings/themes/<name>.json` (`settings.update`); custom themes have a token editor (color inputs) and Delete. **Create by prompting:** a text field ("warm sepia, low contrast") calls `POST /api/agent/theme`, which returns a token map through `messages.parse` and opens it in the editor unsaved.
+
+### 11.4 Models
+
+`lib/agent/registry.ts`:
+
+```ts
+interface ModelEntry { id: string; label: string; provider: "anthropic"; images: boolean; pdf: boolean; effort: boolean }
+export const MODELS: ModelEntry[] = [
+  { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic", images: true, pdf: true, effort: true },
+  { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic", images: true, pdf: true, effort: true },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "anthropic", images: true, pdf: true, effort: false },
+];
+interface Provider { streamChat(req: ChatRequest, signal: AbortSignal): AsyncIterable<ChatEvent>; parse<T>(req: ParseRequest<T>): Promise<T> }
+export const PROVIDERS: Record<ModelEntry["provider"], Provider>
+```
+
+Adding a provider = one file implementing `Provider`, one entry in `PROVIDERS`, entries in `MODELS`, and a key name in `env.ts`'s known list. Settings shows default model + effort, and per-mode overrides for extract and build. Effort values: `low | medium | high | xhigh | max`; sent as `output_config.effort` only when `entry.effort` is true.
+
+### 11.5 API keys
+
+- Stored only in `.env.local` as `ANTHROPIC_API_KEY=…`. `lib/store/env.ts` reads and rewrites that file line-wise, preserving unrelated lines.
+- Settings shows each known key masked (`••••…a1b2`), with Set / Change / Remove. Changes go through `runBatch` with a `settings.update` action whose `targets` is `[".env.local"]` and whose snapshots are `{ fields: { ANTHROPIC_API_KEY: "set" | "unset" } }`, so the log records the name and never the value. This batch commits nothing (`commit: false`) because `.env.local` is ignored.
+- After a key write, `process.env` is updated in place so the running server uses it without restart.
+- `npm run check-secrets` scans staged files (or all tracked files with `--all`) for: `sk-ant-[A-Za-z0-9_-]{20,}`, `sk-[A-Za-z0-9]{32,}`, `AKIA[0-9A-Z]{16}`, `ghp_[A-Za-z0-9]{36}`, `xox[bap]-`, `-----BEGIN [A-Z ]*PRIVATE KEY-----`, and `(api[_-]?key|secret|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{24,}`. Exit 1 with file and line on a hit. `.githooks/pre-commit` runs it. `scripts/postinstall.mjs`, wired as the `postinstall` script in `package.json`, sets `git config core.hooksPath .githooks` on every `npm install`, so a clone on a second machine is protected before its first commit; it is a no-op outside a git checkout (Decision 39).
+
+---
+
+## 12. Project versus user changes
+
+- `seed/` mirrors `data/`: empty `tasks/`, `chats/`, `files/{images,docs,other}` with `.gitkeep`, `files/index.md` header only, `knowledge/index.md` explaining the layout, empty profile files with a comment header each, the four maps, empty `notes/`, `collections/`, `sessions/`, `settings/settings.json` (§4.9 values with `weather.query` empty and no coordinates, so the public seed ships with weather off), `settings/themes/.gitkeep`, `history/actions.jsonl` (empty) and `action-history.md` (header only).
+- `npm run init` copies `seed/` → `data/` and refuses if `data/` exists and is non-empty (exit 1, message names the directory). It does not touch git configuration; the hook path is installed by `postinstall` (§11.5), which is what makes it land on a clone whose `data/` is already populated.
+- Every batch carries `scope`. Under `data/` is `user`; everything else is `project`. `code.change` is `project` unless every touched path is under `data/`.
+- **When the assistant cannot tell** (a new theme, a new category, a seed change), the Build-mode prompt tells it to ask "Should this ship with the project or stay yours?" before writing, and the answer sets where the file goes (`seed/` vs `data/`).
+- `npm run publish-check`: greps `app/ components/ lib/ scripts/` for `data/` string literals outside `lib/store/paths.ts`; greps for the identity name and weather label from the current `settings.json`; verifies every path `lib/store` reads has a counterpart in `seed/`; verifies `.env.local` is ignored; runs `check-secrets --all`; greps the repo for AI-authorship strings (`Co-Authored-By`, `Generated with`, `Claude Code`, `Anthropic`) skipping `lib/agent/`, `package.json`, `package-lock.json`, and the three reference documents `PROJECT.md`, `AGENTS.md`, `HANDOFF-CHAT.md`, which name providers and SDKs legitimately; then, in a temp directory, clones the repo, runs `init`, `build`, and starts the server to hit `/api/tasks` once. Exit 1 on any failure.
+- `npm run publish` (Decision 22): creates a temporary worktree, removes `data/` from the index, adds `data/` to `.gitignore` in that tree, commits as a single orphan commit `Publish`, and force-pushes to the `public` remote's `main`. Refuses if `publish-check` fails.
+- `README.md` (Phase 11): setup, layout, bring-your-own-key, no personal content.
+
+---
+
+## 13. Assistant integration (`lib/agent/`)
+
+### 13.1 Context assembly
+
+```ts
+interface ContextBlock { label: string; source: string; text: string; tokens: number; cache?: boolean }
+assembleContext(input: {
+  mode: "ask" | "tasks" | "build" | "schedule" | "theme";
+  conversation?: Conversation; viewDate?: string; range?: [string, string];
+  openFile?: string; taskIds?: string[];
+}): Promise<{ system: ContextBlock[]; total: number }>
+```
+
+Order: settings preamble · `index.md` · profile files (these four are `cache: true` and are sent as one system block with `cache_control: { type: "ephemeral" }`) · mode instructions (`prompts.ts`) · view tasks table · open file · referenced tasks. The debug view (§10.2) renders exactly this array.
+
+### 13.2 The chat loop
+
+```ts
+runChatTurn(input: {
+  conversationId: string; userMessageId: string; assistantMessageId: string;
+  mode: "ask" | "tasks"; model: string; effort: Effort; signal: AbortSignal;
+}): AsyncIterable<TurnEvent>
+type TurnEvent =
+  | { type: "delta"; text: string }
+  | { type: "tool"; name: string; input: unknown }
+  | { type: "proposal"; proposal: Proposal }
+  | { type: "done"; stopReason: string }
+  | { type: "error"; message: string };
+```
+
+Implementation: build `messages` from `activePath()` (user/assistant text, attachments as image or document blocks where the model supports them, annotations with `includeInContext` inserted as a trailing note in the user turn they anchor to). Loop: `client.messages.stream({ model, max_tokens: 64000, system, messages, tools, output_config: { effort } })`, forward `text_delta` events, collect `tool_use` blocks; on `stop_reason === "tool_use"` execute read-only tools locally, append results as one user message, continue; proposal tools return "recorded" as their result and emit a `proposal` event. Maximum 8 tool rounds per turn. Streaming text is written to the assistant message file at most every 500 ms and on every tool round (§8). Finality (§16.3) is decided in one place, `finalizeTurn()`, from the loop's exit: `message_stop` reached → `complete`; abort or thrown error → `failed` with `error` set.
+
+### 13.3 Tools
+
+Read-only: `read_knowledge({ path })`, `search_knowledge({ query })`, `read_file({ path })` (any `data/` path), `list_tasks({ from, to })`. Proposal collectors: `propose_tasks({ items: TaskDraft[] })`, `propose_knowledge_write({ writes: KnowledgeWrite[] })`, `propose_collection_append({ collection, items })`. All defined with `strict: true` JSON schemas. Tasks mode offers all seven; Ask mode offers all seven with a prompt that says to prefer answering; Build mode uses none (Agent SDK).
+
+```ts
+type KnowledgeWrite = { path: string; op: "create" | "append" | "replace"; content: string; reason: string; mapLink?: string }
+type Proposal = { kind: "tasks"; items: TaskDraft[] } | { kind: "knowledge"; writes: KnowledgeWrite[] } | { kind: "collection"; collection: string; items: string[] }
+```
+
+### 13.4 Build mode
+
+`lib/agent/build.ts` uses `@anthropic-ai/claude-agent-sdk`'s `query()`. Verify the installed version's option names before implementing; the shapes below are from the docs as of 2026-09-03.
+
+```ts
+runBuild(input: { prompt: string; approval: "plan" | "auto"; conversationId: string; signal: AbortSignal }): AsyncIterable<BuildEvent>
+```
+
+Common options: `cwd: REPO_DIR`, `model: settings.models.build.model`, `maxTurns: 40`, `disallowedTools: ["Edit(data/**)", "Edit(.env.local)", "Bash(git push*)", "Bash(git commit*)", "Bash(rm -rf*)"]`, `abortController`, and `env` carrying `ANTHROPIC_API_KEY` from `.env.local` when set (otherwise the SDK uses the machine's Claude Code login). The system prompt appends: repo conventions from `AGENTS.md`, "ask whether a change is project or personal when unclear," and the no-attribution rule.
+
+- **Plan first:** stage 1 runs with `permissionMode: "plan"` and a `canUseTool` that denies every write; the final text is the plan, shown for approval. Stage 2 runs with `permissionMode: "acceptEdits"` and the prompt "Apply this plan exactly: <plan>"; on completion `git status --porcelain` and `git diff` are shown with **Commit** and **Revert**. Commit → `runBatch` with one `code.change` action whose snapshots are `{ git: true }`, `meta.plan`, summary from the first line of the plan. Revert → `git checkout -- <paths>` and `git clean -f <untracked paths>` limited to the changed set.
+- **Auto:** one run with `acceptEdits`, then the same capture and an automatic commit; the diff is shown after the fact with a one-click Undo (which is the ordinary undo of a `code.change`).
+- Build turns are persisted as messages in the conversation with `model` set to the build model; the plan and diff are the assistant message body.
+
+### 13.5 Failure
+
+A provider error before any delta discards the optimistic message files (never committed) and restores the composer text. An error after deltas marks the assistant message `failed` and commits (§16.3). Keys missing → a single toast "No API key set. Add one in Settings → API keys." and no request is made.
+
+---
+
+## 14. API routes
+
+Every route lives in `app/api/**/route.ts`, validates its input with zod, calls one `lib/` function, and returns JSON (`{ ok: true, ... }` or `{ ok: false, error, code }`) or a streaming body. No route imports the filesystem.
+
+| Route | Method | Calls |
+|---|---|---|
+| `/api/tasks?date=` | GET | `rankDay(listTasks(), date, settings, now)` |
+| `/api/tasks` | POST | `runBatch` with `task.create` × N (`{ items: TaskDraft[], source }`) |
+| `/api/tasks/[id]` | GET · PATCH · DELETE | read · `task.update` · `task.delete` |
+| `/api/tasks/[id]/complete` | POST | `task.complete` (+ `task.create` for repeats) |
+| `/api/tasks/[id]/promote` | POST | from a collection item |
+| `/api/calendar?from&to` | GET | grouped tasks |
+| `/api/history?scope&type&before` | GET | `readActions` grouped by batch |
+| `/api/history/undo` · `/redo` | POST | `undoBatch` · `redoBatch` |
+| `/api/settings` | GET · PUT | settings |
+| `/api/settings/themes` · `/[name]` | GET · PUT · DELETE | themes |
+| `/api/settings/keys` | GET · PUT · DELETE | masked keys |
+| `/api/weather` · `/api/weather/geocode?q=` | GET | `lib/weather.ts` |
+| `/api/files/tree?path&all` | GET | `listTree` |
+| `/api/files/read?path=` · `/raw?path=` | GET | text · binary with content type |
+| `/api/files/write` | PUT | `file.write` / `task.update` / `knowledge.write` by path |
+| `/api/files/upload` | POST (multipart) | `file.add` |
+| `/api/files/op` | POST | `{ op: "mkdir" | "rename" | "delete", ... }` |
+| `/api/search?q=` | GET | `search` |
+| `/api/knowledge/tree` · `/graph` · `/backlinks?path=` | GET | link index |
+| `/api/chats` | GET · POST | list · create |
+| `/api/chats/[id]` | GET · PATCH · DELETE | read all · title/pin/leaf/context/model · delete |
+| `/api/chats/[id]/messages` | POST | send (streams NDJSON `TurnEvent`s; first line is `{ type: "ids", userMessageId, assistantMessageId }`) |
+| `/api/chats/[id]/messages/[mid]` | DELETE | soft or hard per §16.2 |
+| `/api/chats/[id]/annotations` · `/[aid]` | POST · PUT | `annotation.write` |
+| `/api/chats/[id]/distill` | POST | session summary proposal |
+| `/api/agent/extract` | POST | Tasks-mode turn without a conversation; returns `ExtractResult` |
+| `/api/agent/apply` | POST | apply a `Proposal` as a batch |
+| `/api/agent/build` · `/build/apply` · `/build/revert` | POST | §13.4 (streams) |
+| `/api/agent/schedule` · `/api/agent/theme` | POST | §10.1 · §11.3 |
+| `/api/agent/context` | POST | `assembleContext` for the debug view |
+| `/api/sync/status` · `/flush` · `/now` | GET · POST · POST | git |
+
+Streams are `Content-Type: application/x-ndjson`; the client reads with `fetch` + `ReadableStream` and aborts with `AbortController`, which the route forwards to the provider.
+
+---
+
+## 15. Definition of done
+
+All of these pass before the project is called finished; each is also an acceptance check of its phase.
+
+- Fresh clone + `npm install` + `npm run init` + `npm run dev` produces a working empty app with no personal data.
+- Six tasks from one prompt, then one undo, removes all six; `actions.jsonl` retains the create entries and gains one `undo`.
+- Every task file opens in a text editor; an edit there appears in the app on refresh.
+- Editing a note in the browser, saving, then undoing restores the previous content byte-for-byte (verified with `git diff --exit-code`).
+- A collection with 200 items produces zero rows on Today.
+- An equation sheet with LaTeX renders in preview and survives edit-and-save unchanged (`git diff --exit-code`).
+- The graph opens on an empty `data/` without crashing and shows the empty state.
+- Killing the network mid-response leaves the message `failed`, not `complete`, with a Retry button.
+- A rejected send (invalid key) leaves no message file behind and the composer keeps the text.
+- A conversation with three branches produces one commit per finalized message; `git log --oneline` on the conversation dir proves it.
+- Branching from the first message works (the new root is a sibling; both appear in the sidebar).
+- An annotation on an off-path message shows in the "N notes on other branches" count.
+- `lib/chat/tree.ts`, `text-match.ts`, and `anchoring.ts` have unit tests that pass.
+- Deleting `settings.json` and reloading restores defaults without a crash.
+- Clearing the weather location removes the element with no layout shift.
+- The + button is absent on Chat, present on Today and Calendar.
+- `Ctrl+C` on `npm run dev` leaves `git rev-list --count @{u}..HEAD` at 0 when a remote is configured.
+- `git log -p | grep -c sk-ant` is 0; `check-secrets --all` passes.
+- `grep -ri` for `co-authored-by`, `generated with`, and assistant names returns nothing outside `lib/agent/`, lockfiles, and model-id strings.
+
+---
+
+## 16. Chat: branching, sidebar, annotations
+
+This section wins over §10.2 wherever they conflict. `HANDOFF-CHAT.md` is the source for code marked *port*. Read only the `PORTABLE` and `ADAPT` parts it cites; do not read its `DISCARD` sections.
+
+### 16.0 Settled questions (from HANDOFF Part K)
+
+1. Branching ships in v1.
+2. Single user, possibly several machines, no concurrent writers. `activeLeafId` is last-write-wins.
+3. Auto-commit per batch; write while streaming, commit on finalize (§8).
+4. Messages are never edited in place. Edit creates a sibling; a complete message is immutable.
+5. Annotations are private marginalia, excluded from context unless `includeInContext` is true.
+6. Tens to low hundreds of messages. No virtualization; `scrollIntoView` for navigation. If virtualization ever arrives, the relative-delta glide in HANDOFF Part C becomes mandatory.
+7. Chat and tasks connect (§16.9).
+
+### 16.1 Message model
+
+```ts
+type MessageId = string;                    // UUIDv7 (lib/chat/uuid.ts, ported from HANDOFF Part B)
+interface Message {
+  id: MessageId; parentId: MessageId | null; role: "user" | "assistant";
+  text: string; createdAt: string; status: "streaming" | "complete" | "failed";
+  model?: string; attachments: string[]; refs: string[]; deleted: boolean; error?: string;
+}
+interface Conversation {
+  id: string; title: string; activeLeafId: MessageId | null; pinned: boolean;
+  model: string; context: { file?: string; taskIds: string[] }; createdAt: string; updatedAt: string; schema: number;
+}
+```
+
+Three rules, each with its reason:
+
+- **`parentId` on the child; `children` derived at load.** Appending never modifies an existing file, so a branch is an added file, not a two-file diff with a lost-update race.
+- **One file per message.** Messages are immutable once complete; streaming rewrites one small file; UUIDv7 names sort chronologically in `ls`.
+- **No integer index.** Sibling order is `createdAt` then `id`; "which is newer" needs no coordinator.
+
+`activeLeafId` lives alone in `conversation.md` because it is the only high-churn mutable field.
+
+### 16.2 Tree and branching (`lib/chat/tree.ts`)
+
+```ts
+interface Tree { nodes: Map<MessageId, Message>; children: Map<MessageId | null, MessageId[]> }
+buildTree(messages: Message[]): Tree                       // children sorted by createdAt, id; deleted excluded from children
+activePath(tree: Tree, leafId: MessageId | null): Message[] // walk parents; `seen` cycle guard; truncates on missing parent
+siblingsOf(tree: Tree, id: MessageId): Message[]           // children of the parent (or roots), deleted excluded
+latestLeafUnder(tree: Tree, id: MessageId): MessageId      // newest child at each step
+buildPairs(path: Message[]): Pair[]                        // §16.5
+```
+
+Port `activePath`, `siblingsOf`, `latestLeafUnder` from HANDOFF Part D, replacing the sentinel uuid with `null`, `index` with `(createdAt, id)`, and `isNote` with `deleted`.
+
+**One mutation:** `appendMessage(convId, { parentId, role, text })` creates a file and moves the leaf. Edit = append a user message with `parentId = edited.parentId`, then generate. Regenerate = append an assistant message with `parentId = original.parentId`. Branch from here = the same call with a new prompt. There is no branch entity. Switching = pick a sibling, `latestLeafUnder`, `PATCH activeLeafId`.
+
+**Ids are minted client-side** (`uuidv7()`) and sent with the request; the route echoes them as the first stream line so the client renders optimistically and annotation anchoring knows the id before the model responds.
+
+**Deletion** (Decision 8): `DELETE …/messages/[mid]` → if the message has children, 409 `has_children`; if `status === "failed"` and childless, hard delete; otherwise `deleted: true` written back (a `chat.update` action). If the deleted message was the active leaf, the leaf moves to its parent. Deleted messages are excluded from `children`, siblings, and the path, but their files remain and their annotations report as "on a deleted message".
+
+### 16.3 Streaming, finality, failure
+
+- **One finality contract**, in `finalizeTurn()` (§13.2). Terminal statuses are `complete` (stream reached `message_stop`) and `failed` (anything else). A partial reply is never `complete`.
+- **Optimistic inserts roll back.** Send: write user file (`complete`) and assistant file (`streaming`), neither committed; call the provider. If the request is rejected before any delta, delete both files and return the error; the client restores the composer text. If it fails after deltas, mark `failed`, set `error`, commit both files as one `chat.message` batch. Retry = regenerate (a sibling); Discard = hard delete of the failed leaf.
+- Stream buffers (`Map<assistantId, string>`) are cleared on every terminal path and when the client navigates away (abort).
+- **Stream as plain text; render as markdown once `complete`.**
+- Stop generation = `AbortController.abort()` → `failed` with `error: "stopped"`, with the partial text kept.
+
+### 16.4 Annotations
+
+```ts
+interface Annotation {
+  id: string; kind: "note" | "comment"; targetMessageId: MessageId;
+  quote?: string; prefix?: string; suffix?: string; charOffset?: number;   // note
+  anchorText?: string; offsetRatio?: number;                               // comment
+  includeInContext: boolean; deleted?: boolean; createdAt: string; schema: number;
+}
+```
+
+- **Port `text-match.ts` verbatim** and `findQuote` / `findAnchorText` from HANDOFF Part E into `lib/chat/`; the DOM half (`indexText`, `rangeFromOffsets`, `offsetOfPoint`, `firstLineRect`) goes in `components/chat/anchoring-dom.ts` with the injected-UI filter changed to `[data-ui]`.
+- Use the markdown-insensitive mode: stored text is markdown, displayed text is rendered.
+- Cards sit in a right gutter inside the message scroller (300 px preferred, 200 px minimum, hidden below that rather than overlapping), sorted by anchor y, pushed down on collision, with a connector line. Align to the first line of a multi-line quote via `getClientRects()[0]`.
+- Quote not found → card pinned to the message top with an "anchor moved" flag. Target message deleted or missing → "Unanchored" tray. **Target off the active path → a count "N notes on other branches" in the conversation header that opens a list; clicking one switches to that branch.** Silent is not acceptable.
+- Soft delete with a restore tray at the bottom of the gutter. Whole-file save per annotation; no shared array.
+- Composer: opens in the gutter at the anchor before insertion, focused with `preventScroll`, `Enter` sends, `Shift+Enter` newline, `Esc` cancels, closes on outside pointer-down only when empty; the composer's `top` is handed to the new card so it becomes the card in one frame.
+
+### 16.5 Sidebar
+
+- The list is `buildPairs(activePath())`: `{ prompt: Message; response: Message | null }[]`, recomputed on every render, nothing stored. A pair whose prompt has more than one sibling becomes a section header showing its own branch number; beneath it only the *other* branches, each with its real 1-based number, first two shown, rest behind "N more".
+- **Current-message tracking:** the current message is the last row whose top is at or above the scroller's top plus an 80 px reading margin. Exceptions: parked at the bottom with the true last message on screen → that message; parked at the top with the first message mounted → the first message. Zero-height rows never win. Assistant messages normalize to their prompt.
+- Auto-center the current entry; pause when the user scrolls the sidebar; resume when the current message changes. A guard flag distinguishes programmatic scroll.
+- **Width mode from available space only**: full (280 px) when the main pane can keep ≥ 640 px, strip (36 px) otherwise, never from conversation length. A persisted collapse preference forces strip.
+- Skip the render-signature guard and summary memo in v1; HANDOFF Part C has both and they are the first optimizations to reach for.
+
+### 16.6 Quote replies
+
+`parseQuoteReply(text)` (port from HANDOFF Part J) recognizes a leading blockquote; the source is the nearest earlier message on the path whose markdown contains the quote, matched markdown-insensitively. Render a clickable bar on the quote, show the source on hover, jump to the span on click. Recompute only when the path signature changes; unmount the feature entirely when the path has no quote replies.
+
+### 16.7 Conventions adopted wholesale
+
+- **Z-index tiers:** 20 in-scroll surfaces (gutter cards, drop overlays), 30 panels and bars (composer sheet, sidebar, + button), 40 toasts and modals. Nothing else.
+- **"Failure behavior:" paragraph in every module header.** House rule in `AGENTS.md`.
+- **Degrade one feature, never break the page.** Each chat feature (sidebar, annotations, quote replies, read-aloud, voice) mounts in its own error boundary and, on failure, unmounts itself and toasts once.
+- **Timers are never used for correctness.** Wait on the observable consequence, with a timeout as the failure guard.
+- **Dirty-check every write:** never write a value already set; store functions compare before writing and skip a no-op.
+- **CSS custom properties** for the palette; nested components inherit.
+- Keyboard: `Enter` sends, `Shift+Enter` newlines, `Esc` closes.
+
+### 16.8 Explicit non-goals
+
+Do not reproduce: phantom messages after a failed send; an interrupted stream stored as complete; concurrent annotation saves clobbering each other; stream buffers leaking on failure; `children[]` stored on the parent; a global integer index; message-id-plus-offset anchoring; shipping without a schema version; multi-tab editor groups; per-message graph nodes; a filesystem watcher; drafts in the repo.
+
+### 16.9 Where chat meets the rest
+
+- `extractRefs(text)` (`lib/chat/refs.ts`) finds task ids (`\bt_\d{8}_[0-9a-f]{4}\b`) and `data/`-relative paths in markdown links. They are stored in `refs`, rendered as links, counted as graph edges from the conversation node, and listed in a task's backlinks.
+- `conversation.context` records the file or tasks a conversation is about (§4.7). Reopening the conversation reopens that file in the document view.
+- Conversations live only in `data/chats/`.
+
+### 16.10 Tests
+
+Unit tests with vitest for `lib/chat/tree.ts` (build, path with cycle guard, siblings, latest leaf, pairs with branch headers, deleted exclusion), `lib/chat/text-match.ts` (whitespace and markdown modes, block-boundary newlines, repetition limit), `lib/chat/anchoring.ts` (prefix/suffix scoring beats offset; offset breaks ties), `lib/chat/refs.ts`, `lib/schedule/rank.ts` (the worked example in §10.1 as a fixture), `lib/store/frontmatter.ts` (LaTeX round trip), and `lib/history/undo.ts` (fields, content, null snapshots; conflict detection) against a temp directory. Everything else: `docs/CHECKLIST.md`.
+
+---
+
+## 17. Build phases
+
+Each phase ends in a working, committed app. Plan → approve → build → run the phase's checks → report honestly → commit → stop.
+
+### Phase 1 — Skeleton
+
+Next.js app, TypeScript strict, `app/theme.css` with both base themes, the shell with three empty tabs and the settings page stub, `seed/` complete per §12, `scripts/init.mjs`, `scripts/postinstall.mjs` wired as `postinstall`, `scripts/dev.mjs`, `.gitignore` (`data/` is **not** ignored; `.env.local`, `node_modules`, `.next` are), `.githooks/pre-commit` + `scripts/check-secrets.mjs`, `lib/store/paths.ts`, `frontmatter.ts`, `settings.ts`, `vitest` configured.
+**Checks:** `npm run init` on an empty `data/` succeeds and refuses a second time; `npm run dev` serves three tabs; `GET /api/settings` returns defaults; deleting `settings.json` and reloading restores defaults; a staged file containing `sk-ant-…` is refused by the hook; on a second clone whose `data/` is already non-empty, a fresh `npm install` alone installs the hook (`git config core.hooksPath` prints `.githooks`) and a staged `sk-ant-…` is still refused; frontmatter round-trip test passes with a LaTeX body.
+
+### Phase 2 — Store, history, git
+
+`lib/store/tasks.ts`, `files.ts`, `events.ts`; all of `lib/history/`; `scripts/history.mjs`; `/api/tasks`, `/api/history`, `/api/sync/*`; the sync indicator in the shell.
+**Checks (CLI, before any UI depends on it):** create three tasks via a script through `runBatch`, `git log` shows one commit; `history undo <batch>` removes all three and adds an `undo` line and commit; `history redo` restores them; a fields-level update undoes to the exact prior frontmatter; the conflict check fires when a later batch touched the same file; killing `npm run dev` with `Ctrl+C` after a commit leaves `@{u}..HEAD` at 0 (with a test remote); `action-history.md` regenerates.
+
+### Phase 3 — Today
+
+`lib/schedule/*`, `lib/weather.ts`, `components/today/*`, task menu actions, day navigation, first-run card, weather.
+**Checks:** the §10.1 worked example is a passing test; rendering twice yields identical order; complete/undo round-trips; a repeating task completes and materializes the next instance in the same batch, and undo removes both; clearing the weather location removes the element with no layout shift; Ask about this opens the composer stub in Ask mode (composer arrives in Phase 5; here it may be a placeholder that records the intent).
+
+### Phase 4 — Calendar
+
+Rolling/Month/Week, past-day completed display, "+N more", drag to reschedule.
+**Checks:** a task completed yesterday appears in yesterday's darkened cell; dragging to another day writes `scheduled` and one commit; Shift-drag writes `due`; undo restores.
+
+### Phase 5 — Composer
+
+Button, sheet, attachments, voice, modes, `lib/agent/registry.ts`, `anthropic.ts`, `context.ts`, `tools.ts`, `prompts.ts`, `chat.ts` (Tasks mode path), `/api/agent/extract`, `/api/agent/apply`, preview panel with the full loop, API-key settings section (needed to run it).
+**Checks:** + absent on Chat, present elsewhere; six tasks from one prompt → one batch → one undo removes all six; a follow-up revises the preview in place; "add these three movies to my watchlist" proposes a collection write; "read Dune" returns a question; a wrong key produces one toast and no files; the context debug endpoint returns the blocks and total.
+
+### Phase 6 — Chat
+
+In this order, each step verified before the next: (a) `lib/chat/tree.ts`, `uuid.ts`, `refs.ts` with tests; (b) `lib/store/chats.ts` and a round-trip test through a temp dir; (c) linear chat: send, stream, finalize, the failure path, retry, discard, stop; (d) branching: edit, regenerate, branch from here, switching; (e) sidebar; (f) annotations, quote replies, read aloud, model selector, context debug view.
+This is the largest phase; if (c) or (f) grows past a day of work, it splits into 6a/6b at plan time.
+**Checks:** the §15 chat items (failed not complete; rejected send leaves nothing; one commit per finalized message across three branches; branch from the first message; off-branch annotation count); tree, text-match, and anchoring tests pass.
+
+### Phase 7 — Knowledge base and collections
+
+`lib/knowledge/*`, `lib/store/knowledge.ts`, `lib/agent/memory.ts`, knowledge proposals in the preview panel, auto-apply rule, collections with promote-to-task, distill-to-knowledge, `npm run kb:check`.
+**Checks:** a proposal for a note without a map link is rejected by `runBatch`; a three-line append to `habits.md` auto-applies with an Undo toast; a 200-item collection yields zero Today rows; promote creates a task linked both ways in one batch; `kb:check` reports a deliberately orphaned note and exits 1.
+
+### Phase 8 — Knowledge browser
+
+Rail, Tree (both panels), document view with edit/save/frontmatter table/checkboxes/backlinks/KaTeX, file operations, search. **Graph view last**, after backlinks have proven the index.
+**Checks:** edit-save-undo restores byte-for-byte; LaTeX survives a round trip; clicking a checkbox in a collection saves one action; backlinks list the linking files; the graph opens on empty `data/` with the empty state and on a populated one shows edges matching backlinks; a document open in the main pane is in the next turn's context (debug view shows it).
+
+### Phase 9 — Build mode
+
+`lib/agent/build.ts`, both approval paths, diff view, commit and revert, `code.change` undo.
+**Checks:** plan-first shows a plan, then a diff, then commits one `code.change`; revert leaves `git status` clean; undo of a `code.change` reverts the commit; Auto commits and shows the diff with Undo; the agent cannot edit `data/` or `.env.local` (a prompt asking it to do so is refused by the deny rule).
+
+### Phase 10 — Settings and themes
+
+Every settings section, protected base themes, duplicate/edit/delete custom themes, create-by-prompt, key management with masked display, geolocation flow.
+**Checks:** base themes cannot be edited or deleted; a custom theme applies live and persists; a key change logs the name only (`grep` the log for the value returns nothing); changing focus size changes the Today list immediately.
+
+### Phase 11 — Publish readiness
+
+`publish-check`, `publish`, README, `docs/CHECKLIST.md`, seed audit, fresh-clone test.
+**Checks:** `publish-check` passes; a fresh clone into a temp dir with `init` and `dev` shows an empty app; every §15 item is ticked in `docs/CHECKLIST.md` with the date it was verified.

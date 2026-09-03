@@ -9,11 +9,11 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | Phase | State | Commit |
 |---|---|---|
 | 1 — Skeleton | complete | `47be387` |
-| 2 — Store, history, git | complete | — |
+| 2 — Store, history, git | complete | `b931994` |
 | 3 — Today | **next** | — |
 | 4–11 | not started | — |
 
-Carried forward from Phase 1, still unverified: `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal.
+Carried forward, still unverified: `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed in Phase 1 against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal. Phase 2 re-ran the shutdown flush against a local bare remote and it pushed correctly (1 ahead → 0, no orphan `node`), but by `CTRL_BREAK_EVENT`: Windows disables `Ctrl+C` for a process group spawned with `CREATE_NEW_PROCESS_GROUP`, so a script cannot deliver the real thing. Both events enter the same handler in `scripts/dev.mjs`.
 
 Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/complete` with repeat materialization (Phase 3, which tests it), `/api/tasks/[id]/promote` (Phase 7, which has collections), and `history.streamingWrite()` (Phase 6, its only caller). `GET /api/tasks` returns the unranked list until `lib/schedule/rank.ts` exists.
 

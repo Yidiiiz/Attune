@@ -8,7 +8,7 @@ This file is the complete specification. `BUILD_PROMPT.md` is the brief it was w
 
 ## Decisions
 
-Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–44 were added after review rounds on 2026-09-03.
+Every call the brief left open, or where this spec deviates from it. One line of reasoning each. Decisions 34–44 were added after review rounds on 2026-09-03; 45–49 during the Phase 2 build the same day.
 
 **Data model**
 
@@ -69,6 +69,14 @@ Every call the brief left open, or where this spec deviates from it. One line of
 43. **The shutdown push flush is owned by `scripts/dev.mjs` alone and is synchronous.** Windows has no `SIGTERM` and `Ctrl+C` can orphan a child tree, so the wrapper handles `SIGINT`, `SIGBREAK`, and `SIGHUP`, kills the child tree (`taskkill /T /F` on Windows, `SIGTERM` elsewhere), then runs `git push` through `execFileSync` before exiting, because Node's `'exit'` event cannot await anything. `instrumentation.ts` does not push on `beforeExit`; one owner, one path. The pre-commit hook is a `#!/bin/sh` script with LF endings and the executable bit set in the index, which is what Git for Windows needs to run it.
 44. **Node's type stripping is load-bearing, so `lib/` avoids every TypeScript feature that needs code generation.** The CLI scripts import `lib/**/*.ts` through plain Node, which strips types and runs the result rather than compiling it. No `enum`, `const enum`, `namespace`, or parameter properties (`constructor(private x)`) anywhere under `lib/`; all four need emitted runtime code and Node refuses them. The trap is not the error message — Node 24 names the feature (`TypeScript enum is not supported in strip-only mode`) — it is *when* the message arrives: `tsc` and `next build` accept all four, so the failure surfaces only once a CLI script runs, long after the code looked correct. `--experimental-transform-types` would compile them, but it would have to be passed on every script invocation forever to buy back features the project does not need. Two settings keep the seam explicit: `allowImportingTsExtensions` with a `.ts` extension on every `lib/`→`lib/` import, because Node will not resolve an extensionless specifier, and `verbatimModuleSyntax`, so a type-only import is spelled `import type` and stripping is never a judgment call.
 
+**During Phase 2 (2026-09-03)**
+
+45. **`ATTUNE_REPO_DIR` overrides the checkout the app reads and writes.** Unset — every normal run — `REPO_DIR` is the working directory and nothing changes. Set, it points `DATA_DIR` and every git command at another tree, which is what lets the Phase 2 acceptance checks create, undo, and redo real batches in a throwaway repository instead of the owner's, and what will let Phase 6's store round-trip test run against a temp directory. Four lines in `paths.ts`, one environment variable, no test-only branch anywhere in the code it exercises.
+46. **Two files were added to the §3 layout: `lib/history/actions.ts` and `lib/store/manifest.ts`.** `actions.ts` holds the `ActionSpec` builders. They cannot live in `lib/store/`, because a store that imported history types would close a cycle, and they cannot live in the routes, which §14 keeps to ten lines of adapter. `manifest.ts` is the uploads directory and its generated table, split out of `files.ts` when the action log's append primitives pushed that file toward the 300-line cap; the split is by feature — generic file access versus upload policy — not by layer.
+47. **The commit-field backfill leaves `data/history/` modified after every batch, and the next batch commits it.** §7.1 fills in the `commit` field of lines that were written with `commit: null` *after* git has returned the hash, so those two files are always one step behind the commit that contains them. The alternative is amending the commit, which races the debounced push for no real gain. `git status` under `data/history/` is therefore rarely clean between batches; that is expected, not a bug.
+48. **`undo` and `redo` join the commit-prefix vocabulary.** §8 lists seven prefixes for kinds of data; §7.2 specifies the message `undo: <original summary>`. Both are right — a reversal describes a history operation rather than a kind of file — so `BatchSpec.commitPrefix` accepts nine values and the mirror renders the two new ones as `· undo ·` and `· redo ·` with `↶` and `↷`.
+49. **`npm test` runs `scripts/check-lib-imports.mjs` before vitest.** It imports every `lib/**/*.ts` through plain Node and fails naming each module that will not load. Decision 44 records the constraint; this is what makes it fail at test time rather than at the first CLI run, which is otherwise the earliest anything notices, because `tsc --noEmit` and `next build` both accept all four forbidden features. Verified by adding an `enum` under `lib/`: `tsc` exited 0, `npm test` exited 1.
+
 ---
 
 ## 1. Hard rules
@@ -112,6 +120,7 @@ app/
   settings/page.tsx
   theme.css
   api/                       # every route is <10 lines of adapter; see §14
+    respond.ts               # the one {ok:...} JSON shape and the StoreError-to-status mapping
 components/
   shell/                     # Tabs, SearchBox, SyncStatus, Toast
   today/                     # DayHeader, TaskRow, TaskMenu, Timeline
@@ -128,14 +137,16 @@ lib/
     frontmatter.ts           # split(text) → {data, body}; join(data, body); yaml parse/stringify
     tasks.ts                 # Task schema, defaults, listTasks/readTask/writeTask/deleteTask
     settings.ts              # Settings schema, defaults, readSettings/writeSettings
-    files.ts                 # listTree, readFile, writeFile, deleteFile, rename, mkdir, manifest
+    files.ts                 # listTree, read/write/delete/rename/mkdir, append + tail edit for the log
+    manifest.ts              # uploads directory (addFile) and the generated files/index.md table
     chats.ts                 # conversations, messages, annotations
     knowledge.ts             # notes, maps, collections, index.md regeneration
     env.ts                   # .env.local read/write, key masking
     events.ts                # onWrite(cb): store emits {paths} after any write
   history/
-    log.ts                   # appendAction, readActions, nextSeq, regenerateMirror
-    batch.ts                 # runBatch(): the one entry point every mutation uses
+    log.ts                   # appendActions, readActions, groupBatches, nextSeq, regenerateMirror
+    batch.ts                 # runBatch(): the one entry point every mutation uses; snapshot capture
+    actions.ts               # the ActionSpec builders (task.create/update/delete, settings.update)
     undo.ts                  # undoBatch, redoBatch, conflict check
     git.ts                   # commit, push (debounced), flush, status, show, revert
     queue.ts                 # in-process serial queue for all writes
@@ -169,6 +180,7 @@ scripts/
   init.mjs                   # seed/ → data/
   postinstall.mjs            # git config core.hooksPath .githooks; runs on every npm install
   history.mjs                # CLI: list | undo <batch> | redo <batch>
+  check-lib-imports.mjs      # imports every lib/**/*.ts in plain Node; runs first in `npm test`
   kb-check.mjs
   check-secrets.mjs
   publish-check.mjs
@@ -433,6 +445,10 @@ listTree(rel: string, opts: { wholeRepo?: boolean }): Promise<TreeNode[]>
 readText(rel: string): Promise<string>; readBinary(rel: string): Promise<Buffer>
 writeText(rel: string, text: string): Promise<void>; deleteFile(rel: string): Promise<void>
 rename(from: string, to: string): Promise<void>; mkdir(rel: string): Promise<void>
+exists(rel: string): Promise<boolean>; byteLength(rel: string): Promise<number>
+appendText(rel: string, text: string): Promise<void>                    // the action log only
+readTail(rel: string, offset: number): Promise<string>; replaceTail(rel: string, offset: number, text: string): Promise<void>
+// manifest.ts
 addFile(kind: "images"|"docs"|"other", name: string, bytes: Buffer, source: string): Promise<{ rel: string }>
 regenerateManifest(): Promise<void>
 // chats.ts
@@ -525,7 +541,7 @@ Sequence, inside the serial queue (`queue.ts`):
 1. Reserve `batch` id `b_<YYYYMMDD>_<HHmmss>_<4hex>`.
 2. For each action: compute `before` snapshots (read current files), call `apply`, compute `after`, append a log line with `commit: null`.
 3. Regenerate `action-history.md`.
-4. If `commit`: `git add -A data` (plus repo paths for `code.change`), `git commit -m "<prefix>: <summary>"`, then rewrite the `commit` field of this batch's lines. The log is append-only for *entries*; filling the `commit` field of just-written lines is the one in-place edit, done by rewriting the file's tail.
+4. If `commit`: `git add -A -- data` (plus repo paths for `code.change`), then `git commit -m "<prefix>: <summary>" -- <those paths>` so unrelated edits sitting in the index never ride along, then rewrite the `commit` field of this batch's lines. The log is append-only for *entries*; filling the `commit` field of just-written lines is the one in-place edit, done by rewriting the file's tail. Because that rewrite happens after the commit, `actions.jsonl` and the mirror are left modified in the working tree and the next batch commits them (Decision 47).
 5. Schedule a debounced push.
 
 If `apply` throws, files written by earlier actions in the batch are restored from their `before` snapshots, nothing is logged, and the error propagates. If git fails, the batch is logged with `commit: null`, the sync indicator shows `error`, and the entry remains undoable because `before` snapshots are inline (the `{git: true}` snapshot is used only for code changes and binaries, which cannot be undone without a commit; the UI says so).
@@ -563,7 +579,7 @@ redoBatch(batch: string): Promise<UndoResult>
 - **Never commit a streaming message.** `writeMessage` during streaming runs through `runBatch` with `commit: false` and a `chat.message` action whose log entry is written once, at finalize. Concretely: the streaming write path calls the store directly from `lib/agent/chat.ts` through a `history.streamingWrite(path, content)` helper that bypasses logging, and finalize calls `runBatch` with the complete message. This is the one sanctioned bypass, and it exists only for `data/chats/*/messages/*.md` with `status: streaming`.
 - **Push is debounced** `settings.sync.pushDebounceMs` (default 30 s) after the last commit. `flush()` pushes immediately if there are unpushed commits. It is called from `POST /api/sync/flush` (triggered by `navigator.sendBeacon` on `beforeunload`), from **Sync now**, and on shutdown by `scripts/dev.mjs` as described next. The Next server process does nothing on shutdown; a debounce timer that dies with the process is caught by the wrapper.
 - **Shutdown (Decision 43).** `scripts/dev.mjs` spawns `next dev` with `stdio: "inherit"` and registers one idempotent handler for `SIGINT`, `SIGBREAK`, `SIGHUP`, and the child's `exit` event. The handler: (1) kills the child tree, `taskkill /pid <pid> /T /F` on Windows and `child.kill("SIGTERM")` elsewhere, ignoring errors because the console usually delivered `Ctrl+C` to the child already; (2) if `git remote get-url origin` succeeds and `git rev-list --count @{u}..HEAD` is non-zero, runs `git push` with `execFileSync` (synchronous, 20 s timeout, stdio inherited so a failure is visible in the terminal); (3) exits with the child's code. Nothing asynchronous runs after a signal. On Windows, Node raises `SIGINT` for `Ctrl+C` and `SIGBREAK` for `Ctrl+Break`; closing the console window raises `SIGHUP` and force-terminates roughly ten seconds later, which the synchronous push fits inside. Verified on Windows in Phase 1.
-- **Status:** `GET /api/sync/status` → `{ state: "synced" | "pending" | "offline" | "error" | "conflict", ahead: number, lastError?: string }`. `ahead` is `git rev-list --count @{u}..HEAD`. The shell shows a dot with a tooltip and a **Sync now** button.
+- **Status:** `GET /api/sync/status` → `{ state: "synced" | "pending" | "offline" | "error" | "conflict" | "local", ahead: number, lastError?: string }`. `ahead` is `git rev-list --count @{u}..HEAD`. The shell shows a dot with a tooltip and a **Sync now** button.
 - **Failures never block.** Offline (`Could not resolve host`) → `offline`, retry on next commit. Auth or unknown → `error` with the message. Non-fast-forward → `conflict`: pushing stops, and the indicator shows: "Remote has changes. Run: `git pull --rebase && git push` in `<repo dir>`." No automatic resolution.
 - If `git remote get-url origin` fails, sync state is `local` and push is skipped silently. A fresh clone with no remote still works.
 
@@ -880,7 +896,7 @@ Every route lives in `app/api/**/route.ts`, validates its input with zod, calls 
 
 | Route | Method | Calls |
 |---|---|---|
-| `/api/tasks?date=` | GET | `rankDay(listTasks(), date, settings, now)` |
+| `/api/tasks?date=` | GET | `rankDay(listTasks(), date, settings, now)` — the unranked list until Phase 3 builds the ranker |
 | `/api/tasks` | POST | `runBatch` with `task.create` × N (`{ items: TaskDraft[], source }`) |
 | `/api/tasks/[id]` | GET · PATCH · DELETE | read · `task.update` · `task.delete` |
 | `/api/tasks/[id]/complete` | POST | `task.complete` (+ `task.create` for repeats) |

@@ -1,5 +1,5 @@
 // Owns: the top bar — the three tab links and the settings gear.
-// Search and the sync indicator (PROJECT.md §10.0) arrive with the phases that give them a backend.
+// Search (PROJECT.md §10.0) arrives with the phase that gives it a backend; the sync indicator is here.
 //
 // Failure behavior: usePathname returning nothing leaves no tab highlighted; navigation still works
 // because these are plain links.
@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import SyncStatus from "./SyncStatus";
 import styles from "./Tabs.module.css";
 
 const TABS = [
@@ -34,6 +35,7 @@ export default function Tabs() {
         ))}
       </div>
       <div className={styles.spacer} />
+      <SyncStatus />
       <Link href="/settings" className={styles.gear} aria-label="Settings" title="Settings">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <circle cx="12" cy="12" r="3" />

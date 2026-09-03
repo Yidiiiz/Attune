@@ -1,0 +1,218 @@
+// Owns: generic file access inside the data tree — the tree listing, text and binary reads, the
+// atomic LF-normalized text write every other store module builds on, and the uploads directory
+// with its manifest (PROJECT.md §4.8, §5).
+//
+// Failure behavior: reads throw StoreError("not_found") and writes throw "forbidden_path" rather
+// than guessing. Every write is tmp + rename, so a crash leaves either the old file or the new one
+// and never half of either. A tree walk that cannot read one directory omits it and keeps walking:
+// one unreadable folder should cost you that folder, not the browser.
+
+import { createHash } from "node:crypto";
+import {
+  appendFile, mkdir as fsMkdir, open, readFile, readdir, rename as fsRename, rm, stat, writeFile,
+} from "node:fs/promises";
+import path from "node:path";
+import { DATA_DIR, REPO_DIR, StoreError, resolveData } from "./paths.ts";
+import { emitWrite } from "./events.ts";
+
+export interface TreeNode {
+  name: string;
+  /** Relative to DATA_DIR, or to REPO_DIR when listed with `wholeRepo`. Always forward slashes. */
+  path: string;
+  type: "file" | "dir";
+  size?: number;
+  updatedAt?: string;
+  children?: TreeNode[];
+}
+
+/** Directories never worth walking into when listing the whole repository. */
+const REPO_SKIP = new Set(["node_modules", ".next", ".git", "data"]);
+
+const toPosix = (rel: string): string => rel.split(path.sep).join("/");
+
+async function walk(abs: string, rel: string, skip: Set<string>): Promise<TreeNode[]> {
+  let entries;
+  try {
+    entries = await readdir(abs, { withFileTypes: true });
+  } catch {
+    return []; // unreadable directory: omit it, keep the rest of the tree
+  }
+
+  const nodes: TreeNode[] = [];
+  for (const entry of entries) {
+    if (entry.name === ".gitkeep" || skip.has(entry.name)) continue;
+    const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+    const childAbs = path.join(abs, entry.name);
+    if (entry.isDirectory()) {
+      nodes.push({
+        name: entry.name,
+        path: childRel,
+        type: "dir",
+        children: await walk(childAbs, childRel, skip),
+      });
+    } else if (entry.isFile()) {
+      const info = await stat(childAbs).catch(() => null);
+      nodes.push({
+        name: entry.name,
+        path: childRel,
+        type: "file",
+        size: info?.size,
+        updatedAt: info?.mtime.toISOString(),
+      });
+    }
+  }
+
+  nodes.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "dir" ? -1 : 1));
+  return nodes;
+}
+
+/** The `resolveData` guard, against an arbitrary root. Used only for the whole-repo listing. */
+function resolveWithin(root: string, rel: string): string {
+  if (typeof rel !== "string") throw new StoreError("forbidden_path", "path must be a string");
+  if (path.isAbsolute(rel) || /^[a-zA-Z]:/.test(rel)) {
+    throw new StoreError("forbidden_path", `path must be relative: ${rel}`);
+  }
+  const abs = path.resolve(root, rel || ".");
+  if (abs !== root && !abs.startsWith(root + path.sep)) {
+    throw new StoreError("forbidden_path", `path escapes the repository: ${rel}`);
+  }
+  return abs;
+}
+
+/** List a directory tree. `wholeRepo` roots the walk at the checkout instead of `data/`. */
+export async function listTree(rel: string, opts: { wholeRepo?: boolean } = {}): Promise<TreeNode[]> {
+  const root = opts.wholeRepo ? REPO_DIR : DATA_DIR;
+  const abs = opts.wholeRepo ? resolveWithin(root, rel) : resolveData(rel || ".");
+  return walk(abs, toPosix(path.relative(root, abs)), opts.wholeRepo ? REPO_SKIP : new Set());
+}
+
+function notFound(rel: string, err: unknown): never {
+  if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+    throw new StoreError("not_found", `no such file: ${rel}`);
+  }
+  throw err;
+}
+
+export async function readText(rel: string): Promise<string> {
+  try {
+    return await readFile(resolveData(rel), "utf8");
+  } catch (err) {
+    notFound(rel, err);
+  }
+}
+
+export async function readBinary(rel: string): Promise<Buffer> {
+  try {
+    return await readFile(resolveData(rel));
+  } catch (err) {
+    notFound(rel, err);
+  }
+}
+
+export async function exists(rel: string): Promise<boolean> {
+  try {
+    await stat(resolveData(rel));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The one text write in the project: CRLF normalized away (Decision 42), dirty-checked, tmp +
+ * rename. Every module that writes markdown goes through here so those three properties hold once.
+ */
+export async function writeText(rel: string, text: string): Promise<void> {
+  const abs = resolveData(rel);
+  const normalized = text.replace(/\r\n/g, "\n");
+
+  try {
+    if ((await readFile(abs, "utf8")) === normalized) return; // never rewrite identical bytes
+  } catch {
+    // absent or unreadable: fall through and write
+  }
+
+  await fsMkdir(path.dirname(abs), { recursive: true });
+  const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
+  await writeFile(tmp, normalized, "utf8");
+  await fsRename(tmp, abs);
+  emitWrite([rel]);
+}
+
+/** Binary counterpart. No normalization, for obvious reasons. */
+export async function writeBinary(rel: string, bytes: Buffer): Promise<void> {
+  const abs = resolveData(rel);
+  await fsMkdir(path.dirname(abs), { recursive: true });
+  const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
+  await writeFile(tmp, bytes);
+  await fsRename(tmp, abs);
+  emitWrite([rel]);
+}
+
+export async function deleteFile(rel: string): Promise<void> {
+  await rm(resolveData(rel), { recursive: true, force: true });
+  emitWrite([rel]);
+}
+
+export async function rename(from: string, to: string): Promise<void> {
+  const absTo = resolveData(to);
+  await fsMkdir(path.dirname(absTo), { recursive: true });
+  try {
+    await fsRename(resolveData(from), absTo);
+  } catch (err) {
+    notFound(from, err);
+  }
+  emitWrite([from, to]);
+}
+
+export async function mkdir(rel: string): Promise<void> {
+  await fsMkdir(resolveData(rel), { recursive: true });
+  emitWrite([rel]);
+}
+
+/**
+ * Append-only text write, for the action log (§7.1). Not atomic in the tmp+rename sense — an append
+ * of a few hundred bytes is a single write syscall, and rewriting a growing log on every action to
+ * buy atomicity would cost more than it protects.
+ */
+export async function appendText(rel: string, text: string): Promise<void> {
+  const abs = resolveData(rel);
+  await fsMkdir(path.dirname(abs), { recursive: true });
+  await appendFile(abs, text.replace(/\r\n/g, "\n"), "utf8");
+  emitWrite([rel]);
+}
+
+/** Byte length, or 0 when the file does not exist. The log takes this before appending. */
+export async function byteLength(rel: string): Promise<number> {
+  try {
+    return (await stat(resolveData(rel))).size;
+  } catch {
+    return 0;
+  }
+}
+
+/** Read from `offset` to end. Paired with `replaceTail` for the log's one in-place edit. */
+export async function readTail(rel: string, offset: number): Promise<string> {
+  const handle = await open(resolveData(rel), "r");
+  try {
+    const size = (await handle.stat()).size;
+    if (offset >= size) return "";
+    const buffer = Buffer.alloc(size - offset);
+    await handle.read(buffer, 0, buffer.length, offset);
+    return buffer.toString("utf8");
+  } finally {
+    await handle.close();
+  }
+}
+
+/** Truncate at `offset` and write `text` there. The log uses it to fill in a just-known commit. */
+export async function replaceTail(rel: string, offset: number, text: string): Promise<void> {
+  const handle = await open(resolveData(rel), "r+");
+  try {
+    await handle.truncate(offset);
+    await handle.write(Buffer.from(text.replace(/\r\n/g, "\n"), "utf8"), 0, undefined, offset);
+  } finally {
+    await handle.close();
+  }
+  emitWrite([rel]);
+}

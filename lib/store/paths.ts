@@ -21,8 +21,16 @@ export class StoreError extends Error {
   }
 }
 
-/** The git checkout. Everything below is derived from it. */
-export const REPO_DIR: string = process.cwd();
+/**
+ * The git checkout. Everything below is derived from it.
+ *
+ * `ATTUNE_REPO_DIR` points the whole app at a different checkout (Decision 45). It exists so the
+ * history CLI can be exercised against a throwaway repository instead of yours, and so a store test
+ * can run against a temp directory. Unset — which is every normal run — it is the working directory.
+ */
+export const REPO_DIR: string = process.env.ATTUNE_REPO_DIR
+  ? path.resolve(process.env.ATTUNE_REPO_DIR)
+  : process.cwd();
 
 /** Yours: the private tree the app reads and writes. Never in the published repo. */
 export const DATA_DIR: string = path.join(REPO_DIR, "data");

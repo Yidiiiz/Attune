@@ -8,8 +8,10 @@
     "build": "next build",
     "start": "next start",
     "init": "node scripts/init.mjs",
-    "test": "vitest run",
+    "test": "node scripts/check-lib-imports.mjs && vitest run",
     "check-secrets": "node scripts/check-secrets.mjs",
+    "check-lib-imports": "node scripts/check-lib-imports.mjs",
+    "history": "node scripts/history.mjs",
     "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {

@@ -9,10 +9,13 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | Phase | State | Commit |
 |---|---|---|
 | 1 — Skeleton | complete | `47be387` |
-| 2 — Store, history, git | **next** | — |
-| 3–11 | not started | — |
+| 2 — Store, history, git | complete | — |
+| 3 — Today | **next** | — |
+| 4–11 | not started | — |
 
-Carried forward from Phase 1: one §17 check is still unverified — `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal.
+Carried forward from Phase 1, still unverified: `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal.
+
+Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/complete` with repeat materialization (Phase 3, which tests it), `/api/tasks/[id]/promote` (Phase 7, which has collections), and `history.streamingWrite()` (Phase 6, its only caller). `GET /api/tasks` returns the unranked list until `lib/schedule/rank.ts` exists.
 
 ## How we work
 
@@ -41,10 +44,11 @@ Next.js 15 (App Router) · TypeScript strict · Node 24 · plain CSS with custom
 npm install            # postinstall sets core.hooksPath=.githooks on every machine
 npm run dev            # scripts/dev.mjs → next dev, flushes git push on exit
 npm run init           # seed/ → data/ (refuses if data/ is non-empty)
-npm test               # vitest
-npm run history -- list | undo <batch> | redo <batch>
+npm test               # check-lib-imports, then vitest
+npm run history -- list [--n 20] | undo <batch> [--force] | redo <batch>
 npm run kb:check       # orphans, broken links, size caps
 npm run check-secrets  # also runs from .githooks/pre-commit
+npm run check-lib-imports   # every lib/**/*.ts must load in plain Node (PROJECT.md Decision 44)
 npm run publish-check  # readiness for the public remote
 ```
 
@@ -52,7 +56,7 @@ npm run publish-check  # readiness for the public remote
 
 - **Module header** on every source file: one line saying what it owns, then a `Failure behavior:` paragraph saying what happens when it breaks (degrade this feature, never the page).
 - **Z-index tiers:** 20 in-scroll surfaces · 30 panels and bars · 40 toasts and modals. No other values.
-- **No `enum`, `const enum`, `namespace`, or parameter properties (`constructor(private x)`) under `lib/`.** `scripts/*.mjs` import those files through plain Node, which strips types rather than compiling, and all four need emitted runtime code. `tsc --noEmit` and `next build` accept them happily; only the CLI breaks, and only at runtime — Phase 2 is where this first bites, since `lib/history/` is the first multi-file module the CLI imports. `lib/`→`lib/` imports carry the `.ts` extension for the same reason (`PROJECT.md` Decision 44).
+- **No `enum`, `const enum`, `namespace`, or parameter properties (`constructor(private x)`) under `lib/`.** `scripts/*.mjs` import those files through plain Node, which strips types rather than compiling, and all four need emitted runtime code. `tsc --noEmit` and `next build` accept them happily; only the CLI breaks, and only at runtime. `npm test` runs `scripts/check-lib-imports.mjs` first, which imports every module under `lib/` in plain Node and names the ones that will not load, so this fails at test time rather than at a prompt. `lib/`→`lib/` imports carry the `.ts` extension for the same reason (`PROJECT.md` Decision 44).
 - **Timers are never correctness.** Wait on the observable consequence; a timeout is a failure guard.
 - **Dirty-check writes.** Never write a value that is already set.
 - **Atomic file writes** (tmp + rename) in the store; whole-file writes, never read-modify-write of shared arrays.
@@ -60,7 +64,8 @@ npm run publish-check  # readiness for the public remote
 - **Frontmatter keys are camelCase and identical to the TypeScript field names** (`createdAt`, `estimateMin`, `parentId`). One convention for every file under `data/`; there is no mapping layer at the store boundary.
 - Dates: date-only `YYYY-MM-DD`, date-time `YYYY-MM-DDTHH:mm` in `settings.timezone`; timestamps ISO with offset. Paths in data files are relative to `data/`.
 - Model IDs and effort come from `data/settings/settings.json`; nothing hardcodes a model.
-- Tests live beside the code as `*.test.ts`; pure modules (`lib/chat/`, `lib/schedule/`, `lib/history/undo.ts`, `lib/store/frontmatter.ts`) must have them.
+- Tests live beside the code as `*.test.ts`; pure modules (`lib/chat/`, `lib/schedule/`, `lib/history/undo.ts`, `lib/store/frontmatter.ts`) must have them. Where a module is half decision and half filesystem, the decision half is a pure exported function so it can be tested without a temp directory — `undoState` and `findConflicts` in `undo.ts` are the pattern.
+- **`ATTUNE_REPO_DIR` runs the app against another checkout** (Decision 45). Acceptance checks that write real batches use it rather than the owner's `data/`: seed a temp directory from `seed/`, `git init` it, then run any script with that variable set.
 
 ## Where to look things up
 

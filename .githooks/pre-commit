@@ -1,0 +1,4 @@
+#!/bin/sh
+# Refuses any commit whose staged content looks like it carries a credential.
+# Installed by scripts/postinstall.mjs setting core.hooksPath to .githooks (PROJECT.md Decision 39).
+exec node scripts/check-secrets.mjs

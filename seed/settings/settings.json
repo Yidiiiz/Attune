@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "identity": {
+    "name": "",
+    "nickname": ""
+  },
+  "timezone": "America/New_York",
+  "weather": {
+    "query": "",
+    "units": "fahrenheit"
+  },
+  "theme": "light",
+  "day": {
+    "startMin": 600,
+    "endMin": 1440,
+    "blocks": [
+      [600, 780],
+      [840, 1080]
+    ],
+    "breakMin": 10
+  },
+  "list": {
+    "focusSize": 5,
+    "lookaheadDays": 14,
+    "showCompleted": true
+  },
+  "categories": ["school", "personal"],
+  "firstDayOfWeek": "monday",
+  "models": {
+    "default": { "model": "claude-opus-5", "effort": "high" },
+    "extract": { "model": "claude-opus-5", "effort": "medium" },
+    "build": { "model": "claude-opus-5" }
+  },
+  "sync": {
+    "pushDebounceMs": 30000,
+    "autoPush": true
+  }
+}

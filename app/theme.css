@@ -1,0 +1,123 @@
+/*
+ * Owns: the two protected base themes and the complete token list (PROJECT.md §11.3).
+ * Every token is defined in both bases, including the families nothing reads until later phases,
+ * so a custom theme file in data/settings/themes/ is a pure override and never has to invent a value.
+ *
+ * Failure behavior: a missing custom theme leaves data-theme unmatched and the :root light values
+ * apply. The page renders; only the palette is wrong.
+ */
+
+:root {
+  --bg: #fdfcfa;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #f2f0ec;
+  --fg: #1c1b19;
+  --fg-muted: #5c5952;
+  --fg-faint: #918d84;
+
+  --border: #e3e0d9;
+  --border-strong: #c9c5bb;
+  --accent: #3b6ea5;
+  --accent-fg: #ffffff;
+  --accent-soft: #e5eef7;
+
+  --danger: #a33b3b;
+  --danger-soft: #f7e8e8;
+  --warning: #a8761f;
+  --success: #3f7a4a;
+  --overdue: #a33b3b;
+  --focus-ring: #3b6ea5;
+  --selection: #d6e5f3;
+
+  --shadow: 0 1px 2px rgb(28 27 25 / 8%), 0 4px 12px rgb(28 27 25 / 6%);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-size: 15px;
+  --line-height: 1.55;
+
+  --priority-1: #a33b3b;
+  --priority-2: #c07a2c;
+  --priority-3: #5c5952;
+  --priority-4: #918d84;
+
+  --node-task: #3b6ea5;
+  --node-note: #3f7a4a;
+  --node-map: #7a5aa8;
+  --node-collection: #a8761f;
+  --node-chat: #b0562f;
+  --node-file: #6b675f;
+}
+
+[data-theme="dark"] {
+  --bg: #16171a;
+  --bg-elevated: #1e2024;
+  --bg-sunken: #101114;
+  --fg: #e6e4e0;
+  --fg-muted: #a7a49e;
+  --fg-faint: #6f6d68;
+
+  --border: #2c2f35;
+  --border-strong: #414650;
+  --accent: #79aede;
+  --accent-fg: #12161b;
+  --accent-soft: #1f2b38;
+
+  --danger: #e08585;
+  --danger-soft: #35201f;
+  --warning: #ddab5c;
+  --success: #7cc08d;
+  --overdue: #e08585;
+  --focus-ring: #79aede;
+  --selection: #2a3b4d;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 45%), 0 4px 14px rgb(0 0 0 / 35%);
+
+  --priority-1: #e08585;
+  --priority-2: #ddab5c;
+  --priority-3: #a7a49e;
+  --priority-4: #6f6d68;
+
+  --node-task: #79aede;
+  --node-note: #7cc08d;
+  --node-map: #b394de;
+  --node-collection: #ddab5c;
+  --node-chat: #e0956d;
+  --node-file: #9a968e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+a {
+  color: inherit;
+}

@@ -1,0 +1,26 @@
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.sections {
+  margin: 16px 0 0;
+  padding-left: 20px;
+  color: var(--fg-muted);
+}
+
+.sections li {
+  margin: 2px 0;
+}

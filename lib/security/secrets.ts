@@ -26,6 +26,22 @@ export const SECRET_PATTERNS: SecretPattern[] = [
   { name: "assigned credential", re: /(api[_-]?key|secret|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{24,}/i },
 ];
 
+/**
+ * The name of the first pattern `text` matches, or null. It returns the *name*, never the match:
+ * §11.5's rule against echoing a hit belongs to every path that reports one, not only to the
+ * scanner, and a function that cannot return the matched text cannot be misused into doing so.
+ *
+ * This is the write-path half of the shared-pattern invariant in AGENTS.md. It walks SECRET_PATTERNS
+ * whole, with no filter and no exemptions, because anything the pre-commit hook would refuse has to
+ * be refused here first — see `scanBatch` in lib/history/batch.ts.
+ */
+export function findSecret(text: string): string | null {
+  for (const { name, re } of SECRET_PATTERNS) {
+    if (re.test(text)) return name;
+  }
+  return null;
+}
+
 /** `https://user:token@host` — a remote URL with its password in it, which no pattern above catches. */
 const CREDENTIALED_URL = /([a-z][a-z0-9+.-]*):\/\/[^\s/@:]+:[^\s/@]+@/gi;
 

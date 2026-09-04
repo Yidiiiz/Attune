@@ -9,7 +9,9 @@
 
 import path from "node:path";
 
-export type StoreErrorCode = "not_found" | "exists" | "invalid" | "forbidden_path";
+/** `secret_rejected` is refused content, not a malformed request: the write path found a
+ * credential in what was about to be logged and wrote nothing (§11.5). */
+export type StoreErrorCode = "not_found" | "exists" | "invalid" | "forbidden_path" | "secret_rejected";
 
 export class StoreError extends Error {
   readonly code: StoreErrorCode;

@@ -14,6 +14,8 @@ import * as files from "../store/files.ts";
 import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
+import { StoreError } from "../store/paths.ts";
+import { findSecret } from "../security/secrets.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
 import * as git from "./git.ts";
 import {
@@ -143,6 +145,57 @@ interface Applied {
   after: Snapshots;
 }
 
+/** The text a snapshot puts into the log. `{ git: true }` carries none; the commit holds it. */
+function snapshotText(snap: Snapshot): string {
+  if (snap === null) return "";
+  if ("content" in snap) return snap.content;
+  if ("fields" in snap) return JSON.stringify(snap.fields);
+  return "";
+}
+
+interface Rejection {
+  where: string;
+  pattern: string;
+}
+
+/**
+ * Everything this batch is about to write into `actions.jsonl`, scanned before a byte of it is
+ * written: the summaries and meta that become log fields and mirror lines, the target paths, and
+ * both sides of every snapshot.
+ *
+ * The log is append-only and committed, so a credential reaching it is not an ordinary leak — the
+ * pre-commit hook finds it on the *next* commit and refuses every commit after that, and undo does
+ * not help because the undo batch snapshots the same text again. Scrubbing is not available here:
+ * snapshots exist to restore files byte for byte. So the batch is refused instead, whole, before
+ * anything is logged (AGENTS.md hard rules; PROJECT.md Decision 50).
+ */
+function scanBatch(spec: BatchSpec, applied: Applied[]): Rejection | null {
+  const described = [
+    spec.summary,
+    ...applied.map((step) => step.spec.summary),
+    JSON.stringify(spec.meta ?? {}),
+  ].join("\n");
+  const inDescription = findSecret(described);
+  if (inDescription) return { where: "the summary of this change", pattern: inDescription };
+
+  for (const step of applied) {
+    for (const rel of step.targets) {
+      const inPath = findSecret(rel);
+      if (inPath) return { where: rel, pattern: inPath };
+    }
+    // `before` counts too: deleting a file that already held a credential would copy it into the log
+    // on the way out, which is the same deadlock arriving by a politer route.
+    for (const snapshots of [step.before, step.after]) {
+      for (const [rel, snap] of Object.entries(snapshots)) {
+        const hit = findSecret(snapshotText(snap));
+        if (hit) return { where: rel, pattern: hit };
+      }
+    }
+  }
+
+  return null;
+}
+
 async function rollback(applied: Applied[]): Promise<void> {
   for (const step of [...applied].reverse()) {
     for (const [rel, snap] of Object.entries(step.before)) {
@@ -198,6 +251,19 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     } catch (err) {
       await rollback(applied);
       throw err;
+    }
+
+    // Before anything is logged: refuse the whole batch if it would write a credential under
+    // `data/`. Rolling back first means the files are as they were, and the text the caller sent is
+    // still the caller's — a rejected save must not cost someone what they wrote (§13.5).
+    const rejected = scanBatch(spec, applied);
+    if (rejected) {
+      await rollback(applied);
+      throw new StoreError(
+        "secret_rejected",
+        `${rejected.where} looks like it contains a credential (${rejected.pattern}). Nothing was ` +
+          `written. Move the value to .env.local, or change the text, and save again.`,
+      );
     }
 
     await backfillPrevious();

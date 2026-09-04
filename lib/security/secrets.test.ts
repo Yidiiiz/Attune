@@ -2,7 +2,7 @@
 // here is assembled from fragments at runtime, so this file does not trip the scanner that reads it.
 
 import { describe, expect, it } from "vitest";
-import { REDACTED, SCRUB_LIMIT, scrubSecrets } from "./secrets.ts";
+import { findSecret, REDACTED, SCRUB_LIMIT, SECRET_PATTERNS, scrubSecrets } from "./secrets.ts";
 
 const AWS = "AKIA" + "TESTONLYFAKEKEY1";
 const ANTHROPIC = "sk" + "-ant-" + "a".repeat(40);
@@ -50,5 +50,37 @@ describe("scrubSecrets", () => {
     const out = scrubSecrets(`${"x".repeat(SCRUB_LIMIT - 4)}${AWS}`);
     expect(out).not.toContain(AWS);
     expect(out).not.toContain(AWS.slice(0, 8));
+  });
+});
+
+// One sample per pattern, keyed by the pattern's own name. The first assertion is the point of the
+// table: adding a pattern to SECRET_PATTERNS without adding a sample here fails, so the write path
+// can never quietly stop covering something the pre-commit hook still refuses. That is the
+// shared-pattern invariant in AGENTS.md, held by a test rather than by good intentions.
+const SAMPLES: Record<string, string> = {
+  "anthropic key": "sk" + "-ant-" + "a".repeat(24),
+  "generic sk- key": "sk-" + "b".repeat(32),
+  "aws access key id": "AKIA" + "TESTONLYFAKEKEY1",
+  "github token": "ghp_" + "z".repeat(36),
+  "slack token": "xox" + "b-" + "0123456789",
+  "private key block": "-----BEGIN" + " RSA PRIVATE KEY-----",
+  "assigned credential": "api_key" + "=" + "c".repeat(24),
+};
+
+describe("findSecret", () => {
+  it("has a sample for every pattern, so none can be added untested", () => {
+    expect(Object.keys(SAMPLES).sort()).toEqual(SECRET_PATTERNS.map((p) => p.name).sort());
+  });
+
+  it("names the pattern it matched and never hands back the match", () => {
+    for (const [name, sample] of Object.entries(SAMPLES)) {
+      const found = findSecret(`a note that happens to say ${sample} in the middle of it`);
+      expect(found).toBe(name);
+      expect(found).not.toContain(sample.slice(0, 8));
+    }
+  });
+
+  it("finds nothing in ordinary text", () => {
+    expect(findSecret("Draft the outline, call the dentist, renew the domain")).toBeNull();
   });
 });

@@ -11,6 +11,8 @@ const STATUS: Record<string, number> = {
   exists: 409,
   invalid: 400,
   forbidden_path: 403,
+  // Well-formed, understood, and refused on its content (§11.5).
+  secret_rejected: 422,
 };
 
 export function ok(data: Record<string, unknown> = {}): Response {

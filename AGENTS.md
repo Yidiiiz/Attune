@@ -10,23 +10,42 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 |---|---|---|
 | 1 — Skeleton | complete | `47be387` |
 | 2 — Store, history, git | complete | `b931994` |
-| 3 — Today | **next** | — |
+| 2 follow-up — Decision 47 + amendments `c`–`f` | **next** | — |
+| 3 — Today | on hold, behind the follow-up | — |
 | 4–11 | not started | — |
 
 Carried forward, still unverified: `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed in Phase 1 against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal. Phase 2 re-ran the shutdown flush against a local bare remote and it pushed correctly (1 ahead → 0, no orphan `node`), but by `CTRL_BREAK_EVENT`: Windows disables `Ctrl+C` for a process group spawned with `CREATE_NEW_PROCESS_GROUP`, so a script cannot deliver the real thing. Both events enter the same handler in `scripts/dev.mjs`.
 
 Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/complete` with repeat materialization (Phase 3, which tests it), `/api/tasks/[id]/promote` (Phase 7, which has collections), and `history.streamingWrite()` (Phase 6, its only caller). `GET /api/tasks` returns the unranked list until `lib/schedule/rank.ts` exists.
 
+## Deferred amendments
+
+Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
+
+| # | Amendment | Agreed in | Lands in | State |
+|---|---|---|---|---|
+| a | `/api/settings` is GET-only until `runBatch` exists; `PUT` waits for it | Phase 1 approval | Phase 2 | closed — `PUT` landed in Phase 2 |
+| b | Drop the P/Invoke console-break harness | Phase 1 approval | Phase 1 | closed — never committed |
+| c | Guard against a stale `.git/index.lock`: on startup, if the lock exists and no `git` process is running, remove it and log once. `taskkill /T /F` can leave it behind when `Ctrl+C` lands mid-commit, and the next git operation then fails with a message that reads like repository corruption | Phase 1 approval | Phase 2 — **missed** | **outstanding** |
+| d | Record the resolved Next and React versions in `AGENTS.md`, not only in the phase report | Phase 1 approval | Phase 2 — **missed** | **outstanding** |
+| e | Log the resolved `REPO_DIR` once at startup whenever `ATTUNE_REPO_DIR` is set, so a stray shell export cannot silently point the app at the wrong directory | Phase 2 approval | Phase 2 — **missed** | **outstanding** |
+| f | `lib/schedule/dates.test.ts`, covering both 2026 `America/New_York` DST transitions (March 8, November 1) against the six functions `dates.ts` has now | Phase 2 approval | Phase 2 — **missed** | **outstanding** |
+| g | `daysBetween`/`daysUntil` DST tests, off-by-one a day each way across both 2026 transitions | Phase 2 review | Phase 3, with the functions themselves | **outstanding** |
+
+`c`–`f` were agreed for Phase 2 and did not land. They belong to the Phase 2 follow-up build, together with the Decision 47 amendment, before Phase 3 starts.
+
 ## How we work
 
 1. **Spec before code.** `PROJECT.md` and `AGENTS.md` came first; application code starts only when the owner asks for Phase 1.
 2. **`PROJECT.md` opens with a Decisions section**: every call left open in the brief, one line of reasoning each. Keep it current when a decision changes.
-3. **One phase at a time, in `PROJECT.md` §17 order.** Show a plan and wait for approval → build → run that phase's acceptance checks and report results honestly, failures included → commit → stop. Never roll into the next phase unprompted.
+3. **One phase at a time, in `PROJECT.md` §17 order.** Show a plan and wait for approval → record the approval's conditions (rule 9) → build → run that phase's acceptance checks and report results honestly, failures included → commit → stop. Never roll into the next phase unprompted.
 4. **One build commit per phase, plus a trailing `docs:` commit carrying the hash, and both use a development prefix.** `code:` for source and configuration, `docs:` for `PROJECT.md`, `AGENTS.md`, and the rest of the written spec. The trailing commit exists because a commit cannot contain its own hash; it does nothing but record the phase's result in the status block (rule 8). The other prefixes in the §8 vocabulary — `task:`, `knowledge:`, `chat:`, `settings:`, `file:` — belong to the running app: each describes a change to data under `data/`, is written by `runBatch`, and renders in the history mirror as `· task ·`. A phase build is never a `task:` commit. Messages read as if the owner wrote them. No AI attribution, no co-author trailers, no "generated with" footers, anywhere in this repo.
-5. **If a phase is bigger than it looked, say so and propose a split** rather than quietly building all of it.
+5. **If a phase is bigger than it looked, say so and propose a split** rather than quietly building all of it. On foundational work — anything later phases sit on — a review checkpoint is the default with an opt-out, never an offer. Propose the split as the plan, and let the owner collapse it; do not bury the checkpoint as an option at the end of a long plan, where declining to take it up reads as declining to have it.
 6. **If it is unclear whether something is a project feature or personal to the owner, ask.** Project = code, `seed/`, docs. Personal = anything under `data/`.
 7. **Prefer the boring solution.** Before adding a dependency, an abstraction, or a file over ~300 lines, say why first and wait.
 8. **Update the Phase status block as the last step of every phase**, in the trailing `docs:` commit described in rule 4: move the phase to complete with the build commit's hash, name the next one, and carry forward anything left unverified. The next session starts there.
+9. **Before building, write the approval's conditions into the Phase status block**, verbatim, as the first thing the build touches. Approvals arrive as prose in a chat and a chat gets compacted; conditions written into this file can be re-read instead of recalled. Anything deferred across a phase boundary goes in the Deferred amendments block at the same time.
+10. **Never reconstruct what was said from memory.** Claims about the record — what was approved, what a condition was, what was asked for — are checkable, so check them: re-read the file, or the transcript under `.claude/projects/`. If it cannot be checked from what is in context, say "I can't confirm this from what I have" and stop there. A confident wrong reconstruction is worse than an admitted gap, and the error tends to run in the direction that favors the reconstructor.
 
 ## Hard rules (from `PROJECT.md` §1)
 

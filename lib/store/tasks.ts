@@ -5,7 +5,9 @@
 // Failure behavior: a file whose frontmatter will not parse is skipped by `listTasks` and its path
 // is left in `listTasks.errors` for the Today tab to show as a one-line warning — one broken file
 // costs you that task, never the list. A sparse file (only a title) loads with defaults filled in,
-// and those repairs reach disk on its next save, not on read.
+// and those repairs reach disk on its next save, not on read. One thing is refused outright rather
+// than repaired: a `repeat` with neither `due` nor `scheduled` (Decision 52), because the write
+// would produce a task whose next instance cannot be computed.
 
 import { createHash } from "node:crypto";
 import { randomBytes } from "node:crypto";
@@ -219,6 +221,18 @@ export async function writeTask(task: Task): Promise<{ path: string }> {
   // field, and a loose schema would happily carry both into the YAML if they were not dropped here.
   const { path: _path, body: _body, ...rest } = task;
   const fields = TaskSchema.parse({ ...rest, createdAt: task.createdAt || now, updatedAt: now });
+
+  // Decision 52: a repeat interval has to advance from a date, and this task has none. Refused here
+  // rather than in a form, because the form is not the only writer — the agent, the promote path,
+  // and a hand-edited file all arrive through this function. The guard is on the write and not on
+  // the schema on purpose: `parseTask` uses the same schema, and a file already in this state must
+  // still load, or one bad edit would cost you the task instead of the save.
+  if (fields.repeat !== null && fields.due === null && fields.scheduled === null) {
+    throw new StoreError(
+      "invalid",
+      `'${fields.title}' repeats ${fields.repeat}, but a repeat needs a date to advance from: set a due date or schedule it`,
+    );
+  }
   const record: Record<string, unknown> = {};
   for (const key of FIELD_ORDER) record[key] = fields[key];
   for (const [key, value] of Object.entries(fields)) {

@@ -146,8 +146,12 @@ export function nextInstance(task: Task): TaskDraft | null {
     links: [...task.links],
     repeat: task.repeat,
     repeatUntil: task.repeatUntil,
+    // `source` records where the work came from, so it carries forward (§4.1). `collection` does
+    // not: it is a one-to-one backlink to the list item that became a task, and the collection's
+    // own `tasks` array holds only the first instance. Two tasks pointing at the same item would
+    // be a broken link in both directions.
     source: task.source,
-    collection: task.collection,
+    collection: null,
     createdBy: task.createdBy,
     // Checkboxes come back unticked: the subtasks are the work, and the work is ahead again.
     body: task.body.replace(/^(\s*[-*]\s*\[)[xX](\])/gm, "$1 $2"),

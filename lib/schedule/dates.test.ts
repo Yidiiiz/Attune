@@ -3,11 +3,23 @@
 // EST, so 01:30 happens twice). Every instant below is written in UTC and asserted in local terms,
 // which is the only way to catch a function that formats the machine's zone instead of the user's.
 //
-// The ranking helpers (daysBetween, daysUntil) arrive with lib/schedule/rank.ts in Phase 3 and are
-// tested there; building them early to test them here would be building Phase 3.
+// The ranking helpers arrive with rank.ts in Phase 3, and their DST tests (amendment `g`) are at the
+// bottom of this file: off-by-one a day each way across both transitions, which is the failure mode
+// a local-time implementation has and a UTC-anchored one does not.
 
 import { describe, expect, it } from "vitest";
-import { datePart, nowIso, splitLocalIso, todayIn, zonedParts, zoneOffset } from "./dates.ts";
+import {
+  advanceDate,
+  datePart,
+  daysBetween,
+  daysUntil,
+  minutesFromMidnight,
+  nowIso,
+  splitLocalIso,
+  todayIn,
+  zonedParts,
+  zoneOffset,
+} from "./dates.ts";
 
 const NY = "America/New_York";
 const at = (iso: string) => new Date(iso);
@@ -110,5 +122,102 @@ describe("datePart", () => {
   it("takes the date half of a due value whether or not it has a time", () => {
     expect(datePart("2026-03-08")).toBe("2026-03-08");
     expect(datePart("2026-03-08T14:00:00-05:00")).toBe("2026-03-08");
+  });
+});
+
+// --- Amendment `g`: the ranking helpers across both 2026 transitions ---------------------------
+//
+// March 8 is a 23-hour day in New York and November 1 is a 25-hour one. A `daysBetween` built on
+// local `Date` arithmetic is off by one in opposite directions on those two days — short day floors
+// down, long day floors up — so each transition is checked from both sides and across itself.
+
+describe("daysBetween", () => {
+  it("counts one day across the 23-hour spring-forward day", () => {
+    expect(daysBetween("2026-03-07", "2026-03-08")).toBe(1);
+    expect(daysBetween("2026-03-08", "2026-03-09")).toBe(1);
+    expect(daysBetween("2026-03-07", "2026-03-09")).toBe(2);
+  });
+
+  it("counts one day across the 25-hour fall-back day", () => {
+    expect(daysBetween("2026-10-31", "2026-11-01")).toBe(1);
+    expect(daysBetween("2026-11-01", "2026-11-02")).toBe(1);
+    expect(daysBetween("2026-10-31", "2026-11-02")).toBe(2);
+  });
+
+  it("is signed, and symmetric across each transition", () => {
+    expect(daysBetween("2026-03-09", "2026-03-07")).toBe(-2);
+    expect(daysBetween("2026-11-02", "2026-10-31")).toBe(-2);
+    expect(daysBetween("2026-03-08", "2026-03-08")).toBe(0);
+  });
+
+  it("spans a whole transition without drifting", () => {
+    expect(daysBetween("2026-03-01", "2026-04-01")).toBe(31);
+    expect(daysBetween("2026-10-15", "2026-11-15")).toBe(31);
+    // Both transitions inside one span: a drifting implementation nets out to zero here and would
+    // pass, so the two one-sided spans above are the ones that actually catch it.
+    expect(daysBetween("2026-01-01", "2027-01-01")).toBe(365);
+  });
+
+  it("reads only the date half of a value that carries a time", () => {
+    expect(daysBetween("2026-03-07T23:30", "2026-03-08T00:30")).toBe(1);
+    expect(daysBetween("2026-11-01T01:30", "2026-11-01T23:30")).toBe(0);
+  });
+
+  it("throws on a value that is not a date rather than returning NaN", () => {
+    expect(() => daysBetween("tomorrow", "2026-03-08")).toThrow(/not a YYYY-MM-DD date/);
+  });
+});
+
+describe("daysUntil", () => {
+  it("is positive for a future due date and negative for a past one", () => {
+    expect(daysUntil("2026-03-08", "2026-03-09")).toBe(1);
+    expect(daysUntil("2026-03-08", "2026-03-07")).toBe(-1);
+    expect(daysUntil("2026-11-01", "2026-11-02")).toBe(1);
+    expect(daysUntil("2026-11-01", "2026-10-31")).toBe(-1);
+  });
+
+  it("is 0 on the due date itself, on both transition days", () => {
+    expect(daysUntil("2026-03-08", "2026-03-08")).toBe(0);
+    expect(daysUntil("2026-11-01", "2026-11-01")).toBe(0);
+  });
+
+  it("is null for a task with no deadline", () => {
+    expect(daysUntil("2026-03-08", null)).toBeNull();
+  });
+});
+
+describe("minutesFromMidnight", () => {
+  it("reads the local clock, not the machine's", () => {
+    expect(minutesFromMidnight(SPRING_BEFORE, NY)).toBe(90); // 01:30
+    expect(minutesFromMidnight(SPRING_AFTER, NY)).toBe(210); // 03:30, the gap skipped
+    expect(minutesFromMidnight(SPRING_BEFORE, "UTC")).toBe(390); // 06:30
+  });
+
+  it("gives the same minute for both 01:30s on November 1", () => {
+    expect(minutesFromMidnight(FALL_FIRST, NY)).toBe(90);
+    expect(minutesFromMidnight(FALL_SECOND, NY)).toBe(90);
+  });
+});
+
+describe("advanceDate", () => {
+  it("steps daily, weekly and biweekly across a transition without shifting the date", () => {
+    expect(advanceDate("2026-03-07", "daily")).toBe("2026-03-08");
+    expect(advanceDate("2026-03-08", "daily")).toBe("2026-03-09");
+    expect(advanceDate("2026-03-07", "weekly")).toBe("2026-03-14");
+    expect(advanceDate("2026-10-31", "weekly")).toBe("2026-11-07");
+    expect(advanceDate("2026-10-25", "biweekly")).toBe("2026-11-08");
+  });
+
+  it("adds a calendar month and clamps to the last day", () => {
+    expect(advanceDate("2026-01-31", "monthly")).toBe("2026-02-28");
+    expect(advanceDate("2028-01-31", "monthly")).toBe("2028-02-29"); // leap year
+    expect(advanceDate("2026-03-31", "monthly")).toBe("2026-04-30");
+    expect(advanceDate("2026-01-15", "monthly")).toBe("2026-02-15");
+    expect(advanceDate("2026-12-15", "monthly")).toBe("2027-01-15");
+  });
+
+  it("keeps a time on the value", () => {
+    expect(advanceDate("2026-03-07T09:00", "daily")).toBe("2026-03-08T09:00");
+    expect(advanceDate("2026-01-31T14:30", "monthly")).toBe("2026-02-28T14:30");
   });
 });

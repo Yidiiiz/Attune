@@ -7,7 +7,8 @@
 // deliberate: a frontmatter-only edit records `fields` so undo restores exactly those keys, and a
 // body edit records `content` because there is no smaller honest description of it.
 
-import { nowIso } from "../schedule/dates.ts";
+import { advanceDate, datePart, nowIso } from "../schedule/dates.ts";
+import { StoreError } from "../store/paths.ts";
 import type { ActionSpec, Store } from "./batch.ts";
 import type { Snapshots } from "./log.ts";
 import type { Task, TaskFields } from "../store/tasks.ts";
@@ -108,6 +109,81 @@ export function deleteTask(id: string, summary?: string): ActionSpec {
       const before = await store.snapshotContent(rel);
       await store.tasks.deleteTask(id);
       return { targets: [rel], before: single(rel, before), after: single(rel, null) };
+    },
+  };
+}
+
+/**
+ * The next occurrence of a repeating task, or null when there is not going to be one (§4.1).
+ *
+ * Pure and exported so the complete route can decide whether its batch needs a second action
+ * without reaching into the store twice. Two cases return null besides "no repeat":
+ *
+ * - **No `due` and no `scheduled`.** There is nothing to advance from. A repeat rule describes an
+ *   interval between dates, and inventing an anchor from the completion time would quietly turn
+ *   "every Monday" into "every seven days from whenever I got round to it".
+ * - **Past `repeatUntil`.** The series has ended, which is the whole point of the field.
+ */
+export function nextInstance(task: Task): TaskDraft | null {
+  if (task.repeat === null) return null;
+
+  const due = task.due === null ? null : advanceDate(task.due, task.repeat);
+  const scheduled = task.scheduled === null ? null : advanceDate(task.scheduled, task.repeat);
+  const anchor = due ?? scheduled;
+  if (anchor === null) return null;
+  if (task.repeatUntil && datePart(anchor) > datePart(task.repeatUntil)) return null;
+
+  return {
+    title: task.title,
+    status: "todo",
+    priority: task.priority,
+    estimateMin: task.estimateMin,
+    due,
+    scheduled,
+    category: task.category,
+    context: task.context,
+    tags: [...task.tags],
+    links: [...task.links],
+    repeat: task.repeat,
+    repeatUntil: task.repeatUntil,
+    source: task.source,
+    collection: task.collection,
+    createdBy: task.createdBy,
+    // Checkboxes come back unticked: the subtasks are the work, and the work is ahead again.
+    body: task.body.replace(/^(\s*[-*]\s*\[)[xX](\])/gm, "$1 $2"),
+  };
+}
+
+/**
+ * Mark one task done. The next instance of a repeating task is a separate `task.create` action in
+ * the same batch (§14), built from `nextInstance` by the caller — which is what makes one undo
+ * remove both: they share a batch, and undo reverses a batch whole.
+ *
+ * Snapshots are field-level, so undoing a completion restores exactly `status`, `completedAt` and
+ * `updatedAt` and leaves anything edited since alone.
+ */
+export function completeTask(id: string, summary?: string): ActionSpec {
+  return {
+    type: "task.complete",
+    summary: summary ?? `Complete '${id}'`,
+    apply: async (store: Store) => {
+      const task = await store.tasks.readTask(id);
+      if (task.status === "done") {
+        throw new StoreError("invalid", `'${task.title}' is already complete`);
+      }
+
+      const rel = task.path;
+      const keys = ["status", "completedAt", "updatedAt"];
+      const before = await store.snapshotFields(rel, keys);
+      const completedAt = nowIso((await store.settings.readSettings()).timezone);
+
+      await store.tasks.writeTask({ ...task, status: "done", completedAt });
+
+      return {
+        targets: [rel],
+        before: single(rel, before),
+        after: single(rel, await store.snapshotFields(rel, keys)),
+      };
     },
   };
 }

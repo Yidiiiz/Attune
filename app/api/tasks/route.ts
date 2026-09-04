@@ -1,11 +1,18 @@
-// Owns: listing tasks and creating them in one batch (PROJECT.md §14).
-// GET returns the unranked list this phase; `rankDay` arrives with lib/schedule/rank.ts in Phase 3
-// and slots in here without changing the response shape's `tasks` key.
+// Owns: listing tasks for a day and creating them in one batch (PROJECT.md §14).
+//
+// GET answers with both shapes: `tasks` is still the whole unranked list, unchanged from Phase 2,
+// and the four §10.1 sections are alongside it. A task appears at most twice in the response, which
+// on a local single-user app is cheaper than making every caller re-run the ranker to interpret a
+// list of ids.
 
 import { z } from "zod";
 import { runBatch } from "@/lib/history/batch";
 import { createTask } from "@/lib/history/actions";
 import { listTasks } from "@/lib/store/tasks";
+import { readSettings } from "@/lib/store/settings";
+import { rankDay } from "@/lib/schedule/rank";
+import { todayIn } from "@/lib/schedule/dates";
+import { StoreError } from "@/lib/store/paths";
 import { body, handle, ok } from "../respond";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +40,22 @@ const CreateBody = z.object({
   actor: z.enum(["user", "agent"]).default("user"),
 });
 
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   return handle(async () => {
+    const settings = await readSettings();
+    const asked = new URL(request.url).searchParams.get("date");
+    if (asked !== null && !/^\d{4}-\d{2}-\d{2}$/.test(asked)) {
+      throw new StoreError("invalid", `date must be YYYY-MM-DD: ${asked}`);
+    }
+
+    const date = asked ?? todayIn(settings.timezone);
     const tasks = await listTasks();
-    return ok({ tasks, errors: listTasks.errors });
+    return ok({
+      date,
+      ...rankDay(tasks, date, settings, new Date()),
+      tasks,
+      errors: listTasks.errors,
+    });
   });
 }
 

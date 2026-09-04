@@ -1,0 +1,73 @@
+/* Toasts sit in z-tier 40, the top tier (AGENTS.md conventions). */
+
+.host {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 40px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  animation: life 7s ease-in-out forwards;
+}
+
+.error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.close {
+  flex: none;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--fg);
+}
+
+@keyframes life {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  4%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: life 7s steps(1, end) forwards;
+  }
+}

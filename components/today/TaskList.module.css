@@ -1,0 +1,360 @@
+/*
+ * The Today body: the four sections, a row and its chips, the `⋯` menu, and the inline edit form.
+ * The menu is z-tier 20 (an in-scroll surface); nothing else here leaves the flow.
+ */
+
+.today {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 20px 24px 64px;
+}
+
+.warning {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+/* The Ask-mode stub. The composer sheet itself is Phase 5's (§9.1). */
+.ask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.askMode {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.askDot {
+  color: var(--fg-faint);
+}
+
+.askTitle {
+  font-weight: 500;
+}
+
+.askNote {
+  flex: 1;
+  color: var(--fg-muted);
+}
+
+.askClose {
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.overdueHeading {
+  color: var(--overdue);
+}
+
+.toggleHeading {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.caret {
+  width: 10px;
+  color: var(--fg-faint);
+}
+
+.count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 6px 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.overdueRow {
+  border-left: 3px solid var(--overdue);
+  border-radius: 2px 0 0 2px;
+  padding-left: 7px;
+}
+
+.muted {
+  color: var(--fg-muted);
+}
+
+.muted .title {
+  color: var(--fg-muted);
+}
+
+.busy {
+  opacity: 0.55;
+}
+
+.editing {
+  display: block;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.check {
+  margin: 3px 0 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.struck {
+  color: var(--fg-faint);
+  text-decoration: line-through;
+}
+
+.context {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.chip {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--fg-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.chipOverdue {
+  border-color: var(--overdue);
+  color: var(--overdue);
+}
+
+.menuWrap {
+  position: relative;
+  flex: none;
+}
+
+.menuButton {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+
+.menu {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 172px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+}
+
+.menu button {
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu button:hover {
+  background: var(--bg-sunken);
+}
+
+.menu .danger {
+  color: var(--danger);
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.empty {
+  margin: 40px 0;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+/* --- the inline edit form --- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.formTitle {
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 500;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.formGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.formGrid input,
+.formGrid select {
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.formNotes {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  resize: vertical;
+}
+
+.formError {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.formButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.formButtons button,
+.primary {
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.formButtons .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}

@@ -8,6 +8,7 @@
 
 import type { Metadata } from "next";
 import Tabs from "@/components/shell/Tabs";
+import ToastHost from "@/components/shell/Toast";
 import { readSettings } from "@/lib/store/settings";
 import "./theme.css";
 
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <Tabs />
         <main>{children}</main>
+        <ToastHost />
       </body>
     </html>
   );

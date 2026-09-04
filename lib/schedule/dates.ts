@@ -116,6 +116,14 @@ export function daysUntil(viewDate: string, due: string | null): number | null {
   return due ? daysBetween(viewDate, due) : null;
 }
 
+/**
+ * The date `days` calendar days from `value`, date-only. Day navigation on Today is this and
+ * nothing else: `?date=` moves by one, and a 23-hour day still counts as one.
+ */
+export function addDays(value: string, days: number): string {
+  return new Date(dateAnchor(value) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
 /** Minutes since local midnight, the unit `settings.day` and the timeline are written in. */
 export function minutesFromMidnight(at: Date, timeZone: string): number {
   const p = zonedParts(at, timeZone);
@@ -137,10 +145,7 @@ export function advanceDate(value: string, repeat: Repeat): string {
   const time = value.length > 10 ? value.slice(10) : "";
   const anchor = new Date(dateAnchor(value));
 
-  if (repeat !== "monthly") {
-    const next = new Date(anchor.getTime() + STEP_DAYS[repeat] * DAY_MS);
-    return `${next.toISOString().slice(0, 10)}${time}`;
-  }
+  if (repeat !== "monthly") return `${addDays(value, STEP_DAYS[repeat])}${time}`;
 
   const year = anchor.getUTCFullYear();
   const month = anchor.getUTCMonth();

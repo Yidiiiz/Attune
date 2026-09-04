@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  addDays,
   advanceDate,
   datePart,
   daysBetween,
@@ -219,5 +220,27 @@ describe("advanceDate", () => {
   it("keeps a time on the value", () => {
     expect(advanceDate("2026-03-07T09:00", "daily")).toBe("2026-03-08T09:00");
     expect(advanceDate("2026-01-31T14:30", "monthly")).toBe("2026-02-28T14:30");
+  });
+});
+
+describe("addDays", () => {
+  it("moves a day at a time across both transitions", () => {
+    expect(addDays("2026-03-07", 1)).toBe("2026-03-08"); // into the 23-hour day
+    expect(addDays("2026-03-08", 1)).toBe("2026-03-09"); // out of it
+    expect(addDays("2026-11-01", 1)).toBe("2026-11-02"); // out of the 25-hour day
+    expect(addDays("2026-11-01", -1)).toBe("2026-10-31");
+  });
+
+  it("crosses month and year boundaries", () => {
+    expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2027-01-01", -1)).toBe("2026-12-31");
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29"); // leap day
+  });
+
+  it("is the inverse of daysBetween, and drops any time on the value", () => {
+    expect(addDays("2026-09-08", daysBetween("2026-09-08", "2026-10-30"))).toBe("2026-10-30");
+    expect(addDays("2026-09-08T16:00", 1)).toBe("2026-09-09");
+    expect(addDays("2026-09-08", 0)).toBe("2026-09-08");
   });
 });

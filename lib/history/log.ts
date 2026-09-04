@@ -3,10 +3,10 @@
 // in-place edit is filling the `commit` field of lines written moments earlier, once git has told
 // us the hash; that is done by rewriting the file from the offset those lines began at.
 //
-// Because the backfill happens after the commit, `actions.jsonl` and the mirror are modified in the
-// working tree immediately after every batch, and the next batch's `git add -A -- data` sweeps them
-// in. That trailing dirt is inherent to §7.1 step 4 and is the reason `git status` is rarely clean
-// under `data/history/` (Decision 47).
+// That edit is deferred by one batch, so nothing under `data/` is written after the commit that
+// contains it: a batch appends its entries with `commit: null`, and the *next* batch fills in that
+// hash before appending its own. The working tree is clean after every successful batch, and the
+// newest batch is the only one whose hash is outstanding (Decision 47).
 //
 // Failure behavior: a line that will not parse is skipped rather than fatal, and its absence costs
 // exactly one undoable batch. A mirror that cannot be regenerated is logged and swallowed: the
@@ -61,25 +61,43 @@ export interface Batch {
   type: ActionType;
   summary: string;
   commit: string | null;
+  /** Why `commit` is what it is, so §7.5 can say so instead of inferring it from a bare null. */
+  commitState: CommitState;
   entries: ActionEntry[];
 }
 
-export async function readActions(): Promise<ActionEntry[]> {
-  let text: string;
+/**
+ * `pending` — the hash is coming from the next batch's backfill.
+ * `never` — the batch ran with `commit: false` and was never going to have one.
+ * `failed` — git refused; `meta.commitError` says what it said.
+ */
+export type CommitState = "committed" | "pending" | "never" | "failed";
+
+/** Read the marker `runBatch` wrote at the moment it knew why there would be no hash. */
+export function nullReason(entry: ActionEntry): CommitState {
+  if (entry.meta?.noCommit === true) return "never";
+  if (entry.meta?.commitFailed === true) return "failed";
+  return "pending";
+}
+
+/** The raw log. Missing is not an error: an empty history and no history read the same. */
+export async function readLogText(): Promise<string> {
   try {
-    text = await readText(LOG_PATH);
+    return await readText(LOG_PATH);
   } catch {
-    return [];
+    return "";
   }
+}
+
+export async function readActions(): Promise<ActionEntry[]> {
+  const text = await readLogText();
 
   const entries: ActionEntry[] = [];
   for (const line of text.split("\n")) {
     if (line.trim().length === 0) continue;
-    try {
-      entries.push(JSON.parse(line) as ActionEntry);
-    } catch {
-      // a torn or hand-mangled line: skip it, keep the rest of the history readable
-    }
+    // a torn or hand-mangled line is skipped, not fatal: the rest of the history stays readable
+    const entry = parseLine(line);
+    if (entry) entries.push(entry);
   }
   return entries;
 }
@@ -102,13 +120,17 @@ export function groupBatches(entries: ActionEntry[]): Batch[] {
         // batch did, not what its first action did. runBatch stores the batch summary in meta.
         summary: typeof entry.meta?.batchSummary === "string" ? entry.meta.batchSummary : entry.summary,
         commit: entry.commit,
+        commitState: entry.commit ? "committed" : nullReason(entry),
         entries: [],
       };
       byId.set(entry.batch, batch);
       order.push(entry.batch);
     }
     batch.entries.push(entry);
-    if (entry.commit) batch.commit = entry.commit;
+    if (entry.commit) {
+      batch.commit = entry.commit;
+      batch.commitState = "committed";
+    }
   }
 
   return order.map((id) => byId.get(id) as Batch);
@@ -129,8 +151,69 @@ export async function appendActions(entries: ActionEntry[]): Promise<number> {
   return offset;
 }
 
-/** Fill in `commit` on the lines written at `offset` and after. The log's one in-place edit. */
-export async function setBatchCommit(offset: number, batch: string, commit: string): Promise<void> {
+function parseLine(line: string): ActionEntry | null {
+  try {
+    return JSON.parse(line) as ActionEntry;
+  } catch {
+    return null;
+  }
+}
+
+/** Where a batch's lines begin, and what its commit message must say for a hash to be its own. */
+export interface PendingCommit {
+  batch: string;
+  subject: string;
+  /** Byte offset of the batch's first line, so a rewrite touches nothing earlier. */
+  offset: number;
+}
+
+/**
+ * The one batch whose hash is still outstanding: the newest run of `commit: null` lines, grouped by
+ * batch id, and only the last of those groups. Older nulls are permanent — a batch that ran with
+ * `commit: false`, or one whose commit failed — and stamping one with a later batch's hash would be
+ * worse than leaving it null, because a null is visibly unresolved and a wrong hash is not.
+ */
+export function pendingCommit(text: string): PendingCommit | null {
+  const lines = text.split("\n");
+  const offsets: number[] = [];
+  let at = 0;
+  for (const line of lines) {
+    offsets.push(at);
+    at += Buffer.byteLength(line, "utf8") + 1; // the newline every append writes
+  }
+
+  let end = lines.length - 1;
+  while (end >= 0 && lines[end].trim().length === 0) end -= 1;
+  if (end < 0) return null;
+
+  const last = parseLine(lines[end]);
+  if (!last || last.commit || nullReason(last) !== "pending") return null;
+
+  // Without the subject there is nothing to check a hash against, and an unchecked hash is the
+  // failure this whole mechanism exists to avoid.
+  const subject = last.meta?.commitSubject;
+  if (typeof subject !== "string" || subject.length === 0) return null;
+
+  let start = end;
+  for (let i = end - 1; i >= 0; i -= 1) {
+    if (lines[i].trim().length === 0) continue;
+    const entry = parseLine(lines[i]);
+    if (!entry || entry.batch !== last.batch) break;
+    start = i;
+  }
+
+  return { batch: last.batch, subject, offset: offsets[start] };
+}
+
+/**
+ * The log's one in-place edit: complete the lines at `offset` and after that belong to `batch`.
+ * Entries are never added or removed here, only filled in.
+ */
+async function rewriteTail(
+  offset: number,
+  batch: string,
+  patch: (entry: ActionEntry) => void,
+): Promise<void> {
   const tail = await readTail(LOG_PATH, offset);
   if (tail.length === 0) return;
 
@@ -138,18 +221,28 @@ export async function setBatchCommit(offset: number, batch: string, commit: stri
     .split("\n")
     .map((line) => {
       if (line.trim().length === 0) return line;
-      try {
-        const entry = JSON.parse(line) as ActionEntry;
-        if (entry.batch !== batch || entry.commit) return line;
-        entry.commit = commit;
-        return JSON.stringify(entry);
-      } catch {
-        return line;
-      }
+      const entry = parseLine(line);
+      if (!entry || entry.batch !== batch) return line;
+      patch(entry);
+      return JSON.stringify(entry);
     })
     .join("\n");
 
   await replaceTail(LOG_PATH, offset, patched);
+}
+
+/** Fill in `commit` on a batch's lines, once the batch after it has read the hash back from git. */
+export async function setBatchCommit(offset: number, batch: string, commit: string): Promise<void> {
+  await rewriteTail(offset, batch, (entry) => {
+    if (!entry.commit) entry.commit = commit;
+  });
+}
+
+/** Record that a batch will never have a hash, and what git said. */
+export async function markCommitFailed(offset: number, batch: string, error: string): Promise<void> {
+  await rewriteTail(offset, batch, (entry) => {
+    entry.meta = { ...entry.meta, commitFailed: true, commitError: error };
+  });
 }
 
 const MIRROR_HEADER =

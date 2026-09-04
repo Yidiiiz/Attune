@@ -67,6 +67,27 @@ export async function commitPaths(message: string, paths: string[]): Promise<str
   return await git(["rev-parse", "--short", "HEAD"]);
 }
 
+export interface HeadCommit {
+  hash: string;
+  subject: string;
+}
+
+/**
+ * HEAD's short hash and subject line. The subject is what makes the deferred backfill safe: a hash
+ * belongs to a pending batch only if HEAD is still the commit that batch made. A failed commit, or
+ * one made by hand between batches, changes the subject rather than going unnoticed (Decision 47).
+ */
+export async function headCommit(): Promise<HeadCommit | null> {
+  const out = await gitOk(["log", "-1", "--format=%h%n%s"]);
+  if (out === null) return null;
+
+  const cut = out.indexOf("\n");
+  if (cut < 0) return null;
+  const hash = out.slice(0, cut).trim();
+  const subject = out.slice(cut + 1).trim();
+  return hash.length > 0 ? { hash, subject } : null;
+}
+
 function classify(message: string): { state: SyncState; text: string } {
   if (/could not resolve host|network is unreachable|failed to connect|timed out/i.test(message)) {
     return { state: "offline", text: "Offline. The commit is safe locally and will push next time." };

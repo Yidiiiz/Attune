@@ -8,6 +8,7 @@
 // already undone returns a reason. Nothing here truncates or rewrites history (§7.2).
 
 import { applySnapshot, runBatch } from "./batch.ts";
+import * as git from "./git.ts";
 import { groupBatches, readActions } from "./log.ts";
 import type { Batch, Snapshots } from "./log.ts";
 
@@ -74,10 +75,28 @@ async function load(batchId: string): Promise<{ batches: Batch[]; target: Batch 
 }
 
 /**
- * Apply the inverse of every action in `target`, newest first, as one new logged batch.
- * `direction` picks which side of each entry's snapshots is restored.
+ * The newest batch's hash is filled in by the batch after it (Decision 47), so undoing the newest
+ * `code.change` would meet `commit: null` and a `{ git: true }` snapshot it cannot restore without
+ * one. Resolve it from HEAD under the same subject guard the backfill uses; a batch that is null for
+ * any other reason — never committing, or a failed commit — has no hash to find.
  */
-function reverseAction(target: Batch, direction: "undo" | "redo") {
+async function resolveCommit(target: Batch): Promise<string | null> {
+  if (target.commit) return target.commit;
+  if (target.commitState !== "pending") return null;
+
+  const subject = target.entries[0]?.meta?.commitSubject;
+  if (typeof subject !== "string" || subject.length === 0) return null;
+
+  const head = await git.headCommit();
+  return head && head.subject === subject ? head.hash : null;
+}
+
+/**
+ * Apply the inverse of every action in `target`, newest first, as one new logged batch.
+ * `direction` picks which side of each entry's snapshots is restored. `commit` stands in for a log
+ * line whose hash has not been backfilled yet.
+ */
+function reverseAction(target: Batch, direction: "undo" | "redo", commit: string | null) {
   return {
     type: direction,
     summary: target.summary,
@@ -93,7 +112,7 @@ function reverseAction(target: Batch, direction: "undo" | "redo") {
         for (const [rel, snap] of Object.entries(restore)) {
           if (!targets.includes(rel)) targets.push(rel);
           before[rel] = current[rel] ?? null;
-          await applySnapshot(rel, snap, entry.commit);
+          await applySnapshot(rel, snap, entry.commit ?? commit);
           after[rel] = snap;
         }
       }
@@ -113,13 +132,14 @@ export async function undoBatch(batchId: string, opts: { force?: boolean } = {})
   const conflict = findConflicts(batches, batchId);
   if (conflict.length > 0 && !opts.force) return { ok: false, conflict };
 
+  const commit = await resolveCommit(target);
   const result = await runBatch({
     actor: "user",
     scope: target.scope,
     summary: target.summary,
     commitPrefix: "undo",
     meta: { undoes: batchId },
-    actions: [reverseAction(target, "undo")],
+    actions: [reverseAction(target, "undo", commit)],
   });
   return { ok: true, batch: result.batch, commit: result.commit };
 }
@@ -131,13 +151,14 @@ export async function redoBatch(batchId: string): Promise<UndoResult> {
   const state = undoState(batches, batchId);
   if (!state.redoable) return { ok: false, reason: state.reason ?? "redo unavailable" };
 
+  const commit = await resolveCommit(target);
   const result = await runBatch({
     actor: "user",
     scope: target.scope,
     summary: target.summary,
     commitPrefix: "redo",
     meta: { redoes: batchId },
-    actions: [reverseAction(target, "redo")],
+    actions: [reverseAction(target, "redo", commit)],
   });
   return { ok: true, batch: result.batch, commit: result.commit };
 }

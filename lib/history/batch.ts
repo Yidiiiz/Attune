@@ -5,7 +5,8 @@
 // Failure behavior: if an action throws, the actions that already ran are rolled back from their
 // `before` snapshots newest first, nothing is logged, and the error reaches the caller — a half-
 // applied batch is the one outcome undo could not describe. If git fails the batch stays logged with
-// `commit: null`, still undoable from its inline snapshots, and the sync indicator says so.
+// `commit: null` and `meta.commitFailed`, still undoable from its inline snapshots, and the sync
+// indicator says so.
 
 import { randomBytes } from "node:crypto";
 import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
@@ -15,7 +16,15 @@ import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
 import * as git from "./git.ts";
-import { appendActions, nextSeq, regenerateMirror, setBatchCommit } from "./log.ts";
+import {
+  appendActions,
+  markCommitFailed,
+  nextSeq,
+  pendingCommit,
+  readLogText,
+  regenerateMirror,
+  setBatchCommit,
+} from "./log.ts";
 import type { ActionEntry, ActionType, Snapshot, Snapshots } from "./log.ts";
 import { enqueue } from "./queue.ts";
 
@@ -57,6 +66,11 @@ export interface BatchSpec {
 
 export interface BatchResult {
   batch: string;
+  /**
+   * The hash of the commit this batch made, read back for the caller. The log's own `commit` field
+   * is still null at this point and is filled in by the next batch (Decision 47); this is a read,
+   * not a write, so handing it back costs the working tree nothing.
+   */
   commit: string | null;
   seq: number[];
 }
@@ -141,12 +155,40 @@ async function rollback(applied: Applied[]): Promise<void> {
   }
 }
 
-/** §7.1, in order: apply → log → mirror → commit → backfill the hash → schedule the push. */
+/**
+ * Fill in the hash of the batch before this one. Deferring the backfill by a batch is what keeps the
+ * working tree clean (Decision 47); the subject check is what keeps it correct, because HEAD is not
+ * always the pending batch's commit — that commit may have failed, or one may have been made by hand
+ * in between. On a mismatch the null is left alone: a null is still recoverable from HEAD later, and
+ * a wrong hash would not be recoverable at all.
+ */
+async function backfillPrevious(): Promise<void> {
+  try {
+    const pending = pendingCommit(await readLogText());
+    if (!pending) return;
+
+    const head = await git.headCommit();
+    if (!head || head.subject !== pending.subject) return;
+
+    await setBatchCommit(pending.offset, pending.batch, head.hash);
+  } catch (err) {
+    // A missing hash costs one mirror line its suffix. It must never cost the batch about to run.
+    console.error(`history: could not backfill the previous hash (${(err as Error).message})`);
+  }
+}
+
+/**
+ * §7.1, in order: apply → backfill the previous batch's hash → log → mirror → commit → schedule the
+ * push. Everything that writes under `data/` happens before the commit that sweeps it up, so the
+ * tree is clean when the batch returns, and this batch's own hash waits for the next one.
+ */
 export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
   return enqueue(async () => {
     const settings = await settingsStore.readSettings();
     const batch = batchId(settings.timezone);
     const ts = nowIso(settings.timezone);
+    const subject = `${spec.commitPrefix}: ${spec.summary}`;
+    const willCommit = spec.commit !== false;
 
     const applied: Applied[] = [];
     try {
@@ -157,6 +199,8 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       await rollback(applied);
       throw err;
     }
+
+    await backfillPrevious();
 
     const seqStart = await nextSeq();
     const entries: ActionEntry[] = applied.map((step, index) => ({
@@ -172,25 +216,34 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       before: step.before,
       after: step.after,
       commit: null,
-      meta: { ...(spec.meta ?? {}), batchSummary: spec.summary },
+      meta: {
+        ...(spec.meta ?? {}),
+        batchSummary: spec.summary,
+        // Either the subject the next batch's backfill must match, or the marker saying this batch
+        // was never going to have a hash. Every null in the log explains itself (Decision 47).
+        ...(willCommit ? { commitSubject: subject } : { noCommit: true }),
+      },
     }));
 
     const offset = await appendActions(entries);
     await regenerateMirror();
+    if (!willCommit) return { batch, commit: null, seq: entries.map((entry) => entry.seq) };
 
     let commit: string | null = null;
-    if (spec.commit !== false) {
-      const paths = ["data", ...(spec.repoPaths ?? [])];
-      try {
-        commit = await git.commitPaths(`${spec.commitPrefix}: ${spec.summary}`, paths);
-      } catch (err) {
-        console.error(`history: commit failed (${(err as Error).message}); the batch is logged and undoable`);
+    const paths = ["data", ...(spec.repoPaths ?? [])];
+    try {
+      commit = await git.commitPaths(subject, paths);
+      if (commit === null) {
+        // `data/` is tracked and a log line was just written, so this should be unreachable. If it
+        // ever happens the entry says so rather than sitting on an unexplained null.
+        await markCommitFailed(offset, batch, "nothing to commit");
+      } else if (settings.sync.autoPush) {
+        git.schedulePush(settings.sync.pushDebounceMs);
       }
-      if (commit) {
-        await setBatchCommit(offset, batch, commit);
-        await regenerateMirror();
-        if (settings.sync.autoPush) git.schedulePush(settings.sync.pushDebounceMs);
-      }
+    } catch (err) {
+      const message = `${(err as Error).message}`.split("\n")[0].trim();
+      console.error(`history: commit failed (${message}); the batch is logged and undoable`);
+      await markCommitFailed(offset, batch, message);
     }
 
     return { batch, commit, seq: entries.map((entry) => entry.seq) };

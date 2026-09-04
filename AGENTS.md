@@ -12,14 +12,19 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 2 — Store, history, git | complete | `b931994` |
 | 2 follow-up — Decision 47 + amendments `c`–`f` | complete | `4ff884a`, `2cf20cf`, `492c035` |
 | 2 follow-up — amendment `h`, the write-path secret scan | complete | `4682fab` |
-| 3 — Today | **next** | — |
-| 4–11 | not started | — |
+| 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
+| 4 — Calendar | **next** | — |
+| 5–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
+Phase 3 carries three for the same reason — Stage A (`ec54cd4`), the three corrections its review asked for (`9c1939a`), and Stages B and C together (`78bd6b9`) — each preceded by the `docs:` commit recording what was approved.
+
 Carried forward, still unverified: `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed in Phase 1 against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal. Phase 2 re-ran the shutdown flush against a local bare remote and it pushed correctly (1 ahead → 0, no orphan `node`), but by `CTRL_BREAK_EVENT`: Windows disables `Ctrl+C` for a process group spawned with `CREATE_NEW_PROCESS_GROUP`, so a script cannot deliver the real thing. Both events enter the same handler in `scripts/dev.mjs`.
 
-Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/complete` with repeat materialization (Phase 3, which tests it), `/api/tasks/[id]/promote` (Phase 7, which has collections), and `history.streamingWrite()` (Phase 6, its only caller). `GET /api/tasks` returns the unranked list until `lib/schedule/rank.ts` exists.
+Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/complete` with repeat materialization (**landed in Phase 3**), `/api/tasks/[id]/promote` (Phase 7, which has collections), and `history.streamingWrite()` (Phase 6, its only caller). `GET /api/tasks` returned the unranked list until `lib/schedule/rank.ts` existed; it now returns the four §10.1 sections and nothing else.
+
+Left unverified by Phase 3 — three things, all needing a person at a browser rather than an HTTP client: **the weather element arriving without moving the date** (the header's `1fr auto 1fr` grid is what guarantees it, and the check confirms the three grid children and the untouched centre column with weather on and off, but not the absence of a repaint shift), and **the Ask panel opening on "Ask about this"** (its strings are in the shipped client chunk and nothing it does reaches a server, so there is nothing an HTTP check can observe). Also unverified: **dragging a timeline block**, for the same reason — the write it makes on release is the same `PATCH scheduled` the checks exercise, but the pointer path itself has not been run.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -164,12 +169,14 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | d | Record the resolved Next and React versions in `AGENTS.md`, not only in the phase report | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
 | e | Log the resolved `REPO_DIR` once at startup whenever `ATTUNE_REPO_DIR` is set, so a stray shell export cannot silently point the app at the wrong directory | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
 | f | `lib/schedule/dates.test.ts`, covering both 2026 `America/New_York` DST transitions (March 8, November 1) against the six functions `dates.ts` has now | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
-| g | `daysBetween`/`daysUntil` DST tests, off-by-one a day each way across both 2026 transitions | Phase 2 review | Phase 3, with the functions themselves | **outstanding** |
+| g | `daysBetween`/`daysUntil` DST tests, off-by-one a day each way across both 2026 transitions | Phase 2 review | Phase 3, with the functions themselves | closed — `ec54cd4`, in `lib/schedule/dates.test.ts` |
 | h | A secret in a task's own text reaches `actions.jsonl` through the `after` snapshot, not through `commitError`, and no scrubbing can remove it without breaking byte-identical undo. The pre-commit hook then refuses every later commit. Raised and reproduced during the Phase 2 follow-up review | Phase 2 follow-up review | Phase 2 follow-up | closed — `runBatch` refuses the batch (Decision 50) |
 | i | A `force` that saves anyway past a `secret_rejected` refusal. Deferred, not rejected: a force has to exempt the pre-commit hook as well, or the block just moves one step later and the commit fails instead of the save — so half of it is worse than none. Wanted only if a real false positive shows up in use | amendment `h` approval | unscheduled | **deferred, deliberately whole-or-nothing** |
-| j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | **outstanding** |
+| j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | closed — `78bd6b9`; the refusal, the file, the pattern, the un-echoed match and the untouched file are all checked over HTTP. `TaskEditForm` clears no field on failure, which is what preserves the text |
+| k | §10.1 says dragging a block's **edges** changes `scheduled`. Moving a block by its body is built and writes `scheduled` as a date-time; an edge is not built, because an edge changes a block's *length*, which is `estimateMin`, not its start — and guessing which of the two was meant would put a wrong rule in the one place two phases share. Phase 4's calendar drag is the second surface with the same question | Phase 3 build | Phase 4, with the calendar's drag | **outstanding — needs a call, not a build** |
+| l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | **outstanding** |
 
-`c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `h` are open; `h` blocks nothing but is the kind of thing that gets forgotten between phases, which is what this block is for.
+`c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing. `k` and `l` opened during the Phase 3 build: `l` is only waiting for the phase that owns its target, but `k` wants a decision before anyone builds either half of it.
 
 ## How we work
 

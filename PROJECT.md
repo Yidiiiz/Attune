@@ -716,7 +716,7 @@ score         = urgency + priorityW + scheduledB + doingB + fitB
 
 `availableMinutes` for today is `day.endMin − max(nowMin, day.startMin)`, clamped at 0; for other days it is the sum of `day.blocks`. Tasks whose `due` is beyond `lookaheadDays` and have no `scheduled` on `viewDate` are excluded from focus regardless of score and go to Also possible. **Tie-break**, in order: `due` asc (nulls last), `priority` asc, `createdAt` asc, `id` asc. Focus = first `focusSize`; Also possible = the rest.
 
-*Worked example*, viewDate 2026-09-08 (Monday), `focusSize` 3, `lookaheadDays` 14, 240 minutes available:
+*Worked example*, viewDate 2026-09-08 (Tuesday), `focusSize` 3, `lookaheadDays` 14, 240 minutes available:
 
 | Task | due | priority | scheduled | est | urgency | prio | sched | fit | score | section |
 |---|---|---|---|---|---|---|---|---|---|---|

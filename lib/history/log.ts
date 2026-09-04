@@ -14,6 +14,7 @@
 
 import { appendText, byteLength, readTail, readText, replaceTail, writeText } from "../store/files.ts";
 import { splitLocalIso } from "../schedule/dates.ts";
+import { scrubSecrets } from "../security/secrets.ts";
 
 export const LOG_PATH = "history/actions.jsonl";
 export const MIRROR_PATH = "history/action-history.md";
@@ -238,10 +239,19 @@ export async function setBatchCommit(offset: number, batch: string, commit: stri
   });
 }
 
-/** Record that a batch will never have a hash, and what git said. */
+/**
+ * Record that a batch will never have a hash, and what git said.
+ *
+ * The message is scrubbed and length-capped on the way in. It comes from a subprocess — git's error,
+ * the commit subject inside the command line git echoes back, and whatever a commit hook chose to
+ * print — and this file is committed and pushed. A credential written here would be found by the
+ * pre-commit hook on the *next* commit, which is the worst moment for it: the log is append-only, so
+ * every subsequent commit would be refused until someone hand-edited history (§11.5).
+ */
 export async function markCommitFailed(offset: number, batch: string, error: string): Promise<void> {
+  const safe = scrubSecrets(error);
   await rewriteTail(offset, batch, (entry) => {
-    entry.meta = { ...entry.meta, commitFailed: true, commitError: error };
+    entry.meta = { ...entry.meta, commitFailed: true, commitError: safe };
   });
 }
 

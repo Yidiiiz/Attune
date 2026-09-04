@@ -9,17 +9,9 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-// Assembled from fragments so this file does not match its own rules under --all.
-const ANT = "sk" + "-ant-";
-const PATTERNS = [
-  { name: "anthropic key", re: new RegExp(ANT + "[A-Za-z0-9_-]{20,}") },
-  { name: "generic sk- key", re: /sk-[A-Za-z0-9]{32,}/ },
-  { name: "aws access key id", re: /AKIA[0-9A-Z]{16}/ },
-  { name: "github token", re: /ghp_[A-Za-z0-9]{36}/ },
-  { name: "slack token", re: new RegExp("xox" + "[bap]" + "-") },
-  { name: "private key block", re: new RegExp("-----BEGIN" + " [A-Z ]*PRIVATE KEY-----") },
-  { name: "assigned credential", re: /(api[_-]?key|secret|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{24,}/i },
-];
+// The patterns live in lib/security/secrets.ts so this hook and the history log share one
+// definition of a credential (PROJECT.md §11.5). Node strips the types on import (Decision 44).
+import { SECRET_PATTERNS as PATTERNS } from "../lib/security/secrets.ts";
 
 const all = process.argv.includes("--all");
 

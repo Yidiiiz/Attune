@@ -10,9 +10,11 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 |---|---|---|
 | 1 — Skeleton | complete | `47be387` |
 | 2 — Store, history, git | complete | `b931994` |
-| 2 follow-up — Decision 47 + amendments `c`–`f` | **next** | — |
-| 3 — Today | on hold, behind the follow-up | — |
+| 2 follow-up — Decision 47 + amendments `c`–`f` | complete | `4ff884a`, `2cf20cf`, `492c035` |
+| 3 — Today | **next** | — |
 | 4–11 | not started | — |
+
+The follow-up carries three `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and the §11.5 fix between them came out of that review. The split is the reason; a phase built in one pass still gets one.
 
 Carried forward, still unverified: `Ctrl+C` on `npm run dev` from a **Git Bash (mintty)** window, with a remote configured, leaving `git rev-list --count @{u}..HEAD` at 0 and no surviving `node`. The PowerShell case passed in Phase 1 against a real console `CTRL_C_EVENT`; mintty is a pty, not a console, so that one needs the owner at a terminal. Phase 2 re-ran the shutdown flush against a local bare remote and it pushed correctly (1 ahead → 0, no orphan `node`), but by `CTRL_BREAK_EVENT`: Windows disables `Ctrl+C` for a process group spawned with `CREATE_NEW_PROCESS_GROUP`, so a script cannot deliver the real thing. Both events enter the same handler in `scripts/dev.mjs`.
 
@@ -52,13 +54,14 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 |---|---|---|---|---|
 | a | `/api/settings` is GET-only until `runBatch` exists; `PUT` waits for it | Phase 1 approval | Phase 2 | closed — `PUT` landed in Phase 2 |
 | b | Drop the P/Invoke console-break harness | Phase 1 approval | Phase 1 | closed — never committed |
-| c | Guard against a stale `.git/index.lock`: on startup, if the lock exists and no `git` process is running, remove it and log once. `taskkill /T /F` can leave it behind when `Ctrl+C` lands mid-commit, and the next git operation then fails with a message that reads like repository corruption | Phase 1 approval | Phase 2 — **missed** | **outstanding** |
-| d | Record the resolved Next and React versions in `AGENTS.md`, not only in the phase report | Phase 1 approval | Phase 2 — **missed** | **outstanding** |
-| e | Log the resolved `REPO_DIR` once at startup whenever `ATTUNE_REPO_DIR` is set, so a stray shell export cannot silently point the app at the wrong directory | Phase 2 approval | Phase 2 — **missed** | **outstanding** |
-| f | `lib/schedule/dates.test.ts`, covering both 2026 `America/New_York` DST transitions (March 8, November 1) against the six functions `dates.ts` has now | Phase 2 approval | Phase 2 — **missed** | **outstanding** |
+| c | Guard against a stale `.git/index.lock`: on startup, if the lock exists and no `git` process is running, remove it and log once. `taskkill /T /F` can leave it behind when `Ctrl+C` lands mid-commit, and the next git operation then fails with a message that reads like repository corruption | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
+| d | Record the resolved Next and React versions in `AGENTS.md`, not only in the phase report | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
+| e | Log the resolved `REPO_DIR` once at startup whenever `ATTUNE_REPO_DIR` is set, so a stray shell export cannot silently point the app at the wrong directory | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
+| f | `lib/schedule/dates.test.ts`, covering both 2026 `America/New_York` DST transitions (March 8, November 1) against the six functions `dates.ts` has now | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
 | g | `daysBetween`/`daysUntil` DST tests, off-by-one a day each way across both 2026 transitions | Phase 2 review | Phase 3, with the functions themselves | **outstanding** |
+| h | A secret in a task's own text reaches `actions.jsonl` through the `after` snapshot, not through `commitError`, and no scrubbing can remove it without breaking byte-identical undo. The pre-commit hook then refuses every later commit. Raised and reproduced during the Phase 2 follow-up review | Phase 2 follow-up review | **undecided — needs the owner's call** | **open question** |
 
-`c`–`f` were agreed for Phase 2 and did not land. They belong to the Phase 2 follow-up build, together with the Decision 47 amendment, before Phase 3 starts.
+`c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `h` are open; `h` blocks nothing but is the kind of thing that gets forgotten between phases, which is what this block is for.
 
 ## How we work
 

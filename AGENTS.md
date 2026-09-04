@@ -127,6 +127,31 @@ together. Amendment `j` lands in B: an inline task edit containing a credential-
 refused, the form keeps what was typed, and the error names the file and the pattern without echoing
 the match.
 
+### Approved conditions — Phase 3 Stage A review (rule 9)
+
+Verbatim from the review that approved Stage A. Three corrections land before Stages B and C.
+
+**Stage A approved. Three corrections first, then build B and C together.**
+
+**1. REPEAT WITHOUT AN ANCHOR** — your refusal is right, but make it visible. Reject at write time: a
+task with `repeat` set and both `due` and `scheduled` null does not save, with an error saying a
+repeat needs a date to advance. At write rather than in the form, so Phase 5's agent-created tasks
+are covered by the same rule. Record completion-anchored repeat as a deliberately-not-built
+alternative with your reasoning — it is a second recurrence model, not a missing feature, and a
+future session should not add it by accident.
+
+**2. `nextInstance`** — drop `collection` on the new instance, keep `source`. `collection` is a
+one-to-one pointer to the list item that became a task, and the collection's `tasks` array only
+holds the first one; two tasks claiming the same item is a broken backlink. `source` records
+provenance, not identity, so it carries forward as §4.1 says.
+
+**3. `GET /api/tasks?date=`** — drop the unranked `tasks` key. It was a Phase 2 placeholder until
+`rank.ts` existed, and that reason is gone. Nothing consumes it: Today reads the store directly under
+the §3 rule, and Phase 4 has its own calendar route. Return the four sections only; a flat list is a
+concatenation if anyone ever needs one. Update §14 to match.
+
+**Then Stages B and C as pre-approved. Report them together.**
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

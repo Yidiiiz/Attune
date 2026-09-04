@@ -82,6 +82,8 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 51. **Weather is off when `lat`/`lon` are absent, not when `query` is empty.** §11.2 asked for browser geolocation followed by a reverse geocode "via Open-Meteo", and Open-Meteo has no reverse endpoint — `/v1/search` takes a name and `/v1/get` takes an id, both forward, and reverse is an open upstream request. So a geolocated user has coordinates and no query string, which under the old rule turned weather off for exactly the people who had just asked for it. The three fields now have one job each: `lat`/`lon` are what the forecast call needs and the only thing the off-condition reads, `query` records how they were found, and `label` is what the header displays. "Use my location" sets coordinates and the label `"My location"`, which is honest about what is known; a text search sets all four; Clear wipes all four. The rejected alternative was a second geocoding provider for the reverse direction, which buys one label at the cost of a dependency and another set of terms.
 
+52. **A repeat with no `due` and no `scheduled` is refused at write time, and completion-anchored recurrence is deliberately not built.** A repeat rule describes an interval between dates; with neither field set there is no date to advance from, so the next instance cannot be computed and completing the task would silently end the series. The refusal lives in `writeTask` rather than in the task form, because the form is not the only writer: the agent creates tasks in Phase 5, the collection promote path in Phase 7, and a hand-edited file goes through the same store on its next save. The rejected alternative is the second recurrence model — anchoring the next instance to `completedAt` — and it is rejected on purpose rather than missing: it makes "every Monday" mean "every seven days from whenever I got round to it", which is a different feature that happens to share a field name. Two recurrence models in one `repeat` field cannot be told apart by reading a task file, and the ranker, the calendar, and undo would all have to ask which kind it was. If drifting recurrence is ever wanted it needs its own field and its own name.
+
 
 ---
 
@@ -258,6 +260,10 @@ Chapters 4.1–4.3. Office hours Thursday if 4.3 is still unclear.
 **Links** are relative to `data/` (`files/docs/...`, `knowledge/notes/...`, `tasks/...`) so they are the same string in the graph, in backlinks, and in the file tree. Markdown links in bodies may be relative to the file instead; the link extractor normalizes both.
 
 **Completion** sets `status: done` and `completedAt: now`. If `repeat` is set and (`repeatUntil` is empty or next due ≤ `repeatUntil`), the same batch creates the next instance: new id, new file, `due` and `scheduled` advanced by the interval, body copied with checkboxes unticked, `source` unchanged. Undoing the completion removes the new instance because they share a batch. Monthly adds one calendar month clamped to the last day.
+
+`collection` is **not** carried to the next instance; it is cleared. It is a one-to-one backlink to the list item that became a task, and the collection's own `tasks` array holds only the first instance — two tasks claiming the same item is a broken link in both directions. `source` is different in kind: it records where the work came from, not which item it *is*, so it carries forward.
+
+**A repeat needs an anchor.** A task with `repeat` set and both `due` and `scheduled` empty is refused at write time — `writeTask` throws `StoreError("invalid")`, so every caller is covered, including the agent (Decision 52). There is nothing for the interval to advance from, and completion time is not a substitute.
 
 **Subtask progress:** `- [ ]` / `- [x]` lines in the body are counted for the `2/4` indicator. Clicking a checkbox in preview writes the body with that line toggled (a `task.update`).
 
@@ -919,7 +925,7 @@ Every route lives in `app/api/**/route.ts`, validates its input with zod, calls 
 
 | Route | Method | Calls |
 |---|---|---|
-| `/api/tasks?date=` | GET | `rankDay(listTasks(), date, settings, now)` — the unranked list until Phase 3 builds the ranker |
+| `/api/tasks?date=` | GET | `rankDay(listTasks(), date, settings, now)` — the four §10.1 sections and nothing else; a flat list is a concatenation |
 | `/api/tasks` | POST | `runBatch` with `task.create` × N (`{ items: TaskDraft[], source }`) |
 | `/api/tasks/[id]` | GET · PATCH · DELETE | read · `task.update` · `task.delete` |
 | `/api/tasks/[id]/complete` | POST | `task.complete` (+ `task.create` for repeats) |
@@ -1119,7 +1125,7 @@ Next.js app, TypeScript strict, `app/theme.css` with both base themes, the shell
 ### Phase 3 — Today
 
 `lib/schedule/*`, `lib/weather.ts`, `components/today/*`, task menu actions, day navigation, first-run card, weather.
-**Checks:** the §10.1 worked example is a passing test; rendering twice yields identical order; complete/undo round-trips; a repeating task completes and materializes the next instance in the same batch, and undo removes both; clearing the weather location removes the element with no layout shift; Ask about this opens the composer stub in Ask mode — a toast or small inline panel reading `Ask mode · <task title>`, no provider call and nothing written. The sheet itself is Phase 5's (§9.1), and is deliberately not built here so Phase 5 does not inherit its geometry from outside its own plan.
+**Checks:** the §10.1 worked example is a passing test; rendering twice yields identical order; complete/undo round-trips; a repeating task completes and materializes the next instance in the same batch, and undo removes both; a task with `repeat` set and no `due` and no `scheduled` is refused by the store and nothing is written (Decision 52); clearing the weather location removes the element with no layout shift; Ask about this opens the composer stub in Ask mode — a toast or small inline panel reading `Ask mode · <task title>`, no provider call and nothing written. The sheet itself is Phase 5's (§9.1), and is deliberately not built here so Phase 5 does not inherit its geometry from outside its own plan.
 
 ### Phase 4 — Calendar
 

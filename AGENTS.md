@@ -46,6 +46,32 @@ Written before the build, verbatim from the approval, so they survive compaction
 
 **Stage B — amendments `c`–`f`**, independent of Stage A and of each other. `dates.test.ts` covers only the six functions `dates.ts` has now; `daysBetween`/`daysUntil` are not built early (amendment `g`).
 
+### Approved conditions — amendment `h` (rule 9)
+
+Written before the build, verbatim from the approval. This session had already compacted once when
+they were given, which is the case rule 9 exists for.
+
+**Amendment `h` approved. Three constraints.**
+
+1. **INVARIANT, and write it into AGENTS.md as a rule, not just as code**: the `runBatch` write-path
+   scan and the pre-commit hook use exactly the same pattern set, from `lib/security/secrets.ts`.
+   Anything the hook would refuse, the write path refuses first. The obvious future fix for false
+   positives is to relax the write path and leave the hook strict — that reopens the deadlock exactly
+   as it was, so it must be a stated rule.
+2. **On refusal, the user's text is preserved wherever they typed it** — the same principle as
+   §13.5's provider-error handling. A rejected save must never lose what someone wrote. The error
+   names the file and the pattern name and never echoes the match, same rule as check-secrets.
+3. **No `force` in v1.** Record it as deferred with the reason: a force has to exempt the pre-commit
+   hook as well, or the block just moves one step later, and that is more machinery than the case has
+   earned. Note it so a future session doesn't add half of it.
+
+**Also:** rule 4 needs a clause for stages — one build commit per phase, or one per approved stage
+within a phase. Three `code:` commits for a three-stage follow-up is correct behavior that currently
+reads as a violation.
+
+**Then:** build `h`, run its checks, update the status block, and **stop**. Phase 3 starts in a new
+session.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -68,7 +94,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 1. **Spec before code.** `PROJECT.md` and `AGENTS.md` came first; application code starts only when the owner asks for Phase 1.
 2. **`PROJECT.md` opens with a Decisions section**: every call left open in the brief, one line of reasoning each. Keep it current when a decision changes.
 3. **One phase at a time, in `PROJECT.md` §17 order.** Show a plan and wait for approval → record the approval's conditions (rule 9) → build → run that phase's acceptance checks and report results honestly, failures included → commit → stop. Never roll into the next phase unprompted.
-4. **One build commit per phase, plus a trailing `docs:` commit carrying the hash, and both use a development prefix.** `code:` for source and configuration, `docs:` for `PROJECT.md`, `AGENTS.md`, and the rest of the written spec. The trailing commit exists because a commit cannot contain its own hash; it does nothing but record the phase's result in the status block (rule 8). The other prefixes in the §8 vocabulary — `task:`, `knowledge:`, `chat:`, `settings:`, `file:` — belong to the running app: each describes a change to data under `data/`, is written by `runBatch`, and renders in the history mirror as `· task ·`. A phase build is never a `task:` commit. Messages read as if the owner wrote them. No AI attribution, no co-author trailers, no "generated with" footers, anywhere in this repo.
+4. **One build commit per phase — or one per approved stage, when the owner has split the phase into stages that stop for review — plus a trailing `docs:` commit carrying the hash, and both use a development prefix.** `code:` for source and configuration, `docs:` for `PROJECT.md`, `AGENTS.md`, and the rest of the written spec. The trailing commit exists because a commit cannot contain its own hash; it does nothing but record the phase's result in the status block (rule 8). The other prefixes in the §8 vocabulary — `task:`, `knowledge:`, `chat:`, `settings:`, `file:` — belong to the running app: each describes a change to data under `data/`, is written by `runBatch`, and renders in the history mirror as `· task ·`. A phase build is never a `task:` commit. Messages read as if the owner wrote them. No AI attribution, no co-author trailers, no "generated with" footers, anywhere in this repo.
 5. **If a phase is bigger than it looked, say so and propose a split** rather than quietly building all of it. On foundational work — anything later phases sit on — a review checkpoint is the default with an opt-out, never an offer. Propose the split as the plan, and let the owner collapse it; do not bury the checkpoint as an option at the end of a long plan, where declining to take it up reads as declining to have it.
 6. **If it is unclear whether something is a project feature or personal to the owner, ask.** Project = code, `seed/`, docs. Personal = anything under `data/`.
 7. **Prefer the boring solution.** Before adding a dependency, an abstraction, or a file over ~300 lines, say why first and wait.
@@ -80,7 +106,8 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 
 - No state library, ORM, component library, or CSS framework. No abstraction until three concrete uses.
 - Runtime dependency budget 12 (not counting next/react/react-dom); 8 are allocated in `PROJECT.md` Decision 28.
-- Secrets live only in `.env.local`. Nothing resembling a key is ever written under `data/` or committed; the pre-commit hook enforces it.
+- Secrets live only in `.env.local`. Nothing resembling a key is ever written under `data/` or committed.
+- **The write path and the pre-commit hook share one pattern set — `SECRET_PATTERNS` in `lib/security/secrets.ts` — and anything the hook would refuse, `runBatch` refuses first.** Neither list may be narrowed independently of the other. The tempting fix for a false positive is to relax the write path and leave the hook strict; that puts the text into `actions.jsonl`, which is append-only and committed, and the hook then refuses every later commit until someone edits history by hand. That is the deadlock this rule exists to keep closed, so a false positive is fixed by changing the shared patterns or by changing the text — never by letting the two sides disagree.
 - Every write goes through `runBatch()` in `lib/history/batch.ts`. `lib/store/` is the only module that touches the filesystem; `lib/agent/` is the only module that talks to a model provider.
 - Source files stay under ~300 lines; split by feature, not by layer.
 

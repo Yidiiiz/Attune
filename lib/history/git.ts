@@ -8,6 +8,9 @@
 // worse outcome than a stalled indicator.
 
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
 import { REPO_DIR } from "../store/paths.ts";
 
@@ -35,6 +38,62 @@ async function gitOk(args: string[]): Promise<string | null> {
     return await git(args);
   } catch {
     return null;
+  }
+}
+
+const INDEX_LOCK = path.join(REPO_DIR, ".git", "index.lock");
+
+/**
+ * Whether a `git` process is running on this machine. `null` means the question could not be
+ * answered — an unexpected `tasklist`/`pgrep` failure — and every caller treats that as yes:
+ * deleting a lock a live git is holding corrupts the index, which is far worse than the stale lock
+ * this check exists to clear.
+ */
+async function gitProcessRunning(): Promise<boolean | null> {
+  try {
+    if (process.platform === "win32") {
+      const { stdout } = await run("tasklist", ["/FI", "IMAGENAME eq git.exe", "/NH"]);
+      return /git\.exe/i.test(stdout);
+    }
+    const { stdout } = await run("pgrep", ["-x", "git"]);
+    return stdout.trim().length > 0;
+  } catch (err) {
+    // pgrep exits 1 when nothing matched. That is an answer, not a failure.
+    if (process.platform !== "win32" && (err as { code?: number }).code === 1) return false;
+    return null;
+  }
+}
+
+export type IndexLockState = "absent" | "removed" | "held" | "unknown";
+
+/**
+ * Clear a `.git/index.lock` left behind by a git that was killed mid-operation, and say so once.
+ *
+ * This repository's own dev wrapper is the usual cause: `scripts/dev.mjs` takes the server tree down
+ * with `taskkill /T /F` on Ctrl+C, which cannot be delivered gracefully on Windows, and if that lands
+ * during a batch's commit the lock outlives the process. Git's next message — "Another git process
+ * seems to be running... remove the file manually to continue" — reads like repository corruption to
+ * anyone who did not just press Ctrl+C. Called once at startup, never on the write path: a lock
+ * appearing mid-session belongs to something real.
+ */
+export async function clearStaleIndexLock(): Promise<IndexLockState> {
+  if (!existsSync(INDEX_LOCK)) return "absent";
+
+  const running = await gitProcessRunning();
+  if (running !== false) {
+    console.error(
+      `git: ${INDEX_LOCK} exists and git ${running === null ? "may be" : "is"} running; leaving it alone`,
+    );
+    return running === null ? "unknown" : "held";
+  }
+
+  try {
+    await unlink(INDEX_LOCK);
+    console.error(`git: removed a stale ${INDEX_LOCK} left behind by an interrupted git`);
+    return "removed";
+  } catch (err) {
+    console.error(`git: could not remove ${INDEX_LOCK} (${(err as Error).message})`);
+    return "unknown";
   }
 }
 

@@ -32,6 +32,13 @@ export const REPO_DIR: string = process.env.ATTUNE_REPO_DIR
   ? path.resolve(process.env.ATTUNE_REPO_DIR)
   : process.cwd();
 
+// Announced once, when the module is first loaded, because this is the one setting that can point
+// every read and write in the app at a checkout the owner did not mean. A stray `export
+// ATTUNE_REPO_DIR` left in a shell profile is otherwise completely silent (Decision 45).
+if (process.env.ATTUNE_REPO_DIR) {
+  console.error(`store: ATTUNE_REPO_DIR is set; reading and writing under ${REPO_DIR}`);
+}
+
 /** Yours: the private tree the app reads and writes. Never in the published repo. */
 export const DATA_DIR: string = path.join(REPO_DIR, "data");
 

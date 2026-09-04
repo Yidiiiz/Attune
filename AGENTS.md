@@ -85,6 +85,18 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 
 Next.js 15 (App Router) · TypeScript strict · Node 24 · plain CSS with custom-property tokens · vitest.
 
+Resolved versions, as installed and verified in this checkout — the ranges in `package.json` are what is declared, these are what actually ran:
+
+| Package | Range | Resolved |
+|---|---|---|
+| `next` | `^15.5.0` | 15.5.25 |
+| `react` | `^19.1.0` | 19.2.8 |
+| `react-dom` | `^19.1.0` | 19.2.8 |
+| `typescript` | `^5.9.0` | 5.9.3 |
+| `vitest` | `^3.2.0` | 3.2.7 |
+| `zod` | `^4.1.0` | 4.5.4 |
+| `yaml` | `^2.8.0` | 2.9.0 |
+
 ```
 npm install            # postinstall sets core.hooksPath=.githooks on every machine
 npm run dev            # scripts/dev.mjs → next dev, flushes git push on exit

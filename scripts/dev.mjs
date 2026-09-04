@@ -13,6 +13,13 @@ import { fileURLToPath } from "node:url";
 const NEXT_BIN = fileURLToPath(import.meta.resolve("next/dist/bin/next"));
 const PUSH_TIMEOUT_MS = 20_000;
 
+// Before anything else: clear a .git/index.lock this script's own shutdown may have left behind.
+// killChildTree below uses `taskkill /T /F`, which cannot be delivered gracefully, so a Ctrl+C
+// landing mid-commit outlives the process as a lock file. Doing it here rather than lazily inside
+// git.ts keeps it to one check per session, at the one moment no batch can be running.
+const { clearStaleIndexLock } = await import("../lib/history/git.ts");
+await clearStaleIndexLock();
+
 const child = spawn(process.execPath, [NEXT_BIN, "dev", ...process.argv.slice(2)], {
   stdio: "inherit",
   windowsHide: true,

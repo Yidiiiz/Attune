@@ -78,6 +78,11 @@ Every call the brief left open, or where this spec deviates from it. One line of
 49. **`npm test` runs `scripts/check-lib-imports.mjs` before vitest.** It imports every `lib/**/*.ts` through plain Node and fails naming each module that will not load. Decision 44 records the constraint; this is what makes it fail at test time rather than at the first CLI run, which is otherwise the earliest anything notices, because `tsc --noEmit` and `next build` both accept all four forbidden features. Verified by adding an `enum` under `lib/`: `tsc` exited 0, `npm test` exited 1.
 50. **A batch that would write a credential into `data/` is refused whole, before anything is logged, and the write path and the pre-commit hook share one pattern set.** A secret in a task's own text does not reach `actions.jsonl` through the error path — it reaches it through the snapshot, which is written before git is ever called. Scrubbing is not available there: snapshots exist to restore files byte for byte, and a redacted snapshot restores the wrong file. So `runBatch` scans what it is about to log, and on a hit rolls back and refuses. The alternative was letting the write through and relying on the hook, which is what produced the deadlock this closes: the log is append-only and committed, so a credential in it is found on the *next* commit and refuses every commit after that, and undo makes it worse by snapshotting the same text again. `SECRET_PATTERNS` in `lib/security/secrets.ts` is the single list both sides use — **anything the hook would refuse, the write path refuses first** — and relaxing one side alone reopens the deadlock exactly as it was, which is why it is a hard rule in AGENTS.md and a test (`findSecret` has one sample per pattern, and the table must equal the pattern list). Refusal never costs anyone their words: the rollback restores every file to what it was, and the text is still wherever it was typed, the same principle as §13.5. No `force` in v1 — a force would have to exempt the pre-commit hook too, or the block simply moves one step later, and that is more machinery than the case has earned.
 
+**During Phase 3 (2026-09-04)**
+
+51. **Weather is off when `lat`/`lon` are absent, not when `query` is empty.** §11.2 asked for browser geolocation followed by a reverse geocode "via Open-Meteo", and Open-Meteo has no reverse endpoint — `/v1/search` takes a name and `/v1/get` takes an id, both forward, and reverse is an open upstream request. So a geolocated user has coordinates and no query string, which under the old rule turned weather off for exactly the people who had just asked for it. The three fields now have one job each: `lat`/`lon` are what the forecast call needs and the only thing the off-condition reads, `query` records how they were found, and `label` is what the header displays. "Use my location" sets coordinates and the label `"My location"`, which is honest about what is known; a text search sets all four; Clear wipes all four. The rejected alternative was a second geocoding provider for the reverse direction, which buys one label at the cost of a dependency and another set of terms.
+
+
 ---
 
 ## 1. Hard rules
@@ -195,7 +200,11 @@ docs/
 .env.local                   # gitignored
 ```
 
-Anything a component needs from disk arrives through an API route that calls `lib/`. Components never import from `lib/store/` or `lib/history/` directly; they may import pure modules (`lib/chat/`, `lib/schedule/`).
+Who may touch the store, stated once so it stops eroding:
+
+- **Route-level server files — `app/**/page.tsx`, `app/**/layout.tsx`, and `app/api/**/route.ts` — may call `lib/store` read functions directly.** They are the server-side edge of the app, the same category as an API adapter, and a page that fetched its own data over HTTP from itself would not be the boring option.
+- **Everything under `components/` goes through an API route.** Components never import `lib/store/` or `lib/history/`; they may import pure modules (`lib/chat/`, `lib/schedule/`).
+- **Every mutation goes through an API route and `runBatch()`, whichever kind of file is asking.** The read exemption above is a read exemption; a `page.tsx` writes no more directly than a component does.
 
 ---
 
@@ -370,7 +379,7 @@ The message text, verbatim markdown.
 
 ### 4.9 Settings
 
-`data/settings/settings.json`, validated by a zod schema in `lib/store/settings.ts`. Unknown keys are preserved; missing keys get defaults; an unparsable file is renamed to `settings.json.broken-<ts>` and replaced with defaults, with a toast. The example below is a populated user file; the seed copy differs only in `weather` (`query: ""`, no `lat`/`lon`/`label`), so a fresh clone ships with weather off (Decision 38).
+`data/settings/settings.json`, validated by a zod schema in `lib/store/settings.ts`. Unknown keys are preserved; missing keys get defaults; an unparsable file is renamed to `settings.json.broken-<ts>` and replaced with defaults, with a toast. The example below is a populated user file; the seed copy differs only in `weather` (`query: ""`, no `lat`/`lon`/`label`), so a fresh clone ships with weather off (Decisions 38, 51).
 
 ```jsonc
 {
@@ -392,7 +401,9 @@ The message text, verbatim markdown.
 }
 ```
 
-`day.endMin` may exceed 1440 (1560 = 2:00 next day). `weather.query` empty means weather off; `lat`/`lon` are cleared with it.
+`day.endMin` may exceed 1440 (1560 = 2:00 next day).
+
+**Weather is off when `lat`/`lon` are absent** (Decision 51). `lat`/`lon` are what the forecast call needs, `query` is only how they were found, and `label` is what is displayed. A text search sets all four; "Use my location" sets `lat`/`lon` and `label: "My location"` with `query` empty, because Open-Meteo has no reverse lookup; **Clear** wipes all four. A populated `query` with no coordinates is a search that never resolved, and weather stays off.
 
 ### 4.10 Themes
 
@@ -666,7 +677,7 @@ Identical to Build mode in the Chat tab (§13.4); the sheet shows the plan, the 
 
 `app/page.tsx` with `?date=YYYY-MM-DD` (default today in the settings timezone).
 
-**Header:** `←` at top-left, `→` at top-right, date and weekday centered, a "Today" button when not on today, and weather (temperature + condition icon) when `settings.weather.query` is non-empty and the date is within the forecast window (today + 6 days). With no location the weather element is not rendered at all; the header layout is a three-column grid so nothing shifts. A "Schedule" toggle switches between the list and the timeline.
+**Header:** `←` at top-left, `→` at top-right, date and weekday centered, a "Today" button when not on today, and weather (temperature + condition icon) when `settings.weather.lat` and `lon` are set and the date is within the forecast window (today + 6 days). With no location the weather element is not rendered at all; the header layout is a three-column grid so nothing shifts. A "Schedule" toggle switches between the list and the timeline.
 
 **Body:**
 
@@ -781,7 +792,7 @@ Identity · Timezone (select from `Intl.supportedValuesOf("timeZone")`) · Weath
 
 ### 11.2 First run
 
-If `settings.identity.name` is empty, the Today header shows a one-time card: name field, timezone confirm, weather location with "Use my location" (browser geolocation → reverse geocode via Open-Meteo) or "No weather". Dismissable; never shown again once name is set.
+If `settings.identity.name` is empty, the Today header shows a one-time card: name field, timezone confirm, weather location with "Use my location" (browser geolocation, which sets `lat`/`lon` and the label `"My location"`; there is no reverse lookup to name the place — Decision 51) or a text search, or "No weather". Dismissable; never shown again once name is set.
 
 ### 11.3 Themes and tokens
 
@@ -1108,7 +1119,7 @@ Next.js app, TypeScript strict, `app/theme.css` with both base themes, the shell
 ### Phase 3 — Today
 
 `lib/schedule/*`, `lib/weather.ts`, `components/today/*`, task menu actions, day navigation, first-run card, weather.
-**Checks:** the §10.1 worked example is a passing test; rendering twice yields identical order; complete/undo round-trips; a repeating task completes and materializes the next instance in the same batch, and undo removes both; clearing the weather location removes the element with no layout shift; Ask about this opens the composer stub in Ask mode (composer arrives in Phase 5; here it may be a placeholder that records the intent).
+**Checks:** the §10.1 worked example is a passing test; rendering twice yields identical order; complete/undo round-trips; a repeating task completes and materializes the next instance in the same batch, and undo removes both; clearing the weather location removes the element with no layout shift; Ask about this opens the composer stub in Ask mode — a toast or small inline panel reading `Ask mode · <task title>`, no provider call and nothing written. The sheet itself is Phase 5's (§9.1), and is deliberately not built here so Phase 5 does not inherit its geometry from outside its own plan.
 
 ### Phase 4 — Calendar
 

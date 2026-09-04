@@ -73,6 +73,60 @@ reads as a violation.
 **Then:** build `h`, run its checks, update the status block, and **stop**. Phase 3 starts in a new
 session.
 
+### Approved conditions — Phase 3 (rule 9)
+
+Written before the build, verbatim from the approval. The plan proposed three stages; the approval
+kept the split and pre-approved two of them together.
+
+**Both calls answered, plus one clarification. Approved with the split: Stage A stops for review;
+Stages B and C are pre-approved to run together after that review, without a separate plan round.
+Report B and C together.**
+
+**1. GEOCODING** — your diagnosis is confirmed; I checked the docs. Open-Meteo is forward-only
+(`/v1/search` by name, `/v1/get` by id), reverse is an open upstream request. Your fix is right in
+direction but would turn weather off as written: §10.1 renders the element only when
+`settings.weather.query` is non-empty, and §4.9 says empty query means off.
+
+Correct it properly: the off-condition becomes **"no lat/lon"**. `lat`/`lon` is what the forecast
+needs; `query` is only how they were found; `label` is what is displayed. Geolocation sets
+`lat`/`lon` + label `"My location"` + empty `query`. Text search sets all four. Clear wipes all four.
+Update §4.9, §10.1 and §11.2, and record it as a Decision — this is a spec correction, not an
+implementation choice. No second geocoding provider; "My location" is an honest label.
+
+**2. COMPOSER STUB** — smaller than you proposed. Do not build the bottom sheet. §9.1 specifies its
+geometry, transition, max height, z-tier and close semantics, and Phase 5 owns it together with the
+`+` button; building that chrome now means Phase 5 either discards it or inherits decisions made
+outside its own plan. A toast or a small inline panel showing `"Ask mode · <task title>"` satisfies
+§17's "opens the composer stub in Ask mode" without pre-committing any Phase 5 design. No provider
+call, nothing written, as you said.
+
+**3. CLARIFY §3** rather than relying on the `layout.tsx` precedent. State the rule outright:
+route-level server files (`app/**/page.tsx`, `app/**/layout.tsx`) may call `lib/store` read functions
+directly; everything under `components/` goes through API routes; all mutations go through API routes
+regardless of caller. Right now §3 says components never import `lib/store`, and `page.tsx` reading
+it is justified only by precedent — write the rule so it stops eroding.
+
+**Also approved as proposed:** `advanceDate` in `dates.ts` rather than a new file; `Toast.tsx`
+arriving in Stage B; and **Refine with AI** absent rather than stubbed.
+
+**Then:** write the conditions into the status block first, then build Stage A.
+
+**Stage A — the pure layer and the API.** `daysBetween` / `daysUntil` / `minutesFromMidnight` /
+`advanceDate` in `lib/schedule/dates.ts`; `rank.ts` and `timeline.ts` with tests; `completeTask` in
+`lib/history/actions.ts` materializing a repeat in the same batch; `/api/tasks/[id]/complete`;
+`GET /api/tasks?date=` wired to `rankDay`. Nothing renders.
+
+**Stage A checks.** The §10.1 worked example as a passing test; `rankDay` twice on shuffled input
+byte-identical; complete/undo round-trips through the history CLI; a repeating task completes,
+materializes the next instance under the **same batch id**, and `history undo <batch>` removes both —
+run under `ATTUNE_REPO_DIR` against a throwaway checkout. Amendment `g` lands here, with the
+functions it tests.
+
+**Stages B and C — the Today list, then weather, first run, and the Schedule toggle.** Reported
+together. Amendment `j` lands in B: an inline task edit containing a credential-shaped string is
+refused, the form keeps what was typed, and the error names the file and the pattern without echoing
+the match.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

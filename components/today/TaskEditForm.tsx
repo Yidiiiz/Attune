@@ -4,9 +4,9 @@
 //
 // Failure behavior is the point of this file. A refused save — including the `secret_rejected`
 // refusal of §11.5 — leaves every field exactly as it was typed and puts the server's message above
-// the buttons. That message names the file and the pattern and never the matched text (§13.5, and
-// the amendment recorded against Phase 3): nothing here reformats it, so nothing here can leak what
-// the scanner refused to print.
+// the buttons, inline rather than in a toast: §13.5 shows an error on the surface that raised it,
+// and this is that surface. The message names the file and the pattern and never the matched text;
+// nothing here reformats it, so nothing here can leak what the scanner refused to print.
 
 "use client";
 

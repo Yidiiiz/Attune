@@ -107,7 +107,7 @@ These override anything else in this document.
 - **Node 24** (the machine has 24.14). Next's compiler builds the app, but the CLI scripts under `scripts/` import `lib/**/*.ts` through plain Node, so **type stripping is a hard requirement**, not a convenience — Decision 44 records the constraint that puts on `lib/`. `tsc` is the type check and emits nothing.
 - **Client components + `fetch` to API routes.** No server actions. Every API route is a thin adapter: parse input, call a `lib/` function, return JSON or a stream.
 - **Plain CSS.** `app/theme.css` defines the tokens (§11.3); each component has a CSS module. No Tailwind, no CSS-in-JS.
-- **Tests:** `vitest`, files beside the code as `*.test.ts`. Only pure modules are required to have tests (§16.10); everything else is a manual checklist in `docs/CHECKLIST.md` written during Phase 11.
+- **Tests:** `vitest`, files beside the code as `*.test.ts`. Only pure modules are required to have tests (§16.10); everything else is a manual checklist in `docs/CHECKLIST.md`. Any phase that produces a check no automated test can answer adds it there when it produces it, with the date it was verified or the word *pending*; Phase 11 completes the file rather than starting it. Phase 3 started it.
 - **Git** is shelled out to with `child_process.execFile('git', [...])`. No git library.
 
 Two seams and nothing more:
@@ -196,7 +196,7 @@ scripts/
 seed/                        # blank-slate copy of every data file — SHIPPED
 data/                        # yours — private repo only (layout in §4.7)
 docs/
-  CHECKLIST.md               # manual acceptance checklist (Phase 11)
+  CHECKLIST.md               # manual acceptance checklist; added to by every phase, completed in Phase 11
 .githooks/pre-commit         # #!/bin/sh, LF, +x in the index; runs check-secrets on staged files
 .gitattributes               # * text=auto eol=lf
 .env.local                   # gitignored
@@ -736,7 +736,9 @@ packDay(input: { focus: Task[]; fixed: Task[]; now: Date; viewDate: string; sett
 type Block = { kind: "task" | "break" | "gap" | "fixed"; taskId?: string; startMin: number; endMin: number }
 ```
 
-Timeline from `max(nowMin, day.startMin)` (or `day.startMin` for other days) to `day.endMin`. Fixed blocks = tasks whose `scheduled` carries a time on `viewDate`, placed first. Focus tasks are placed in rank order into the first gap that fits `estimateMin ?? 30`, followed by a `breakMin` break. Unplaced tasks are listed under the timeline as "Didn't fit". Dragging a block's edges or body changes the task's `scheduled` to a date-time and is logged as `task.update`. **Refine with AI** sends the packed day and the tasks to `POST /api/agent/schedule` and shows the proposed order with the model's reasoning; accepting writes `scheduled` times as one batch.
+Timeline from `max(nowMin, day.startMin)` (or `day.startMin` for other days) to `day.endMin`. Fixed blocks = tasks whose `scheduled` carries a time on `viewDate`, placed first. Focus tasks are placed in rank order into the first gap that fits `estimateMin ?? 30`, followed by a `breakMin` break. Unplaced tasks are listed under the timeline as "Didn't fit".
+
+**Dragging a block's body** changes the task's `scheduled` to a date-time and is logged as `task.update`. **Dragging its edges changes duration, not placement**, which is a different field: the bottom edge moves the end, so it writes `estimateMin`; the top edge moves the start while the end stays put, so it writes `estimateMin` *and* `scheduled` together. Edge resize is not built in v1 — body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make (AGENTS.md amendment `k`). **Refine with AI** sends the packed day and the tasks to `POST /api/agent/schedule` and shows the proposed order with the model's reasoning; accepting writes `scheduled` times as one batch.
 
 **Weather** (`lib/weather.ts`): geocode `https://geocoding-api.open-meteo.com/v1/search?name=<q>&count=1` on save in Settings; forecast `https://api.open-meteo.com/v1/forecast?latitude&longitude&daily=weather_code,temperature_2m_max,temperature_2m_min&current=temperature_2m,weather_code&timezone=<tz>&temperature_unit=<unit>`. Cached in module memory for 30 minutes keyed by `lat,lon,unit`. WMO weather codes map to eight icons. A fetch failure hides the element and logs once.
 
@@ -915,7 +917,11 @@ Common options: `cwd: REPO_DIR`, `model: settings.models.build.model`, `maxTurns
 
 ### 13.5 Failure
 
-A provider error before any delta discards the optimistic message files (never committed) and restores the composer text. An error after deltas marks the assistant message `failed` and commits (§16.3). Keys missing → a single toast "No API key set. Add one in Settings → API keys." and no request is made. The same rule covers a `secret_rejected` refusal from any write (§11.5, Decision 50): the toast names the file and the pattern, the text stays where it was typed, and nothing is discarded on the user's behalf.
+A provider error before any delta discards the optimistic message files (never committed) and restores the composer text. An error after deltas marks the assistant message `failed` and commits (§16.3). Keys missing → a single toast "No API key set. Add one in Settings → API keys." and no request is made.
+
+**Where an error is shown**, everywhere in the app and not only here: an error raised by a specific form or field is shown **inline on that surface**, next to the text that caused it and the buttons that would retry it; an error with **no on-screen origin** — a background write, a poll, an action fired from a row menu — raises a **toast** (§10.0). The reason is the same one every time: a message about text someone can still see belongs beside that text, and a message about something that happened off-screen has nowhere else to go. Today's inline task edit, this composer, and Phase 8's document view all follow this and none of them needs its own exception.
+
+A `secret_rejected` refusal from any write (§11.5, Decision 50) is the case that makes the rule matter, and the rule above decides only *where* the message appears. Wherever it appears it names the file and the pattern and never the match, the text stays exactly where it was typed, and nothing is discarded on the user's behalf.
 
 ---
 

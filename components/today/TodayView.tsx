@@ -7,9 +7,10 @@
 // re-rank, rather than patching a local copy — one source of truth for what the day looks like, and
 // the refusal case then needs no unwinding because nothing was changed in advance.
 //
-// Failure behavior: a failed write raises a toast naming what did not happen and leaves the row as
-// it was. A refused *edit* is different and deliberate — the message goes back to the form, which
-// still holds every character that was typed (§13.5).
+// Failure behavior follows §13.5's rule about where an error is shown: a write fired from a row menu
+// has no on-screen origin, so it raises a toast naming what did not happen and leaves the row as it
+// was; a refused *edit* has one, so the message goes back to the form, which still holds every
+// character that was typed.
 
 "use client";
 
@@ -165,8 +166,8 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
     startEdit: (task) => setEditingId(task.id),
     cancelEdit: () => setEditingId(null),
 
-    // The one write whose failure does not become a toast: the form is still on screen holding what
-    // was typed, and that is where the message belongs (§13.5, amendment `j`).
+    // The write with an on-screen origin, so its failure is shown inline rather than as a toast
+    // (§13.5). The form is still there holding what was typed, and that is where the message belongs.
     save: async (task, changes) => {
       setBusyId(task.id);
       const { failure } = await send(`/api/tasks/${task.id}`, {

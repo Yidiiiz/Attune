@@ -93,6 +93,90 @@ together) precisely so that a future session builds that or nothing.
 
 ---
 
+## Phase 4 — Calendar
+
+Everything here needs a pointer or a rendering engine. What could be answered over HTTP already
+was, in the Phase 4 checks: yesterday's cell carries the darkened class and the completed task's
+title, today's carries the outline, a crowded cell renders five items and a `+3 more` line, and the
+`PATCH` a drop fires writes the field, makes one commit and one `task.update`, and undoes cleanly.
+None of that touches the drag itself.
+
+Per the headless-browser paragraph in `AGENTS.md`, Phase 4 did not open that question; these rows
+are the backlog Phase 6 weighs it against.
+
+### 4.1 Dragging an item to another day writes `scheduled` — **pending**
+
+§17: *"dragging to another day writes `scheduled` and one commit"*.
+
+Steps: open Calendar, pick an item in any cell, drag it onto a different day and release.
+
+Expected: the day under the pointer highlights while the item is over it and its corner reads
+`schedule`. On release the grid re-reads from the server with the item in the new cell.
+`npm run history -- list` shows one `task.update`, the task file's `scheduled` is the drop date,
+and its `due` is untouched. `npm run history -- undo <batch>` puts it back.
+
+Also check the drop that should do nothing: drag an item onto the day it is already on. Nothing is
+written and no commit appears — the same-day case is skipped before the `PATCH`.
+
+Not verifiable from here: the write on release is the same `PATCH /api/tasks/[id]` the automated
+checks exercise, and they do. The `dragstart` → `dragover` → `drop` sequence itself has not been run.
+
+### 4.2 Shift-drag writes `due`, and says so while the key is held — **pending**
+
+§10.3: *"dropping an item on another day sets `scheduled` (or `due` when `Shift` is held, and the
+drop hint says so)"*.
+
+Steps: start dragging an item, hold `Shift` before releasing, and drop on another day.
+
+Expected: the hint in the target cell changes from `schedule` to `set due` **while the key is
+held**, and back if it is released before the drop. The write follows whatever the hint last said.
+
+This is the row worth doing carefully: `shiftKey` is read on every `dragover` and again on the
+drop, which is what makes the hint honest, and it is exactly the part no HTTP check can see.
+
+### 4.3 A cell folds past five items and expands in place — **pending**
+
+§10.3: *"A cell scrolls internally past five items with a '+N more' line that expands it."*
+
+Steps: give one day eight items and open the calendar on it. Click `+3 more`.
+
+Expected: the cell expands in place — the row grows, the rest of the grid does not reflow oddly —
+and scrolls internally rather than running down the page. `Show less` folds it back.
+
+Confirmed structurally: the served HTML for such a day has exactly five items and a `+3 more`
+line. That the expanded cell scrolls rather than overflowing is a layout property and needs eyes.
+
+### 4.4 The keys and the arrows move the view — **pending**
+
+§10.3: *"scrolling by a week with ↑/↓ … Arrows move by the current unit; a Today button returns."*
+
+Steps: on Rolling, press `↓` then `↑`. Then click the arrows in Month and in Week, and the Today
+button from each.
+
+Expected: `↓` moves the view forward a week, `↑` back. The arrows move a week in Rolling and Week
+and a calendar month in Month. Today returns to the current period in whichever view is showing.
+Then put the cursor in the toolbar's Reschedule date field and press `↑`: the field changes and
+the view does **not** move.
+
+Confirmed structurally: the arrows and the Today button are `<Link>`s, so their targets are in the
+served HTML and were checked there; the keys are a `keydown` listener and were not.
+
+### 4.5 Clicking an item selects it and the toolbar acts on it — **pending**
+
+§10.3: *"Clicking an item selects it and shows the Today `⋯` menu actions in a small toolbar."*
+
+Steps: click an item. Run each action in turn — Complete, Duplicate, Reschedule, Ask about this,
+Delete — and then Edit.
+
+Expected: the toolbar appears below the grid naming the item. Each action behaves as the Today
+row menu does, including the toast on a failure. **Edit** replaces the toolbar with the same
+`TaskEditForm` Today uses; a save containing a credential-shaped string is refused with the message
+inline and every character still in the field (§11.5, Decision 50) — the amendment `j` case on a
+second surface. The refusal itself was checked over HTTP; that the message lands in the form rather
+than in a toast is what needs eyes.
+
+---
+
 ## Phase 1 — carried forward
 
 ### 1.1 `Ctrl+C` on `npm run dev` from Git Bash (mintty) flushes the push — **pending**

@@ -157,6 +157,50 @@ concatenation if anyone ever needs one. Update §14 to match.
 
 **Then Stages B and C as pre-approved. Report them together.**
 
+### Approved conditions — Phase 4 (rule 9)
+
+Written before the build, verbatim from the approval. The plan proposed two stages; the approval
+collapsed them, with the reasoning recorded because it qualifies rule 5 rather than waiving it.
+
+**Plan approved with three answers. Collapse the stages — build it in one pass, one `code:` commit
+plus the trailing `docs:` commit.**
+
+**Reason for collapsing: `calendar.ts` is a leaf. The calendar page consumes it and no later phase
+builds on it, unlike `rank.ts` or `lib/history`. Rule 5's default checkpoint is about foundational
+risk, and you were right that this one is thin.**
+
+**1. `writes.ts` — APPROVED at the second use.** Your argument is the right one: those are §13.5
+semantics, not conveniences, and two hand-copied versions drift into disagreeing about where an
+error appears, which is a correctness divergence rather than duplication. There is also a real third
+use coming (Phase 5's preview panel, Phase 8's document view).
+
+Two conditions. Keep it narrow — `send`, busy id, toast-vs-inline routing per §13.5,
+`router.refresh()`, and nothing else; if it starts accumulating unrelated helpers, that is hard
+rule 1 reasserting itself. And record it as a Decision naming it a deliberate exception to hard
+rule 1 with this reasoning, so the rule does not quietly erode into "abstract at two."
+
+**2. PAST CELLS — reversing your call.** Show overdue items in their due-date cell, with the same
+overdue treatment Today uses, alongside completed. A task due last Tuesday and still open otherwise
+appears nowhere on the calendar, so an empty Tuesday reads as "nothing was due" when something was
+due and was missed. "What did I miss" is a question you open a calendar to answer. This does not
+create a second inbox: the SelectionBar already makes cell items actionable, so this fills a hole
+rather than adding an affordance. Correct §10.3 and record it as a Decision.
+
+**3. §3 ADDITIONS — approved, recorded like Decision 46.** Leave `TaskEditForm.tsx` and `format.ts`
+in `components/today/` and import across, as you proposed; a move is churn. Note the trigger though:
+if a third surface imports from `components/today/`, that is the signal to move the shared pieces
+into `components/tasks/`.
+
+**Write the conditions into the status block first, then build.**
+
+**Scope, as planned and approved.** `lib/schedule/calendar.ts` + `calendar.test.ts` (the grid for
+Rolling / Month / Week and the day grouping, pure); `GET /api/calendar?from&to`;
+`components/tasks/writes.ts`; `app/calendar/page.tsx` replacing the stub; `components/calendar/`
+— `CalendarView`, `CalendarGrid`, `DayCell`, `SelectionBar` — with native HTML5 drag writing
+`scheduled`, or `due` with `Shift`, one `task.update` batch per drop; and the Phase 4 rows in
+`docs/CHECKLIST.md`. Per the headless-browser paragraph above, Phase 4 does not open that question:
+what needs a pointer goes to the checklist.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -175,8 +219,9 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | closed — `78bd6b9`; the refusal, the file, the pattern, the un-echoed match and the untouched file are all checked over HTTP. `TaskEditForm` clears no field on failure, which is what preserves the text |
 | k | Timeline **edge resize**, deliberately not built, with the semantics settled so it is never guessed at: a **bottom-edge** drag moves the end, so it writes `estimateMin`; a **top-edge** drag moves the start while the end stays put, so it writes `estimateMin` **and** `scheduled` together. §10.1 said both edges write `scheduled`, which was wrong and is corrected. Not built because body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make | Phase 3 build; semantics fixed in the Phase 3 review | unscheduled — build it only if the form proves too slow for the case | **deferred, semantics settled** |
 | l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | **outstanding** |
+| m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
 
-`c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target.
+`c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` is a trigger rather than a task: nobody builds it, the third importer trips it.
 
 ## How we work
 

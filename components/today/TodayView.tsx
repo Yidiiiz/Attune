@@ -10,16 +10,17 @@
 // Failure behavior follows §13.5's rule about where an error is shown: a write fired from a row menu
 // has no on-screen origin, so it raises a toast naming what did not happen and leaves the row as it
 // was; a refused *edit* has one, so the message goes back to the form, which still holds every
-// character that was typed.
+// character that was typed. That rule is not implemented here — it lives in
+// `components/tasks/writes.ts`, which the calendar's toolbar uses too (Decision 53), so the two
+// surfaces cannot drift into disagreeing about where an error appears.
 
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Task } from "@/lib/store/tasks";
 import type { Settings } from "@/lib/store/settings";
 import type { RankedDay } from "@/lib/schedule/rank";
-import { showToast } from "@/components/shell/Toast";
+import { reportNotice, useTaskWrites } from "@/components/tasks/writes";
 import { clockLabel } from "./format";
 import DayHeader from "./DayHeader";
 import FirstRunCard from "./FirstRunCard";
@@ -43,34 +44,10 @@ export interface TodayViewProps {
 
 const SCHEDULE_KEY = "today.schedule";
 
-/** Error toasts are per click, not per kind, so a second failure is not silently deduped. */
-let toastSeq = 0;
-
-interface Failure {
-  message: string;
-}
-
-interface Sent {
-  failure: Failure | null;
-  data: Record<string, unknown>;
-}
-
-async function send(url: string, init: RequestInit): Promise<Sent> {
-  try {
-    const response = await fetch(url, { ...init, headers: { "content-type": "application/json" } });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok && data.ok) return { failure: null, data };
-    return { failure: { message: data.error ?? `${response.status} ${response.statusText}` }, data };
-  } catch (err) {
-    return { failure: { message: (err as Error).message }, data: {} };
-  }
-}
-
 export default function TodayView({ date, today, settings, ranked, fixed, errors, nowMs }: TodayViewProps) {
-  const router = useRouter();
+  const { busyId, run, submit } = useTaskWrites();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [asking, setAsking] = useState<Task | null>(null);
 
   // Per-device UI state lives in localStorage, not settings.json (Decision 19). Read after mount so
@@ -95,40 +72,25 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
     });
   }, []);
 
-  const fail = (what: string, failure: Failure) => {
-    toastSeq += 1;
-    showToast({ id: `today:${toastSeq}`, tone: "error", text: `${what} — ${failure.message}` });
-  };
-
-  const run = async (task: Task, what: string, url: string, init: RequestInit): Promise<Sent> => {
-    setBusyId(task.id);
-    const sent = await send(url, init);
-    setBusyId(null);
-    if (sent.failure) fail(what, sent.failure);
-    else router.refresh();
-    return sent;
-  };
-
   const actions: RowActions = {
     editingId,
     busyId,
 
     complete: (task) => {
       void (async () => {
-        const sent = await run(task, `Could not complete '${task.title}'`, `/api/tasks/${task.id}/complete`, {
+        const sent = await run(task.id, `Could not complete '${task.title}'`, `/api/tasks/${task.id}/complete`, {
           method: "POST",
         });
         // A repeat materializes its next instance in the same batch (§4.1). It lands on a later day,
         // so it leaves the screen as it is created; saying so is the only way to know it happened.
-        if (!sent.failure && sent.data.repeated === true) {
-          toastSeq += 1;
-          showToast({ id: `repeat:${toastSeq}`, text: `'${task.title}' repeats — the next one is scheduled.` });
+        if (sent.error === null && sent.data.repeated === true) {
+          reportNotice(`'${task.title}' repeats — the next one is scheduled.`);
         }
       })();
     },
 
     duplicate: (task) => {
-      void run(task, `Could not duplicate '${task.title}'`, "/api/tasks", {
+      void run(task.id, `Could not duplicate '${task.title}'`, "/api/tasks", {
         method: "POST",
         body: JSON.stringify({
           items: [
@@ -153,14 +115,14 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
     },
 
     reschedule: (task, day) => {
-      void run(task, `Could not reschedule '${task.title}'`, `/api/tasks/${task.id}`, {
+      void run(task.id, `Could not reschedule '${task.title}'`, `/api/tasks/${task.id}`, {
         method: "PATCH",
         body: JSON.stringify({ scheduled: day }),
       });
     },
 
     remove: (task) => {
-      void run(task, `Could not delete '${task.title}'`, `/api/tasks/${task.id}`, { method: "DELETE" });
+      void run(task.id, `Could not delete '${task.title}'`, `/api/tasks/${task.id}`, { method: "DELETE" });
     },
 
     startEdit: (task) => setEditingId(task.id),
@@ -169,15 +131,12 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
     // The write with an on-screen origin, so its failure is shown inline rather than as a toast
     // (§13.5). The form is still there holding what was typed, and that is where the message belongs.
     save: async (task, changes) => {
-      setBusyId(task.id);
-      const { failure } = await send(`/api/tasks/${task.id}`, {
+      const error = await submit(task.id, `/api/tasks/${task.id}`, {
         method: "PATCH",
         body: JSON.stringify(changes),
       });
-      setBusyId(null);
-      if (failure) return failure.message;
+      if (error !== null) return error;
       setEditingId(null);
-      router.refresh();
       return null;
     },
 
@@ -225,7 +184,7 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
           viewDate={date}
           nowMs={nowMs}
           onSchedule={(task, startMin) => {
-            void run(task, `Could not move '${task.title}'`, `/api/tasks/${task.id}`, {
+            void run(task.id, `Could not move '${task.title}'`, `/api/tasks/${task.id}`, {
               method: "PATCH",
               body: JSON.stringify({ scheduled: `${date}T${clockLabel(startMin)}` }),
             });

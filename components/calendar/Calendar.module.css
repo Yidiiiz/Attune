@@ -1,0 +1,394 @@
+/*
+ * The Calendar tab: the header, the grid of day cells, and the selection toolbar. Wider than Today
+ * because seven columns need the room. Nothing here leaves the flow, so there is no z-tier to hold.
+ *
+ * The grid is seven equal columns with `minmax(0, 1fr)` rather than `1fr`, so a long task title
+ * shrinks its cell's text instead of widening the column and pushing the week out of the page.
+ */
+
+.calendar {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 24px 64px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.views {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+
+.viewLink {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.viewLink:hover {
+  color: var(--fg);
+}
+
+.viewCurrent {
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.period {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.periodLabel {
+  min-width: 190px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.arrow,
+.todayLink {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.arrow:hover,
+.todayLink:hover {
+  border-color: var(--border-strong);
+  color: var(--fg);
+}
+
+.warning {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+.dragNote {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.dragNote kbd {
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  font-size: 12px;
+}
+
+/* --- the grid --- */
+
+.grid {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.weekdays,
+.row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekdays {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.weekdays span {
+  padding: 5px 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.row + .row .cell {
+  border-top: 1px solid var(--border);
+}
+
+.cell {
+  display: flex;
+  min-height: 118px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 6px 6px;
+  background: var(--bg);
+}
+
+.cell + .cell {
+  border-left: 1px solid var(--border);
+}
+
+/* Past days are darkened; today is outlined (§10.3). */
+.pastCell {
+  background: var(--bg-sunken);
+}
+
+.todayCell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.outsideCell .dayNumber {
+  color: var(--fg-faint);
+}
+
+.dropTarget {
+  background: var(--accent-soft);
+}
+
+.cellHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.dayNumber {
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.todayCell .dayNumber {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dropHint {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.items {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Expanding a cell scrolls it internally rather than growing the row (§10.3). */
+.itemsExpanded {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  cursor: grab;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.item:hover {
+  border-color: var(--border-strong);
+}
+
+.itemTime {
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.itemTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemDone .itemTitle {
+  color: var(--fg-faint);
+  text-decoration: line-through;
+}
+
+/* An open task still sitting on a past day — what was due and missed (Decision 54). */
+.itemOverdue {
+  border-color: var(--overdue);
+}
+
+.itemOverdue .itemTitle {
+  color: var(--overdue);
+}
+
+.itemSelected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.itemBusy {
+  cursor: progress;
+  opacity: 0.55;
+}
+
+.more {
+  align-self: flex-start;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.more:hover {
+  color: var(--fg);
+}
+
+/* --- the selection toolbar --- */
+
+.bar {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.barBusy {
+  opacity: 0.7;
+}
+
+.barTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.barName {
+  font-weight: 600;
+}
+
+.barChip {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.barActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.barActions button,
+.barPick {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.barActions button:hover:not(:disabled),
+.barPick:hover {
+  border-color: var(--border-strong);
+}
+
+.barActions button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.barPick input {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+
+.barDanger {
+  color: var(--danger);
+}
+
+.barClose {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* The Ask-mode stub, the same shape as Today's. The composer sheet is Phase 5's (§9.1). */
+.ask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.askMode {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.askTitle {
+  font-weight: 500;
+}
+
+.askNote {
+  flex: 1;
+  color: var(--fg-muted);
+}

@@ -177,6 +177,172 @@ than in a toast is what needs eyes.
 
 ---
 
+## Phase 5 — Composer
+
+Stage A was checked over HTTP and is not repeated here: the context endpoint, one prompt becoming
+one batch and one undo, the named refusals from `/api/agent/apply`, the key routes, the §7.2 undo
+guard, uploads and their undo, and both halves of the key check — no key set, and a key the provider
+rejected. What is left needs a pointer, a microphone, or a browser that can actually slide a sheet.
+
+### 5.1 The + button, and where it is not — **settled by construction, 2026-09-06**
+
+§15 and §17: *"The + button is absent on Chat, present on Today and Calendar."*
+
+Established over HTTP, on the served HTML of all four pages: `data-composer="button"` appears once
+on `/` and once on `/calendar`, and zero times on `/chat` and `/settings`. It is enforced by where
+the component is mounted — `app/page.tsx` and `app/calendar/page.tsx` render it and no layout does —
+so there is no runtime condition that could go wrong differently in a browser.
+
+What still needs eyes: that it sits bottom-right at 24px, is a 56px circle, and floats above the
+list rather than under it (z-tier 30). Then click it and watch it rotate 45° as the sheet opens.
+
+### 5.2 The sheet opens, closes, and keeps a draft — **pending**
+
+§9.1: *"Closes on `Esc`, on button click, and on outside click **only if the textarea is empty**. A
+sheet with typed text stays open and its draft persists in `localStorage` under `composer.draft`."*
+
+Steps, in this order, because the third is the one that is easy to get backwards:
+
+1. Open the sheet, type nothing, click the page behind it. It closes.
+2. Open it, type `pset 4`, click the page behind it. **It stays open.**
+3. With that text still in it, press `Esc`. It closes — `Esc` is unconditional, an outside click is
+   not. Reload the page and open the sheet: `pset 4` is still there.
+4. Press the + button again while open. It closes, and the button is back to a plus.
+
+Not verifiable from here: all four are pointer and key events against a rendered sheet.
+
+### 5.3 The mode control, with Build off — **settled by construction, 2026-09-06**
+
+§9.3 and the Phase 5 approval: all three segments render, Build is disabled with a tooltip naming
+Phase 9, and Ask stays selectable.
+
+Confirmed in the served HTML: `data-mode="tasks"` carries `aria-pressed="true"`, `data-mode="ask"`
+is selectable, and `data-mode="build"` is `disabled` with `title="Build mode arrives in Phase 9."`.
+
+What needs eyes: that the tooltip actually appears on hover, and that the selected segment is
+legible in both themes. Also check the memory: pick Ask, reload, and the sheet reopens in Ask
+(`composer.mode`).
+
+### 5.4 Ask mode refuses inline, and carries the task — **pending**
+
+§9.6 and the Phase 5 approval: *"Ask stays selectable because 'Ask about this' is a real caller that
+needs it to open and show the context it would carry; a send there refuses inline."*
+
+Steps: on Today, open the row menu on any task and choose **Ask about this**. Then press Send.
+
+Expected: the sheet opens in Ask mode reading `about '<that task's title>'` beside the mode control.
+A send puts a message *inline in the sheet*, naming Phase 6 and that task, and no network request
+leaves the page. Repeat from the calendar's selection toolbar, which is the same call.
+
+This is the row that pins the §13.5 rule down: the refusal is inline because the text that caused it
+is on screen. Compare with 5.7, where the same sheet raises a toast instead.
+
+### 5.5 A prompt becomes a preview, and a follow-up revises it — **pending**
+
+§17: *"six tasks from one prompt → one batch → one undo removes all six; a follow-up revises the
+preview in place; 'add these three movies to my watchlist' proposes a collection write; 'read Dune'
+returns a question."*
+
+Blocked on an API key, and named here rather than left to be discovered: the four checks in
+this row are the only ones in Phase 5 that need a provider, and none of them can be run until one is
+set. The batch half is verified: six drafts posted with a `prompt` made one commit
+`task: add 6 tasks from prompt` with `meta.prompt`, and one undo removed all six. What no offline
+check can do is turn a sentence into those six drafts.
+
+Steps, once a key is set: type `pset 4 due friday, laundry, call mum, book flights, gym, groceries`
+and send. Then, with the cards up, type `make them all Friday` and send again.
+
+Expected: six cards, each field editable. Fields the model filled in from context carry a dotted
+underline and a tooltip reading `Inferred from: <field>`. The follow-up **replaces the cards in
+place** — the same cards, revised — rather than starting a second list. Then the two shapes that are
+not tasks: `add these three movies to my watchlist` shows a collection card with its Add disabled
+and a Phase 7 tooltip, and `read Dune` comes back as a question with the textarea inviting an answer.
+
+**The case worth doing deliberately** (§9.5 step 4, `mergeDraft`): after sending the follow-up, edit
+a card's title *while the spinner is still showing*. When the answer lands, that edit must survive —
+the model did not touch the title, so the merge keeps what is on screen. This is unit-tested in
+`components/composer/draft.test.ts`, but only the browser exercises the timing that makes it real.
+
+### 5.6 Attachments, drop, paste, and dictation — **pending**
+
+§9.2. Four ways in, one of which is absent on most browsers.
+
+1. Click the paperclip and choose a file. A chip appears with its name.
+2. Drag a file anywhere over the window with the sheet open: a full-window overlay reading
+   `Drop to attach` appears on `dragenter`. Drop it; a chip appears.
+3. Copy an image and paste into the textarea: it attaches rather than inserting text. Paste ordinary
+   text into the same box: it inserts, and nothing is attached.
+4. If the browser has `SpeechRecognition` (Chrome and Edge do; Firefox does not), a mic button is
+   present — **absent**, not disabled, where it is not supported. Toggle it and speak; the words land
+   in the textarea.
+
+Then remove a chip and confirm the file is **still on disk** under `data/files/` — §9.2 says removing
+a chip does not delete the file, and `npm run history -- list` still shows the `file.add`.
+
+Confirmed over HTTP already: the upload itself stores by content hash, regenerates the manifest, and
+undoes cleanly, and the `added` column now records the date in the settings timezone rather than in
+UTC — checked at 02:26 UTC, which is the previous day in New York, and recorded as that previous day.
+
+### 5.7 A key error toasts; everything else stays inline — **settled by construction, 2026-09-06**
+
+§13.5, as the Phase 5 approval settled it: *"the principle is not 'which surface' but 'where the
+remedy is'."*
+
+Verified over HTTP: with no key, `/api/agent/extract` answers 401 `code: "auth"` with the message
+`No API key set. Add one in Settings → API keys.` and makes no provider call. With a garbage key in
+`.env.local`, the same route answers 401 `code: "auth"` with `The API key was rejected.` — and in
+both cases no task file, no log line and no commit appeared.
+
+What needs eyes: that those two land as a **toast** in the corner and not inline in the sheet, while
+5.4's Ask refusal and 5.8's credential refusal land **inline**. Same sheet, same session, different
+destinations — that is the whole rule, and it is the one thing about it a browser has to show.
+
+### 5.8 A credential in the prompt is refused, and the text survives — **settled by construction, 2026-09-06**
+
+Amendment `j`, on its third surface. Phase 3 covered the inline task edit; Phase 8 covers the
+document view; this is the composer, and it arrives by a different route than either — the prompt is
+written into `meta.prompt`, which `runBatch` scans before a byte reaches the log (§7.1 step 3).
+
+Verified over HTTP: `POST /api/tasks` carrying a credential-shaped string in `prompt` answers 422
+`secret_rejected`, names the pattern (`anthropic key`) without echoing the match, writes no file and
+makes no commit.
+
+Steps that need a browser: put a key-shaped string into the composer prompt, get a preview, and press
+**Add all**.
+
+Expected: the message appears **inline in the sheet**, naming the file and the pattern and never the
+matched text. Every card is still there, still holding its edits, and **the prompt still holds every
+character that was typed**. Nothing is cleared on the user's behalf (Decision 50).
+
+### 5.9 Add, and Discard — **pending**
+
+§9.5 step 5. With a preview of several cards up: untick two, and the button reads **Add selected**
+rather than **Add all**; tick them again and it changes back. Press it, and the sheet closes with the
+new tasks in today's list. `npm run history -- list` shows one batch.
+
+Then make another preview and press **Discard**: a confirmation appears, and on confirming the
+preview is dropped. `npm run history -- list` gains **nothing** — nothing reached disk, so there is
+nothing to undo, and §9.5 records that as a deliberate deviation from the brief.
+
+### 5.10 The API keys section — **pending**
+
+§11.5. Settings, then API keys.
+
+Steps: the row reads `not set`. Press **Set**, paste a key, press Save. The row reads the mask and
+the last four, and the field is empty. Press **Change**, save a different key, and confirm the mask
+changed. Press **Remove** and confirm the dialog.
+
+Expected at each step: the value is never displayed, `.env.local` in the checkout holds it and any
+unrelated lines are untouched, and `npm run history -- list` shows `settings · set ANTHROPIC_API_KEY`
+with **no commit** — `.env.local` is git-ignored. Then try to undo that entry: it is refused, and the
+message says a key change records only the name, so there is nothing to restore.
+
+The refusal and the log shape were checked over HTTP. What needs eyes is the section itself: the
+field is a password input, it clears on success, and an error lands inline beside it rather than as
+a toast — the remedy for a bad key typed *here* is right here.
+
+---
+
 ## Phase 1 — carried forward
 
 ### 1.1 `Ctrl+C` on `npm run dev` from Git Bash (mintty) flushes the push — **pending**

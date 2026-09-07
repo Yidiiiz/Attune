@@ -14,12 +14,19 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 2 follow-up — amendment `h`, the write-path secret scan | complete | `4682fab` |
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
-| 5 — Composer | **in progress — Stage B** | — |
-| 6–11 | not started | — |
+| 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7` |
+| 6 — Chat | **next** | — |
+| 7–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
 Phase 3 carries three for the same reason — Stage A (`ec54cd4`), the three corrections its review asked for (`9c1939a`), and Stages B and C together (`78bd6b9`) — each preceded by the `docs:` commit recording what was approved. Its closing review added a fourth round, spec-only apart from two comments: §10.1's edge-drag semantics corrected, §13.5's inline-versus-toast rule generalised, and `docs/CHECKLIST.md` started.
+
+Phase 5 carries three `code:` commits and three `docs:`, and the shape is rule 4's stage clause again. `f38c809` recorded the approval's six answers; `03e2b4b` built Stage A — the agent layer and its routes, with nothing rendering — and stopped for review; `032d36f` and `5470063` carried that review's six items, spec and code kept apart; `5b812a7` built Stage B, the composer itself. This commit is the third `docs:`.
+
+**What Phase 5 leaves unverified.** The four provider-dependent checks of §17 — a prompt becoming six drafts, a follow-up revising the preview in place, a collection proposal, and "read Dune" returning a question — need an API key, and none is set in this checkout. They are `docs/CHECKLIST.md` row 5.5, named there as blocked rather than left to be discovered. Both halves of the fifth check *are* done: no key set, and a key the provider rejected, both answer 401 `code: "auth"` with no file, no log line and no commit. Rows 5.2, 5.4, 5.6, 5.9 and 5.10 need a pointer or a microphone; 5.1, 5.3, 5.7 and 5.8 are settled by construction — checked over HTTP with the visual half outstanding. Per the headless-browser paragraph below, Phase 5 did not open that question; Phase 6's plan weighs it against this backlog, which is now ten rows longer.
+
+**Two things Phase 5 changed that later phases inherit.** `BatchResult` carries `targets`, and `lib/history/batch.ts` sits at 330 with its split named in advance (Decision 56). And `messages.parse` is not usable at §13.2's `max_tokens`: the SDK refuses a non-streaming request client-side above 128000/6 ≈ 21333, so `lib/agent/anthropic.ts` runs structured output over `messages.stream` instead. §11.3's theme parsing meets the same ceiling, and it was found only by running a request against the live API — every offline check passed either way.
 
 Phase 4 is one build commit, `91b0f70`: the approval collapsed the two proposed stages into one pass, because `calendar.ts` is a leaf and rule 5's default checkpoint is about foundational risk. Around it, the two `docs:` commits rule 4 now names outright — `7cf66a7` carrying the approval's conditions and its three spec consequences ahead of the code, and `004d5a4` carrying the result. Rule 4 described two commits while rules 4 and 9 together required three; its closing review amended the text rather than leaving each phase to explain the third.
 

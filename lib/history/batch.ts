@@ -10,6 +10,7 @@
 
 import { randomBytes } from "node:crypto";
 import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
+import * as chats from "../store/chats.ts";
 import * as env from "../store/env.ts";
 import * as files from "../store/files.ts";
 import * as manifest from "../store/manifest.ts";
@@ -37,6 +38,8 @@ const INLINE_LIMIT = 64 * 1024;
 export interface Store {
   tasks: typeof tasks;
   files: typeof files;
+  /** `data/chats/` (§4.7). The chat builders live in `chat-actions.ts` and reach it through here. */
+  chats: typeof chats;
   /** `.env.local`, which is not under `data/` and so is not reachable through `files` (§11.5). */
   env: typeof env;
   manifest: typeof manifest;
@@ -103,6 +106,7 @@ export async function snapshotFields(rel: string, keys: string[]): Promise<Snaps
 export const store: Store = {
   tasks,
   files,
+  chats,
   env,
   manifest,
   settings: settingsStore,

@@ -15,7 +15,8 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
-| 6 — Chat | **next** | — |
+| 6a — Chat: tree, store, linear chat | **in progress** | — |
+| 6b — Chat: branching, sidebar, annotations | not started | — |
 | 7–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
@@ -36,7 +37,7 @@ Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/co
 
 Left unverified by Phase 3, and now written down where they can actually be run: **`docs/CHECKLIST.md`**, started in Phase 3 rather than Phase 11 because Phase 3 was the first phase to produce checks no HTTP client can answer. Three items — the weather element arriving without moving the date (settled by construction: the weather sits in a **side** column, so the grid is `1fr auto 1fr` with the date in the `auto` middle, which is what makes the centre independent of it; the residual is a narrow window, where a side column can outgrow its share), the Ask panel opening, and dragging a timeline block. The Phase 1 mintty `Ctrl+C` item moved there too, rather than living in this paragraph forever.
 
-**Whether to add a headless browser is a decision for Phase 6's plan, not before.** Phase 3 wanted one and did not add it: jsdom was refused by the owner for having no layout engine, and Playwright or Puppeteer is a real dependency — a browser download, a second test runner, and a CI story — which is not something a phase adds mid-build to close three checklist rows. Phase 6 is where the question is actually forced: it is the largest phase, its checks are streaming, stop, retry, and branch-switching, and none of those can be observed over HTTP either, so its backlog is the one that makes the trade legible. Deciding it at plan time means it is weighed against `docs/CHECKLIST.md` as it stands then, in the open, rather than being reached for by whichever phase next finds itself unable to verify something. Phases 4 and 5 add their unverifiable checks to the checklist and do not open this; a phase that thinks it cannot wait says so in its plan and asks. Phase 4 did exactly that: rows `4.1`–`4.5` in `docs/CHECKLIST.md`, all pending, all needing a pointer or a rendering engine — the drag, the Shift hint that has to change while the key is held, the `+N more` expansion, the ↑/↓ keys, and the toolbar including a refused edit landing inline on a second surface. Phase 5 adds to the same list. Phase 6's plan decides.
+**Whether to add a headless browser is a decision for Phase 6's plan, not before.** Phase 3 wanted one and did not add it: jsdom was refused by the owner for having no layout engine, and Playwright or Puppeteer is a real dependency — a browser download, a second test runner, and a CI story — which is not something a phase adds mid-build to close three checklist rows. Phase 6 is where the question is actually forced: it is the largest phase, its checks are streaming, stop, retry, and branch-switching, and none of those can be observed over HTTP either, so its backlog is the one that makes the trade legible. Deciding it at plan time means it is weighed against `docs/CHECKLIST.md` as it stands then, in the open, rather than being reached for by whichever phase next finds itself unable to verify something. Phases 4 and 5 add their unverifiable checks to the checklist and do not open this; a phase that thinks it cannot wait says so in its plan and asks. Phase 4 did exactly that: rows `4.1`–`4.5` in `docs/CHECKLIST.md`, all pending, all needing a pointer or a rendering engine — the drag, the Shift hint that has to change while the key is held, the `+N more` expansion, the ↑/↓ keys, and the toolbar including a refused edit landing inline on a second surface. Phase 5 adds to the same list. **Phase 6a's plan decided it: yes, Playwright, landing in Stage B with the first UI.** The question is closed and is not reopened by a later phase; the terms are the first of the Phase 6a conditions below. What tipped it was not the backlog's size but Stage D: §16.4's gutter cards are collision-pushed and aligned to `getClientRects()[0]`, and there is no price at which that is verifiable without a layout engine.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -323,6 +324,78 @@ non-streaming, so `runExtract` at §13.2's `max_tokens: 64000` threw every time 
 too. `parse` now runs over `messages.stream`, which carries the same `output_config.format` and
 returns the same `parsed_output` with no ceiling. The bad-key check passes on the second run: 401,
 `code: auth`, no task, no log line, no commit. This is the argument for insisting on the live half.
+
+### Approved conditions — Phase 6a (rule 9)
+
+Written before the build, verbatim from the approval. The plan proposed the 6a/6b split §17
+anticipates, two stages inside 6a, and seven open calls; the approval kept the split, answered all
+seven, and added two.
+
+**Plan approved with the 6a/6b split. Stage A stops for review. Seven answers plus two additions.**
+
+**1. PLAYWRIGHT** — yes, in Stage B, on your terms: dev dependency outside the §1 runtime budget
+with the same standing as vitest, separate `npm run check:ui`, not wired into `npm test`, no CI
+story (Phase 11 owns it). Your reason is the right one — Stage D's collision layout has no price at
+which it is verifiable without a layout engine, and landing the harness with the first UI beats
+retrofitting it.
+
+Two conditions. `npm run check:ui` must fail with a readable message naming
+`npx playwright install chromium` when the browser is absent, not a cryptic launch error. And
+`publish-check`'s fresh-clone test must not invoke it.
+
+**2. `ATTUNE_FAKE_PROVIDER`** — approved, shaped like Decision 45, and it is what makes call 1
+worth anything: the §15 chat checks become verifiable on the surface a person uses rather than only
+in the library. One added guard: **ignore the flag entirely when `NODE_ENV` is production, and say
+so in the announcement.** A flag that silently replaces the model with a script must be structurally
+incapable of being on in a real session, not merely loud.
+
+A visible in-app indicator while it is active is your call — worth it if it is cheap.
+
+**3. MARKDOWN** — build all of Decision 31 now, including the KaTeX pre-pass. The dependency
+arrives in Phase 8 regardless; the only question is whether you build the pipeline once or twice,
+and Decision 31's NUL-placeholder stashing is precisely the part that cannot be retrofitted cleanly.
+Math in a chat answer is the expected case for this user, not an edge one.
+
+**4. RAIL** — approved as proposed, Chats icon only, Distill disabled with a Phase 7 tooltip. This
+does not contradict the Phase 3 composer ruling: the sheet was not needed then, the list is needed
+now, and building a needed thing in its final geometry is what stops Phase 8 re-homing it.
+
+**5. KEY** — I will get one, and I was wrong last turn about why. Your point stands: the injected
+provider covers every §15 chat item. What a key buys is knowing the SDK stream, tool rounds and
+finalize path work against the real client at all — the `messages.parse` lesson. It also unblocks
+row 5.5.
+
+**6. `runChatTurn`** — approved. §13.2's name belongs to the function §13.2 describes; rename Phase
+5's in-memory loop to `streamModelTurn`.
+
+**7. BOTH DEVIATIONS** — approved, recorded. `assembleContext` taking `openFile` and `taskIds`
+rather than a `Conversation` is the narrower and better signature. On derived titles: **name the
+fallback explicitly** for a first message that is empty, attachment-only, or rejected before it is
+written.
+
+**ADDITIONS:**
+
+**8.** Stage B must check **stream-buffer cleanup on every terminal path AND on client
+navigate-away**. §16.8 lists leaking buffers among the five non-goals, and it is the one of the five
+that leaves no visible trace when it happens.
+
+**9.** `lib/history/chat-actions.ts` as a fourth domain is the correct use of the Conventions rule —
+the seam was named in the Phase 5 review, so building it and reporting is right. Noted, no action.
+
+**Conditions into the status block first, then Stage A, then stop.**
+
+**Scope, as planned and approved.** *Phase 6a is §17's steps (a), (b) and (c); Phase 6b is (d), (e)
+and (f) and gets its own plan round.* *Stage A — the pure layer and the store, stopping for review;
+nothing renders.* `lib/chat/uuid.ts`, `tree.ts`, `text-match.ts`, `anchoring.ts`, `refs.ts` and
+`quotes.ts` with their §16.10 tests, ported from `HANDOFF-CHAT.md` Parts B, D, E and J with §16.2's
+three substitutions; `lib/store/chats.ts` with a temp-directory round-trip test;
+`lib/history/chat-actions.ts` as the fourth builder domain; and `lib/history/streaming.ts` carrying
+§8's one sanctioned logging bypass, guarded to `chats/*/messages/*.md` with `status: streaming`.
+*Stage B — linear chat:* `lib/agent/turn.ts` (§13.2's persisting `runChatTurn`, with the Phase 5
+loop renamed `streamModelTurn`); the four `/api/chats` routes; `components/markdown/Markdown.tsx`
+with all of Decision 31; `app/chat/page.tsx` with the rail's Chats panel; `components/chat/` for the
+linear conversation; §9.6's Ask mode replacing Phase 5's inline refusal; Playwright and
+`ATTUNE_FAKE_PROVIDER` on the terms above; and the Phase 6a rows in `docs/CHECKLIST.md`.
 
 ## Deferred amendments
 

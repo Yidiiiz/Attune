@@ -21,14 +21,22 @@ const DATA = path.join(SANDBOX, "data");
 
 process.env.ATTUNE_REPO_DIR = SANDBOX;
 
-const { assembleContext, estimateTokens, settingsPreamble } = await import("./context.ts");
+const { assembleContext, currentTime, estimateTokens, stableSettings } = await import("./context.ts");
 const { defaultSettings } = await import("../store/settings.ts");
 const { invalidateTaskCache } = await import("../store/tasks.ts");
 
 const AT = new Date("2026-09-06T18:30:00Z");
 
 /** The labels §13.1 says come first, in the order it says they come in. */
-const ALWAYS = ["Setup", "Knowledge index", "About me", "Habits", "Preferences", "Instructions"];
+const ALWAYS = [
+  "Setup",
+  "Knowledge index",
+  "About me",
+  "Habits",
+  "Preferences",
+  "Instructions",
+  "Current time",
+];
 
 const labels = (blocks: Array<{ label: string }>): string[] => blocks.map((block) => block.label);
 
@@ -75,15 +83,35 @@ describe("a fresh install, whose profile is three empty files", () => {
     }
   });
 
-  it("marks the four cacheable blocks and nothing else (§13.1)", async () => {
+  it("caches the five stable blocks, and they are the prefix (§13.1, Decision 59)", async () => {
     await seedData();
     const { system } = await assembleContext({ mode: "ask" }, AT);
-    expect(system.filter((block) => block.cache === true).map((block) => block.label)).toEqual([
-      "Knowledge index",
-      "About me",
-      "Habits",
-      "Preferences",
-    ]);
+    const cached = system.filter((block) => block.cache === true).map((block) => block.label);
+    expect(cached).toEqual(["Setup", "Knowledge index", "About me", "Habits", "Preferences"]);
+
+    // The point of the split: the cached blocks are an unbroken run at the front. A block that
+    // changes between requests sitting among them would invalidate the whole prefix every call.
+    expect(system.slice(0, cached.length).map((block) => block.label)).toEqual(cached);
+    expect(system.slice(cached.length).every((block) => block.cache === undefined)).toBe(true);
+  });
+
+  it("keeps the clock out of the cached prefix and puts it before the view (Decision 59)", async () => {
+    await seedData();
+    const early = await assembleContext({ mode: "ask" }, new Date("2026-09-06T14:00:00Z"));
+    const later = await assembleContext({ mode: "ask" }, new Date("2026-09-06T18:30:00Z"));
+
+    const at = (blocks: typeof early.system, label: string): string =>
+      blocks.find((block) => block.label === label)?.text ?? "";
+
+    // Only the uncached block moved. Everything in the prefix is byte-identical between the two.
+    expect(at(early.system, "Current time")).not.toBe(at(later.system, "Current time"));
+    for (const label of ["Setup", "Knowledge index", "About me", "Habits", "Preferences"]) {
+      expect(at(early.system, label), label).toBe(at(later.system, label));
+    }
+    expect(at(later.system, "Setup")).not.toContain("It is now");
+    expect(early.system.findIndex((block) => block.label === "Current time")).toBe(
+      early.system.length - 1,
+    );
   });
 
   it("does not throw when the files are not there at all", async () => {
@@ -204,21 +232,28 @@ describe("the blocks that depend on what the caller is looking at", () => {
   });
 });
 
-describe("the settings preamble", () => {
-  it("says who the user is, where they are, and what their day looks like", async () => {
+describe("the two settings blocks", () => {
+  it("says who the user is, where they are, and what their day looks like", () => {
     const settings = defaultSettings();
     settings.identity.name = "Yidi";
     settings.timezone = "America/New_York";
 
-    const text = settingsPreamble(settings, AT);
+    const text = stableSettings(settings);
     expect(text).toContain("The user is Yidi.");
     expect(text).toContain("America/New_York");
-    expect(text).toContain("2026-09-06T14:30");
     expect(text).toContain("10:00 to 00:00");
     expect(text).toContain("Categories in use: school, personal.");
+    // The clock is the whole reason these are two blocks and not one.
+    expect(text).not.toContain("It is now");
   });
 
   it("says so plainly when the name has not been set (§11.2's first run)", () => {
-    expect(settingsPreamble(defaultSettings(), AT)).toContain("The user has not given their name.");
+    expect(stableSettings(defaultSettings())).toContain("The user has not given their name.");
+  });
+
+  it("gives the model both the wall clock and the date it resolves 'Friday' against", () => {
+    const text = currentTime(defaultSettings(), AT);
+    expect(text).toContain("2026-09-06T14:30");
+    expect(text).toContain("2026-09-06");
   });
 });

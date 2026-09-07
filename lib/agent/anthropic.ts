@@ -130,11 +130,19 @@ export async function* streamChat(req: ChatRequest, signal: AbortSignal): AsyncI
  * One structured answer, validated against a zod schema by the SDK's own output format (§11.3,
  * §9.4). `parsed_output` is null when the model answered with something the schema rejected; that
  * is a provider failure rather than a caller error, because the caller asked for a shape.
+ *
+ * It runs over `messages.stream` rather than `messages.parse`, and the reason is a hard limit
+ * rather than a preference. The SDK refuses a *non-streaming* request outright, client-side and
+ * before any network call, once `max_tokens` exceeds 128000/6 ≈ 21333 — see
+ * `calculateNonstreamingTimeout` in the installed client. `messages.parse` is non-streaming, so at
+ * §13.2's 64000 it throws every time, with or without a valid key. `stream` carries the same
+ * `output_config.format` and hands back the same `parsed_output` on its final message, with no
+ * ceiling. Found by running the request against the live API instead of trusting the shape.
  */
 export async function parse<T>(req: ParseRequest<T>): Promise<T> {
   const anthropic = await client();
   try {
-    const message = await anthropic.messages.parse(
+    const stream = anthropic.messages.stream(
       {
         model: req.model,
         max_tokens: req.maxTokens,
@@ -148,6 +156,7 @@ export async function parse<T>(req: ParseRequest<T>): Promise<T> {
       req.signal ? { signal: req.signal } : {},
     );
 
+    const message = await stream.finalMessage();
     if (message.parsed_output === null || message.parsed_output === undefined) {
       throw new AgentError("provider", "the model did not answer in the shape this request asked for");
     }

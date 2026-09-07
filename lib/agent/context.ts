@@ -9,10 +9,11 @@
 // file is empty changes the shape of the prompt between one user and the next. A path that escapes
 // `data/` is not missing content and does propagate, as `forbidden_path`.
 //
-// One thing this file does *not* decide: §13.1 puts the settings preamble first and marks the four
-// blocks after it `cache: true`. The preamble carries the current local time, so it changes on
-// every request, and a cache breakpoint sitting behind something that changes never gets a hit. The
-// order here is the spec's; the observation belongs to whoever revises §13.1.
+// The two settings blocks are split by *volatility*, not by topic (§13.1, Decision 59). Everything
+// stable about the user sits inside the cached prefix; the clock, which differs on every request,
+// sits behind the breakpoint next to the rest of the per-request content. Caching is prefix-based,
+// so a volatile line ahead of the breakpoint would invalidate everything behind it on every call
+// and turn the cache into a pure write cost. Do not merge them back together.
 
 import { readText } from "../store/files.ts";
 import { StoreError } from "../store/paths.ts";
@@ -92,8 +93,11 @@ const PROFILE_FILES: Array<{ label: string; rel: string }> = [
 const hhmm = (minutes: number): string =>
   String(Math.floor(minutes / 60) % 24).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
 
-/** Name, timezone, the time it is where the user is, and the shape of their day (§6.2 step 1). */
-export function settingsPreamble(settings: Settings, at: Date): string {
+/**
+ * Who the user is and how their days are shaped (§6.2 step 1) — the half of the preamble that only
+ * changes when they change a setting, which is what makes it worth caching.
+ */
+export function stableSettings(settings: Settings): string {
   const name = settings.identity.name.trim();
   const nickname = settings.identity.nickname.trim();
   const who =
@@ -106,7 +110,7 @@ export function settingsPreamble(settings: Settings, at: Date): string {
 
   return [
     who,
-    "Timezone: " + settings.timezone + ". It is now " + nowIso(settings.timezone, at) + ".",
+    "Timezone: " + settings.timezone + ".",
     "Their day runs " + hhmm(settings.day.startMin) + " to " + hhmm(settings.day.endMin) +
       ", in blocks of " + blocks + ", with " + settings.day.breakMin + "-minute breaks.",
     settings.categories.length > 0
@@ -114,6 +118,15 @@ export function settingsPreamble(settings: Settings, at: Date): string {
       : "No categories are set up.",
     "Dates are YYYY-MM-DD and date-times are YYYY-MM-DDTHH:mm in that timezone.",
   ].join("\n");
+}
+
+/**
+ * The one line that is different on every request, kept apart from everything else for exactly that
+ * reason (Decision 59). It is what lets the model resolve "Friday" or "tomorrow" at all, so it is
+ * always present — but it is always behind the cache breakpoint.
+ */
+export function currentTime(settings: Settings, at: Date): string {
+  return `It is now ${nowIso(settings.timezone, at)}, which is ${todayIn(settings.timezone, at)}.`;
 }
 
 const isOpen = (task: Task): boolean => task.status === "todo" || task.status === "doing";
@@ -177,7 +190,7 @@ export async function assembleContext(
 ): Promise<AssembledContext> {
   const settings = await readSettings();
   const system: ContextBlock[] = [
-    block("Setup", "settings/settings.json", settingsPreamble(settings, at)),
+    block("Setup", "settings/settings.json", stableSettings(settings), true),
     block("Knowledge index", "knowledge/index.md", await readOrEmpty("knowledge/index.md"), true),
   ];
 
@@ -185,7 +198,9 @@ export async function assembleContext(
     system.push(block(file.label, file.rel, await readOrEmpty(file.rel), true));
   }
 
+  // The cached prefix ends here. Everything below differs between requests.
   system.push(block("Instructions", "lib/agent/prompts.ts", modeInstructions(input.mode)));
+  system.push(block("Current time", "settings/settings.json", currentTime(settings, at)));
 
   const referencedIds = input.taskIds ?? [];
   const wantsView = input.viewDate !== undefined || input.range !== undefined;

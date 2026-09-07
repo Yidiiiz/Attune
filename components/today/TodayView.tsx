@@ -21,6 +21,7 @@ import type { Task } from "@/lib/store/tasks";
 import type { Settings } from "@/lib/store/settings";
 import type { RankedDay } from "@/lib/schedule/rank";
 import { reportNotice, useTaskWrites } from "@/components/tasks/writes";
+import { openComposer } from "@/components/composer/ComposerButton";
 import { clockLabel } from "./format";
 import DayHeader from "./DayHeader";
 import FirstRunCard from "./FirstRunCard";
@@ -48,7 +49,6 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
   const { busyId, run, submit } = useTaskWrites();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [asking, setAsking] = useState<Task | null>(null);
 
   // Per-device UI state lives in localStorage, not settings.json (Decision 19). Read after mount so
   // the server and the first client render agree.
@@ -140,7 +140,9 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
       return null;
     },
 
-    ask: (task) => setAsking(task),
+    // §9.6: the sheet opens in Ask mode carrying the task. The Phase 3 stub that stood here
+    // said nothing was sent; now the sheet says that itself, inline, if a send is attempted.
+    ask: (task) => openComposer({ mode: "ask", task: { id: task.id, title: task.title } }),
   };
 
   return (
@@ -162,19 +164,6 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
         </p>
       ) : null}
 
-      {asking ? (
-        <div className={styles.ask} role="status">
-          <span className={styles.askMode}>Ask mode</span>
-          <span className={styles.askDot} aria-hidden="true">
-            ·
-          </span>
-          <span className={styles.askTitle}>{asking.title}</span>
-          <span className={styles.askNote}>The composer arrives in Phase 5; nothing was sent.</span>
-          <button type="button" className={styles.askClose} onClick={() => setAsking(null)} aria-label="Close">
-            ×
-          </button>
-        </div>
-      ) : null}
 
       {scheduleOpen ? (
         <Timeline

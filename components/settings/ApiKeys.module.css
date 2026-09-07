@@ -1,0 +1,140 @@
+/* The API keys section (PROJECT.md §11.5). Nothing here leaves the flow, so no z-index. */
+
+.section {
+  margin: 24px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.heading {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.blurb {
+  margin: 0 0 10px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.mask {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.editor {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.primary {
+  padding: 4px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+  color: var(--fg-faint);
+  cursor: not-allowed;
+}
+
+.secondary {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.secondary:hover {
+  border-color: var(--border-strong);
+}
+
+.danger {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--danger);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.danger:hover {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.error {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}

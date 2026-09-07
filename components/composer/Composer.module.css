@@ -1,0 +1,512 @@
+/*
+ * The composer: the button, the sheet it opens, the mode control, and the preview panel inside it
+ * (PROJECT.md §9). The button and the sheet are both z-tier 30 — panels and bars — and the
+ * full-window drop overlay sits at the same tier because it belongs to the sheet. Nothing here
+ * reaches tier 40, which is toasts and modals (AGENTS.md conventions).
+ */
+
+/* ---------- the button (§9.1) ---------- */
+
+.button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 180ms ease;
+}
+
+.button:hover {
+  filter: brightness(1.06);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The same button rotates 45° while the sheet is open and closes it (§9.1). */
+.buttonOpen {
+  transform: rotate(45deg);
+}
+
+.glyph {
+  display: block;
+  transform: translateY(-1px);
+}
+
+/* ---------- the sheet (§9.1) ---------- */
+
+.sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  border-top: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  transform: translateY(100%);
+  transition: transform 180ms ease;
+}
+
+.sheetOpen {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .button {
+    transition: none;
+  }
+}
+
+.inner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 780px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 12px 24px 16px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.close {
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--fg);
+}
+
+/* ---------- mode selector (§9.3) ---------- */
+
+.modes {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+
+.mode {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mode:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.modeOn {
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+.mode:disabled {
+  color: var(--fg-faint);
+  cursor: not-allowed;
+}
+
+/* ---------- input (§9.2) ---------- */
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.textarea {
+  flex: 1;
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: none;
+}
+
+.textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.textarea:disabled {
+  color: var(--fg-muted);
+  background: var(--bg-sunken);
+}
+
+.iconButton {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+
+.recording {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.send {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.send:disabled {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+  color: var(--fg-faint);
+  cursor: not-allowed;
+}
+
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--fg-faint);
+  border-top-color: var(--fg);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}
+
+.hint {
+  margin: 0;
+  color: var(--fg-faint);
+  font-size: 12px;
+}
+
+/* ---------- attachments (§9.2) ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-size: 12px;
+}
+
+.chipName {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipRemove {
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  color: var(--fg);
+}
+
+.dropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  outline: 2px dashed var(--accent);
+  outline-offset: -12px;
+}
+
+/* ---------- errors (§13.5) ---------- */
+
+/* Inline, next to the text that caused it and the button that would retry it. */
+.error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* ---------- preview panel (§9.5) ---------- */
+
+.preview {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.question {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.primary {
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+  color: var(--fg-faint);
+  cursor: not-allowed;
+}
+
+.secondary {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.secondary:hover {
+  border-color: var(--border-strong);
+}
+
+.count {
+  flex: 1;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+/* ---------- one task card (§9.5 step 3) ---------- */
+
+.card {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.title:hover,
+.title:focus-visible {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px 10px;
+  margin-top: 6px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.label {
+  color: var(--fg-muted);
+}
+
+.field input,
+.field select,
+.body {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+}
+
+.body {
+  width: 100%;
+  margin-top: 6px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/*
+ * §9.5 step 3: a field the model filled in from context rather than from the prompt carries a
+ * dotted underline and a tooltip naming where it came from.
+ */
+.inferred .label {
+  color: var(--accent);
+}
+
+.inferred input,
+.inferred select {
+  border-bottom: 1px dotted var(--accent);
+}
+
+/* ---------- collection proposal (§9.5 step 6) ---------- */
+
+.collection {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.collectionName {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.items {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}

@@ -19,45 +19,11 @@
   font-size: 13px;
 }
 
-/* The Ask-mode stub. The composer sheet itself is Phase 5's (§9.1). */
-.ask {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
-  padding: 8px 10px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  background: var(--accent-soft);
-  font-size: 13px;
-}
 
-.askMode {
-  font-weight: 600;
-  color: var(--accent);
-}
 
-.askDot {
-  color: var(--fg-faint);
-}
 
-.askTitle {
-  font-weight: 500;
-}
 
-.askNote {
-  flex: 1;
-  color: var(--fg-muted);
-}
 
-.askClose {
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-}
 
 .list {
   display: flex;

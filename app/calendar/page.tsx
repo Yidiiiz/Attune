@@ -15,6 +15,7 @@ import { listTasks } from "@/lib/store/tasks";
 import { gridFor, groupDays, isCalendarView } from "@/lib/schedule/calendar";
 import { todayIn } from "@/lib/schedule/dates";
 import CalendarView from "@/components/calendar/CalendarView";
+import ComposerButton from "@/components/composer/ComposerButton";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,11 @@ export default async function Page({ searchParams }: Search) {
   const tasks = await listTasks();
   const errors = [...listTasks.errors];
 
+  // Present here and on Today, absent on Chat (§9.1, §15).
   return (
-    <CalendarView grid={grid} days={groupDays(tasks, grid.from, grid.to)} today={today} errors={errors} />
+    <>
+      <CalendarView grid={grid} days={groupDays(tasks, grid.from, grid.to)} today={today} errors={errors} />
+      <ComposerButton categories={settings.categories} viewDate={anchor} />
+    </>
   );
 }

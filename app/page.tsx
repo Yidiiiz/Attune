@@ -17,6 +17,7 @@ import { rankDay } from "@/lib/schedule/rank";
 import { fixedStart } from "@/lib/schedule/timeline";
 import { todayIn } from "@/lib/schedule/dates";
 import TodayView from "@/components/today/TodayView";
+import ComposerButton from "@/components/composer/ComposerButton";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,20 @@ export default async function Page({ searchParams }: Search) {
     (task) => (task.status === "todo" || task.status === "doing") && fixedStart(task, date) !== null,
   );
 
+  // The composer button is mounted by the two pages that have one and by neither the layout nor
+  // the Chat page (§9.1, §15). Where it is rendered is the whole enforcement.
   return (
-    <TodayView
-      date={date}
-      today={today}
-      settings={settings}
-      ranked={ranked}
-      fixed={fixed}
-      errors={errors}
-      nowMs={now.getTime()}
-    />
+    <>
+      <TodayView
+        date={date}
+        today={today}
+        settings={settings}
+        ranked={ranked}
+        fixed={fixed}
+        errors={errors}
+        nowMs={now.getTime()}
+      />
+      <ComposerButton categories={settings.categories} viewDate={date} />
+    </>
   );
 }

@@ -23,6 +23,7 @@ import type { CalendarDays, CalendarGrid as Grid, CalendarView as View } from "@
 import { shiftAnchor } from "@/lib/schedule/calendar";
 import { datePart } from "@/lib/schedule/dates";
 import { reportNotice, useTaskWrites } from "@/components/tasks/writes";
+import { openComposer } from "@/components/composer/ComposerButton";
 import CalendarGrid from "./CalendarGrid";
 import SelectionBar from "./SelectionBar";
 import styles from "./Calendar.module.css";
@@ -56,7 +57,6 @@ export default function CalendarView({ grid, days, today, errors }: CalendarView
   const { busyId, run, submit } = useTaskWrites();
   const [selected, setSelected] = useState<Task | null>(null);
   const [editing, setEditing] = useState(false);
-  const [asking, setAsking] = useState<Task | null>(null);
   const [dragging, setDragging] = useState<Task | null>(null);
   const [dropping, setDropping] = useState<{ date: string; field: "scheduled" | "due" } | null>(null);
 
@@ -177,17 +177,6 @@ export default function CalendarView({ grid, days, today, errors }: CalendarView
         onDrop={drop}
       />
 
-      {asking !== null ? (
-        <div className={styles.ask} role="status">
-          <span className={styles.askMode}>Ask mode</span>
-          <span aria-hidden="true">·</span>
-          <span className={styles.askTitle}>{asking.title}</span>
-          <span className={styles.askNote}>The composer arrives in Phase 5; nothing was sent.</span>
-          <button type="button" className={styles.barClose} onClick={() => setAsking(null)} aria-label="Close">
-            ×
-          </button>
-        </div>
-      ) : null}
 
       {selected !== null ? (
         <SelectionBar
@@ -198,7 +187,7 @@ export default function CalendarView({ grid, days, today, errors }: CalendarView
           onClose={clearSelection}
           onStartEdit={() => setEditing(true)}
           onCancelEdit={() => setEditing(false)}
-          onAsk={(task) => setAsking(task)}
+          onAsk={(task) => openComposer({ mode: "ask", task: { id: task.id, title: task.title } })}
           onComplete={(task) => {
             void (async () => {
               const sent = await run(task.id, `Could not complete '${task.title}'`, `/api/tasks/${task.id}/complete`, {

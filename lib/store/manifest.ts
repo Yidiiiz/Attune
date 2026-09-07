@@ -8,6 +8,8 @@
 
 import { createHash } from "node:crypto";
 import { exists, listTree, readText, writeBinary, writeText } from "./files.ts";
+import { readSettings } from "./settings.ts";
+import { todayIn } from "../schedule/dates.ts";
 import type { TreeNode } from "./files.ts";
 import path from "node:path";
 
@@ -52,6 +54,9 @@ async function readManifestRows(): Promise<Map<string, ManifestRow>> {
  */
 export async function regenerateManifest(sources: Map<string, string> = new Map()): Promise<void> {
   const previous = await readManifestRows();
+  // Every date in this app is read in the owner's timezone (§4). A file added at 21:39 in New York
+  // is an ISO string in the following UTC day, and slicing that would date it tomorrow.
+  const timezone = (await readSettings()).timezone;
   const files: TreeNode[] = [];
   const collect = (nodes: TreeNode[]): void => {
     for (const node of nodes) {
@@ -65,7 +70,9 @@ export async function regenerateManifest(sources: Map<string, string> = new Map(
   const lines = ["| path | added | source | description | used-by |", "| --- | --- | --- | --- | --- |"];
   for (const file of files) {
     const prior = previous.get(file.path);
-    const added = prior?.added || (file.updatedAt ?? "").slice(0, 10);
+    const added =
+      prior?.added ||
+      (file.updatedAt === undefined ? "" : todayIn(timezone, new Date(file.updatedAt)));
     const source = sources.get(file.path) ?? prior?.source ?? "";
     lines.push(`| ${file.path} | ${added} | ${source} | ${prior?.description ?? ""} |  |`);
   }
@@ -83,7 +90,9 @@ export async function addFile(
   source: string,
 ): Promise<{ rel: string; created: boolean }> {
   const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 8);
-  const month = new Date().toISOString().slice(0, 7);
+  // The same rule, and here it decides a path rather than a column: an upload late on the last day
+  // of a month would otherwise be filed under the next one and stay there.
+  const month = todayIn((await readSettings()).timezone).slice(0, 7);
   const rel = `files/${kind}/${month}/${digest}-${sanitizeFileName(name)}`;
   // Re-uploading the same bytes is a no-op by design (§4.8). The caller is told which happened,
   // because a history entry that claims to have created a file it found is a lie undo acts on.

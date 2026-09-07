@@ -366,29 +366,6 @@
   line-height: 1;
 }
 
-/* The Ask-mode stub, the same shape as Today's. The composer sheet is Phase 5's (§9.1). */
-.ask {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 8px 10px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  background: var(--accent-soft);
-  font-size: 13px;
-}
 
-.askMode {
-  font-weight: 600;
-  color: var(--accent);
-}
 
-.askTitle {
-  font-weight: 500;
-}
 
-.askNote {
-  flex: 1;
-  color: var(--fg-muted);
-}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { findConflicts, undoState } from "./undo.ts";
+import { findConflicts, undoState, unrestorableTarget } from "./undo.ts";
 import { groupBatches } from "./log.ts";
-import type { ActionEntry, ActionType, Snapshots } from "./log.ts";
+import type { ActionEntry, ActionType, Snapshot, Snapshots } from "./log.ts";
 
 let seq = 0;
 
@@ -157,5 +157,58 @@ describe("findConflicts", () => {
         "b1",
       ),
     ).toEqual(["b2", "u2"]);
+  });
+});
+
+describe("unrestorableTarget", () => {
+  /** One entry whose `before` is exactly the snapshots given, so a test can name the shape. */
+  function withSnapshots(type: ActionType, before: Snapshots): ActionEntry {
+    const targets = Object.keys(before);
+    return { ...entry("b1", type, targets), before, after: before };
+  }
+
+  it("passes an ordinary batch, whose targets are all under data/", () => {
+    const batch = batches(entry("b1", "task.update", ["tasks/a.md", "tasks/b.md"]))[0];
+    expect(unrestorableTarget(batch)).toBeNull();
+  });
+
+  it("names .env.local, which is the batch this guard exists for (§11.5, Decision 58)", () => {
+    const batch = batches(
+      withSnapshots("settings.update", { ".env.local": { fields: { ANTHROPIC_API_KEY: "set" } } }),
+    )[0];
+    expect(unrestorableTarget(batch)).toBe(".env.local");
+  });
+
+  it("catches a content snapshot on the same path, not only a fields one", () => {
+    const batch = batches(withSnapshots("settings.update", { ".env.local": { content: "" } }))[0];
+    expect(unrestorableTarget(batch)).toBe(".env.local");
+  });
+
+  it("leaves a git snapshot alone, which is how code.change reaches repository paths", () => {
+    const gitSnapshot: Snapshot = { git: true };
+    const batch = batches(
+      withSnapshots("code.change", { "lib/agent/chat.ts": gitSnapshot, ".env.local": gitSnapshot }),
+    )[0];
+    expect(unrestorableTarget(batch)).toBeNull();
+  });
+
+  it("leaves a null snapshot alone: it records absence, not contents", () => {
+    const batch = batches(withSnapshots("file.add", { "files/docs/2026-09/a.pdf": null }))[0];
+    expect(unrestorableTarget(batch)).toBeNull();
+  });
+
+  it("catches a path that escapes data/ as well as the one that resolves inside it wrongly", () => {
+    const batch = batches(withSnapshots("file.write", { "../secrets.md": { content: "x" } }))[0];
+    expect(unrestorableTarget(batch)).toBe("../secrets.md");
+  });
+
+  it("names the first unrestorable target when a batch mixes them with ordinary ones", () => {
+    const batch = batches(
+      withSnapshots("settings.update", {
+        "settings/settings.json": { content: "{}" },
+        ".env.local": { fields: { ANTHROPIC_API_KEY: "unset" } },
+      }),
+    )[0];
+    expect(unrestorableTarget(batch)).toBe(".env.local");
   });
 });

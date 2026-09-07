@@ -81,11 +81,14 @@ export async function addFile(
   name: string,
   bytes: Buffer,
   source: string,
-): Promise<{ rel: string }> {
+): Promise<{ rel: string; created: boolean }> {
   const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 8);
   const month = new Date().toISOString().slice(0, 7);
   const rel = `files/${kind}/${month}/${digest}-${sanitizeFileName(name)}`;
-  if (!(await exists(rel))) await writeBinary(rel, bytes);
+  // Re-uploading the same bytes is a no-op by design (§4.8). The caller is told which happened,
+  // because a history entry that claims to have created a file it found is a lie undo acts on.
+  const created = !(await exists(rel));
+  if (created) await writeBinary(rel, bytes);
   await regenerateManifest(new Map([[rel, source]]));
-  return { rel };
+  return { rel, created };
 }

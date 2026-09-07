@@ -7,8 +7,9 @@
 // deliberate: a frontmatter-only edit records `fields` so undo restores exactly those keys, and a
 // body edit records `content` because there is no smaller honest description of it.
 
+import { z } from "zod";
 import { advanceDate, datePart, nowIso } from "../schedule/dates.ts";
-import { StoreError } from "../store/paths.ts";
+import { ENV_TARGET, StoreError } from "../store/paths.ts";
 import type { ActionSpec, Store } from "./batch.ts";
 import type { Snapshots } from "./log.ts";
 import type { Task, TaskFields } from "../store/tasks.ts";
@@ -39,6 +40,32 @@ export interface TaskInput {
 }
 
 export type TaskDraft = TaskInput & { title: string };
+
+/**
+ * The same fields as `TaskInput`, as something a route can validate an untrusted body against —
+ * §9.4's "the task frontmatter minus `id`, timestamps and `createdBy`". `title` is the only one
+ * that must be present; every other field absent means "leave it at the store's default", which is
+ * what makes a one-line quick-add and a fully specified draft the same request shape.
+ *
+ * `lib/agent/tools.ts` derives the model-facing version from this one with `.required()`, so the
+ * list of fields a task can have is written down once and the two audiences cannot drift apart.
+ */
+export const TaskDraftSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().optional(),
+  status: z.enum(["todo", "doing", "done", "archived"]).optional(),
+  priority: z.number().int().min(1).max(4).optional(),
+  estimateMin: z.number().int().nullable().optional(),
+  due: z.string().nullable().optional(),
+  scheduled: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  context: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  links: z.array(z.string()).optional(),
+  repeat: z.enum(["daily", "weekly", "biweekly", "monthly"]).nullable().optional(),
+  repeatUntil: z.string().nullable().optional(),
+  collection: z.string().nullable().optional(),
+});
 
 export type TaskChanges = TaskInput & { title?: string };
 
@@ -205,6 +232,67 @@ export function updateSettings(next: Settings, summary: string): ActionSpec {
         targets: [rel],
         before: single(rel, before),
         after: single(rel, await store.snapshotContent(rel)),
+      };
+    },
+  };
+}
+
+/**
+ * Store one upload and re-index it (§4.8, §9.2). Two targets, because `addFile` regenerates the
+ * manifest as part of storing the file and a batch that named only one of them would leave the
+ * other outside undo.
+ *
+ * The uploaded bytes are snapshotted as `{ git: true }`, not inline: they are binary and the inline
+ * path is text (§7.1 says that snapshot is for code changes and binaries). Undo still needs no
+ * commit, because `before` is null and null means delete. A re-upload of bytes already stored
+ * writes nothing, so it snapshots nothing and only the manifest moves; the file stays in `targets`,
+ * where the conflict check can see it.
+ */
+export function addFile(
+  kind: "images" | "docs" | "other",
+  name: string,
+  bytes: Buffer,
+  source: string,
+): ActionSpec {
+  return {
+    type: "file.add",
+    summary: `Add '${name}'`,
+    apply: async (store: Store) => {
+      const manifestPath = "files/index.md";
+      const manifestBefore = await store.snapshotContent(manifestPath);
+      const { rel, created } = await store.manifest.addFile(kind, name, bytes, source);
+
+      return {
+        targets: [rel, manifestPath],
+        before: { ...(created ? { [rel]: null } : {}), [manifestPath]: manifestBefore },
+        after: {
+          ...(created ? { [rel]: { git: true } as const } : {}),
+          [manifestPath]: await store.snapshotContent(manifestPath),
+        },
+      };
+    },
+  };
+}
+
+/**
+ * Set or remove one API key (§11.5). The snapshots record the key's *name* and whether it was set —
+ * never the value — which is what keeps a credential out of an append-only, committed log.
+ *
+ * Two consequences are deliberate. The batch runs with `commit: false`, because `.env.local` is
+ * git-ignored. And the entry is not undoable: `undoBatch` refuses it, because "set" is not a value
+ * anything could restore (§7.2, Decision 58). Logging enough to undo is the thing this prevents.
+ */
+export function setKey(name: string, value: string | null): ActionSpec {
+  return {
+    type: "settings.update",
+    summary: value === null ? `Remove ${name}` : `Set ${name}`,
+    apply: async (store: Store) => {
+      const had = (await store.env.readKey(name)) !== null;
+      await store.env.writeKey(name, value);
+      return {
+        targets: [ENV_TARGET],
+        before: single(ENV_TARGET, { fields: { [name]: had ? "set" : "unset" } }),
+        after: single(ENV_TARGET, { fields: { [name]: value === null ? "unset" : "set" } }),
       };
     },
   };

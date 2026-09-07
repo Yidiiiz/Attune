@@ -6,38 +6,27 @@
 // route — and a flat list is a concatenation of the four sections for anyone who ever wants one.
 
 import { z } from "zod";
-import { runBatch } from "@/lib/history/batch";
-import { createTask } from "@/lib/history/actions";
+import { TaskDraftSchema } from "@/lib/history/actions";
 import { listTasks } from "@/lib/store/tasks";
 import { readSettings } from "@/lib/store/settings";
 import { rankDay } from "@/lib/schedule/rank";
 import { todayIn } from "@/lib/schedule/dates";
 import { StoreError } from "@/lib/store/paths";
+import { createTasks } from "./create";
 import { body, handle, ok } from "../respond";
 
 export const dynamic = "force-dynamic";
 
-const Draft = z.object({
-  title: z.string().min(1),
-  body: z.string().optional(),
-  status: z.enum(["todo", "doing", "done", "archived"]).optional(),
-  priority: z.number().int().min(1).max(4).optional(),
-  estimateMin: z.number().int().nullable().optional(),
-  due: z.string().nullable().optional(),
-  scheduled: z.string().nullable().optional(),
-  category: z.string().nullable().optional(),
-  context: z.string().nullable().optional(),
-  tags: z.array(z.string()).optional(),
-  links: z.array(z.string()).optional(),
-  repeat: z.enum(["daily", "weekly", "biweekly", "monthly"]).nullable().optional(),
-  repeatUntil: z.string().nullable().optional(),
-  collection: z.string().nullable().optional(),
-});
-
 const CreateBody = z.object({
-  items: z.array(Draft).min(1),
+  items: z.array(TaskDraftSchema).min(1),
   source: z.string().default("manual"),
   actor: z.enum(["user", "agent"]).default("user"),
+  /**
+   * What the user typed, when these came from a composer send (§9.5 step 5). It becomes
+   * `meta.prompt` and changes the summary, and it is scanned by `runBatch` before anything is
+   * logged — a prompt with a credential in it refuses the whole batch (§11.5, amendment `j`).
+   */
+  prompt: z.string().optional(),
 });
 
 export async function GET(request: Request): Promise<Response> {
@@ -60,17 +49,10 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
-    const { items, source, actor } = CreateBody.parse(await body(request));
-    const summary = items.length === 1 ? `add '${items[0].title}'` : `add ${items.length} tasks`;
-
-    const result = await runBatch({
-      actor,
-      scope: "user",
-      summary,
-      commitPrefix: "task",
-      meta: { source },
-      actions: items.map((item) => createTask({ ...item, source, createdBy: actor })),
-    });
-    return ok({ ...result });
+    const { items, source, actor, prompt } = CreateBody.parse(await body(request));
+    // A send from the composer says where it came from even when the caller did not: §4.1's
+    // `source` records where the work came from, and "manual" would be false for these.
+    const from = prompt !== undefined && source === "manual" ? "prompt" : source;
+    return ok({ ...(await createTasks({ items, source: from, actor, prompt })) });
   });
 }

@@ -8,6 +8,7 @@
 // already undone returns a reason. Nothing here truncates or rewrites history (§7.2).
 
 import { applySnapshot, runBatch } from "./batch.ts";
+import { isDataRelative } from "../store/paths.ts";
 import * as git from "./git.ts";
 import { groupBatches, readActions } from "./log.ts";
 import type { Batch, Snapshots } from "./log.ts";
@@ -69,6 +70,32 @@ export function findConflicts(batches: Batch[], batchId: string): string[] {
     .map((batch) => batch.batch);
 }
 
+/**
+ * §7.2, Decision 58: a `{fields}` or `{content}` snapshot is restorable only for a target under
+ * `data/`. Returns the first target that is not, or null when the batch is safe to reverse.
+ *
+ * This exists because of the §11.5 key write, which is the only batch in the app that names a path
+ * outside `data/`. Its snapshots record whether the key was set — never the value — so there is
+ * nothing to restore in the first place, and putting `.env.local` through the store would resolve
+ * it under `data/` and write a file nobody meant.
+ *
+ * `{ git: true }` is deliberately not covered: it restores through `git revert`, which addresses
+ * repository paths correctly, and it is how `code.change` reaches them legitimately. Nor is `null`,
+ * which is not a snapshot of contents.
+ *
+ * Only undo is guarded, and that is enough: redo requires a batch whose latest undo succeeded, and
+ * this refusal is what stops one ever existing.
+ */
+export function unrestorableTarget(batch: Batch): string | null {
+  for (const entry of batch.entries) {
+    for (const [rel, snap] of Object.entries(entry.before)) {
+      if (snap === null || "git" in snap) continue;
+      if (!isDataRelative(rel)) return rel;
+    }
+  }
+  return null;
+}
+
 async function load(batchId: string): Promise<{ batches: Batch[]; target: Batch | undefined }> {
   const batches = groupBatches(await readActions());
   return { batches, target: batches.find((batch) => batch.batch === batchId) };
@@ -128,6 +155,20 @@ export async function undoBatch(batchId: string, opts: { force?: boolean } = {})
 
   const state = undoState(batches, batchId);
   if (!state.undoable) return { ok: false, reason: state.reason };
+
+  // Before the conflict check, because this one is a property of the batch itself: it will never be
+  // undoable, and reporting which later batches touched the same file would suggest a `force` that
+  // cannot help. The message says why rather than reading as a path error.
+  const unrestorable = unrestorableTarget(target);
+  if (unrestorable !== null) {
+    return {
+      ok: false,
+      reason:
+        `this batch changed ${unrestorable}, which is outside data/, and what it recorded cannot ` +
+        `be put back: a key change records only the name, never the value, so there is nothing to ` +
+        `restore.`,
+    };
+  }
 
   const conflict = findConflicts(batches, batchId);
   if (conflict.length > 0 && !opts.force) return { ok: false, conflict };

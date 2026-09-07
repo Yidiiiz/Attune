@@ -330,6 +330,7 @@ Resolved versions, as installed and verified in this checkout — the ranges in 
 | `vitest` | `^3.2.0` | 3.2.7 |
 | `zod` | `^4.1.0` | 4.5.4 |
 | `yaml` | `^2.8.0` | 2.9.0 |
+| `@anthropic-ai/sdk` | `^0.124.0` | 0.124.0 |
 
 ```
 npm install            # postinstall sets core.hooksPath=.githooks on every machine

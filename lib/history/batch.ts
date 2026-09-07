@@ -10,6 +10,7 @@
 
 import { randomBytes } from "node:crypto";
 import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
+import * as env from "../store/env.ts";
 import * as files from "../store/files.ts";
 import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
@@ -36,6 +37,8 @@ const INLINE_LIMIT = 64 * 1024;
 export interface Store {
   tasks: typeof tasks;
   files: typeof files;
+  /** `.env.local`, which is not under `data/` and so is not reachable through `files` (§11.5). */
+  env: typeof env;
   manifest: typeof manifest;
   settings: typeof settingsStore;
   /** Read the current state of a file in the form `before`/`after` want it. */
@@ -75,6 +78,12 @@ export interface BatchResult {
    */
   commit: string | null;
   seq: number[];
+  /**
+   * Every path this batch wrote, in action order, first occurrence kept. A caller that needs to
+   * name what it just created — the upload route, whose paths are content-hashed and so are not
+   * knowable before the write — reads them here rather than recomputing them.
+   */
+  targets: string[];
 }
 
 export async function snapshotContent(rel: string): Promise<Snapshot> {
@@ -94,6 +103,7 @@ export async function snapshotFields(rel: string, keys: string[]): Promise<Snaps
 export const store: Store = {
   tasks,
   files,
+  env,
   manifest,
   settings: settingsStore,
   snapshotContent,
@@ -291,9 +301,12 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       },
     }));
 
+    const targets = [...new Set(applied.flatMap((step) => step.targets))];
+    const seq = entries.map((entry) => entry.seq);
+
     const offset = await appendActions(entries);
     await regenerateMirror();
-    if (!willCommit) return { batch, commit: null, seq: entries.map((entry) => entry.seq) };
+    if (!willCommit) return { batch, commit: null, seq, targets };
 
     let commit: string | null = null;
     const paths = ["data", ...(spec.repoPaths ?? [])];
@@ -312,6 +325,6 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       await markCommitFailed(offset, batch, message);
     }
 
-    return { batch, commit, seq: entries.map((entry) => entry.seq) };
+    return { batch, commit, seq, targets };
   });
 }

@@ -99,6 +99,8 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 **During Phase 6a (2026-09-07)**
 
+63. **A message is `streaming` on disk until the batch that finalizes it.** §16.3 originally said the user's message is written `complete` immediately and the assistant's `streaming`. The final state is identical either way — one batch writes both as `complete` — and the difference is only what a process killed mid-turn leaves behind: under the original wording, a user message that claims to be finished with nothing in the log recording it. Writing both as `streaming` makes one invariant true with no exceptions — **anything under `data/chats/*/messages/` that is not in the log is `status: streaming`** — and that is exactly the condition `history.streamingWrite` and `streamingDiscard` enforce, which is what keeps §8's sanctioned bypass narrow enough to be safe. The cost is that a crashed turn's prompt renders as unfinished rather than as sent; that is the honest reading, since nothing recorded it.
+
 61. **`uuidv7()` is monotonic within a millisecond, and that is load-bearing rather than tidy.** The chain is three links long and every one of them is elsewhere in this file, which is why it is written down here as one thing. Decision 9 says there is no message index. `readConversation` therefore takes its ordering from a sorted directory listing (`lib/store/chats.ts`). And that listing is a timeline **only** if the ids sort in creation order — which UUIDv7's timestamp cannot deliver on its own, because it has millisecond resolution and several messages are easily written inside one. The generator ported from `HANDOFF-CHAT.md` Part B left those ids in random order; the 12 bits after the version now carry a counter that increments while the clock stands still (the monotonic-random method the UUIDv7 spec allows), and a clock that jumps backwards is ignored in favour of the last millisecond issued.
 
     **The guard is the creation-order case in `lib/chat/uuid.test.ts`, which mints a thousand ids and asserts the array is already sorted.** A thousand ids take well under a millisecond, so it fails the moment the counter goes away. **If it ever fails, the generator has regressed — the test is not wrong and must not be relaxed**; loosening it to "sorts across milliseconds" would restore exactly the bug it was written for, and the symptom in the app is not an error but messages quietly coming back in the wrong order.
@@ -987,7 +989,7 @@ Every route lives in `app/api/**/route.ts`, validates its input with zod, calls 
 | `/api/knowledge/tree` · `/graph` · `/backlinks?path=` | GET | link index |
 | `/api/chats` | GET · POST | list · create |
 | `/api/chats/[id]` | GET · PATCH · DELETE | read all · title/pin/leaf/context/model · delete |
-| `/api/chats/[id]/messages` | POST | send (streams NDJSON `TurnEvent`s; first line is `{ type: "ids", userMessageId, assistantMessageId }`) |
+| `/api/chats/[id]/messages` | POST | send (streams NDJSON `TurnEvent`s; first line is `{ type: "ids", userMessageId, assistantMessageId }`). A cancelled stream — Stop, a navigation, a closed tab — aborts the turn and lets it finalize; the route never stops iterating it, because an abandoned generator leaves the message `streaming` and unlogged |
 | `/api/chats/[id]/messages/[mid]` | DELETE | soft or hard per §16.2 |
 | `/api/chats/[id]/annotations` · `/[aid]` | POST · PUT | `annotation.write` |
 | `/api/chats/[id]/distill` | POST | session summary proposal |
@@ -1088,7 +1090,7 @@ Port `activePath`, `siblingsOf`, `latestLeafUnder` from HANDOFF Part D, replacin
 ### 16.3 Streaming, finality, failure
 
 - **One finality contract**, in `finalizeTurn()` (§13.2). Terminal statuses are `complete` (stream reached `message_stop`) and `failed` (anything else). A partial reply is never `complete`.
-- **Optimistic inserts roll back.** Send: write user file (`complete`) and assistant file (`streaming`), neither committed; call the provider. If the request is rejected before any delta, delete both files and return the error; the client restores the composer text. If it fails after deltas, mark `failed`, set `error`, commit both files as one `chat.message` batch. Retry = regenerate (a sibling); Discard = hard delete of the failed leaf.
+- **Optimistic inserts roll back.** Send: write user file and assistant file, neither committed; call the provider. **Both are written `streaming` and become `complete` only in the finalizing batch** (Decision 63), so the invariant holds in one direction with no exceptions: a message on disk that is not in the log is `streaming`. If the request is rejected before any delta, delete both files and return the error; the client restores the composer text. If it fails after deltas, mark `failed`, set `error`, commit both files as one `chat.message` batch. Retry = regenerate (a sibling); Discard = hard delete of the failed leaf.
 - Stream buffers (`Map<assistantId, string>`) are cleared on every terminal path and when the client navigates away (abort).
 - **Stream as plain text; render as markdown once `complete`.**
 - Stop generation = `AbortController.abort()` → `failed` with `error: "stopped"`, with the partial text kept.

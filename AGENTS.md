@@ -15,8 +15,8 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
-| 6a — Chat: tree, store, linear chat | **in progress** | — |
-| 6b — Chat: branching, sidebar, annotations | not started | — |
+| 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d` |
+| 6b — Chat: branching, sidebar, annotations | **next** | — |
 | 7–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
@@ -397,6 +397,42 @@ with all of Decision 31; `app/chat/page.tsx` with the rail's Chats panel; `compo
 linear conversation; §9.6's Ask mode replacing Phase 5's inline refusal; Playwright and
 `ATTUNE_FAKE_PROVIDER` on the terms above; and the Phase 6a rows in `docs/CHECKLIST.md`.
 
+**Phase 6a carries three `code:` commits and three `docs:`.** `c06ed47` recorded the approval's
+nine conditions; `58ac40d` built Stage A — the pure layer, the conversation store, the chat builders
+and §8's streaming bypass, with nothing rendering — and stopped for review; `27e5e7f` and `c79d151`
+carried that review's two items, Decisions 61 and 62 and the cross-references to them; `a63cb8d`
+built Stage B; and this commit records the result. Rule 4's stage clause, plus one review round.
+
+**What Stage A found.** The UUIDv7 ported from the handoff was not ordered within a millisecond,
+which silently breaks the chain Decision 9 depends on — no message index, so `readConversation` takes
+its order from a sorted directory listing, which is a timeline only if the ids sort. Fixed in the
+generator rather than documented as a limitation, and Decision 61 says explicitly that a failure of
+the creation-order test means the generator regressed and the test must not be relaxed.
+
+**What Stage B found, all three from checks rather than from reading.** A client disconnect
+abandoned the turn's generator mid-stream: the route stopped iterating, so `finalizeTurn` never ran
+and the message stayed `status: streaming` on disk **forever**, with nothing in the log and nothing
+committed. `request.signal` and the response stream's `cancel` are now joined into one controller
+and the turn is drained to its end, so it takes its own abort path and writes the partial reply down
+as `stopped`. This is exactly the class of leak condition 8 asked for a check on, and it was found
+by writing that check. Second: a failure routed to a toast returned "no error" to the composer,
+which cleared the box — losing the text §15 says a rejected send keeps. Third: an empty conversation
+title round-tripped through YAML as `null` and failed its own schema on the first send.
+
+**Three things Phase 6b inherits.** `lib/agent/turn.ts` is at 297 lines, which is the cap; its
+obvious seam if branching pushes it over is `finalizeTurn` plus the discard path, which is §16.3's
+own paragraph rather than an invented one. `runChatTurn` already takes `parentId` and an optional
+`userMessage`, so edit, regenerate and branch-from-here are three callers of what is there rather
+than new machinery — Retry in `ChatView` is already the regenerate case. And the invariant to keep:
+**a message on disk that is not in the log is always `status: streaming`**, which is what makes
+`streamingWrite` and `streamingDiscard` safe to have at all.
+
+**What Phase 6a leaves unverified.** `docs/CHECKLIST.md` rows 6a.1–6a.6: the rail's drag and its
+persisted width, the composer's ten-row ceiling, §9.6's Ask mode end to end, both themes against
+KaTeX, long-conversation scrolling, and what a crash mid-turn leaves behind. Nine browser checks
+cover the rest and run from `npm run check:ui`; row 5.4 is superseded by 6a.3, since Ask mode no
+longer refuses. The Phase 5 provider-dependent row 5.5 is still blocked on the key.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -415,9 +451,11 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | closed — `78bd6b9`; the refusal, the file, the pattern, the un-echoed match and the untouched file are all checked over HTTP. `TaskEditForm` clears no field on failure, which is what preserves the text |
 | k | Timeline **edge resize**, deliberately not built, with the semantics settled so it is never guessed at: a **bottom-edge** drag moves the end, so it writes `estimateMin`; a **top-edge** drag moves the start while the end stays put, so it writes `estimateMin` **and** `scheduled` together. §10.1 said both edges write `scheduled`, which was wrong and is corrected. Not built because body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make | Phase 3 build; semantics fixed in the Phase 3 review | unscheduled — build it only if the form proves too slow for the case | **deferred, semantics settled** |
 | l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | **outstanding** |
+| n | **`npm run publish-check` must never invoke `npm run check:ui`.** The fresh-clone half of `publish-check` installs into a temp directory and starts the app; a clone has no Playwright browser binaries, so calling the browser checks there would turn "is this repo publishable" into "did someone run `playwright install` on this machine". The note also lives in `scripts/check-ui.mjs`, where the phase that writes `publish-check` will be looking | Phase 6a approval, condition 1 | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
+| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | the phase that first sends one — Phase 6b's chat composer or Phase 8's document view | **outstanding** |
 | m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
 
-`c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` is a trigger rather than a task: nobody builds it, the third importer trips it.
+`n` and `o` are Phase 6a's, and both are constraints rather than tasks: `n` is a thing Phase 11 must not do, and `o` is a feature nobody should build until something needs it. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` is a trigger rather than a task: nobody builds it, the third importer trips it.
 
 ## How we work
 
@@ -457,6 +495,10 @@ Resolved versions, as installed and verified in this checkout — the ranges in 
 | `zod` | `^4.1.0` | 4.5.4 |
 | `yaml` | `^2.8.0` | 2.9.0 |
 | `@anthropic-ai/sdk` | `^0.124.0` | 0.124.0 |
+| `marked` | `^18.0.12` | 18.0.12 |
+| `dompurify` | `^3.4.15` | 3.4.15 |
+| `katex` | `^0.18.7` | 0.18.7 |
+| `@playwright/test` (dev) | `^1.63.0` | 1.63.0 |
 
 ```
 npm install            # postinstall sets core.hooksPath=.githooks on every machine

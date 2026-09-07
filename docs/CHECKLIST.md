@@ -223,7 +223,14 @@ What needs eyes: that the tooltip actually appears on hover, and that the select
 legible in both themes. Also check the memory: pick Ask, reload, and the sheet reopens in Ask
 (`composer.mode`).
 
-### 5.4 Ask mode refuses inline, and carries the task — **pending**
+### 5.4 Ask mode refuses inline, and carries the task — **superseded by 6a.3**
+
+Phase 6a built §9.6, so the refusal this row describes is gone: a send in Ask mode now streams a
+real reply. What remains true and still needs eyes — that the sheet opens in Ask mode naming the
+task — is folded into 6a.3. Kept rather than deleted, because the reasoning below about *where* the
+message lands is still the clearest statement of the §13.5 rule.
+
+The original row:
 
 §9.6 and the Phase 5 approval: *"Ask stays selectable because 'Ask about this' is a real caller that
 needs it to open and show the context it would carry; a send there refuses inline."*
@@ -340,6 +347,93 @@ message says a key change records only the name, so there is nothing to restore.
 The refusal and the log shape were checked over HTTP. What needs eyes is the section itself: the
 field is a password input, it clears on success, and an error lands inline beside it rather than as
 a toast — the remedy for a bad key typed *here* is right here.
+
+---
+
+## Phase 6a — Chat: tree, store, linear chat
+
+**Most of this phase is checked automatically, and that is new.** `npm run check:ui` runs nine
+browser checks against a throwaway checkout with `ATTUNE_FAKE_PROVIDER` set (Playwright, chromium,
+deliberately outside `npm test`). They cover, as of 2026-09-07: the `+` button's absence on Chat and
+presence on Today and Calendar; a send streaming and finishing and naming its conversation; markdown
+and KaTeX rendering with the HTML sanitized; a rejected key toasting while the composer keeps the
+text and no message file survives; a failure after deltas leaving a `failed` message with a working
+Retry; Stop keeping the partial reply; navigating away mid-stream ending the turn instead of leaving
+it running; a credential refused inline with every character kept and the match never echoed; and
+rename, pin and delete from the panel.
+
+Rows below are what those cannot answer.
+
+### 6a.1 The rail and its panel — **pending**
+
+§10.2: *"a 44 px icon rail on the far left, a resizable panel (240–420 px, collapsible, width in
+`localStorage`)"*.
+
+Steps: drag the panel's right edge wider and narrower; release. Reload. Click the Chats icon.
+Reload again.
+
+Expected: the drag stops at 240 and at 420 rather than going past either. The width survives the
+reload. The icon collapses the panel and the collapsed state survives too. Only the Chats icon is
+present — Knowledge, Files and Graph arrive in Phase 8, and an empty rail slot would be worse than
+a short rail.
+
+### 6a.2 The composer grows, and the keys do what §16.7 says — **pending**
+
+§9.2 and §16.7: an auto-growing textarea of 1–10 rows, `Enter` sends, `Shift+Enter` newlines.
+
+Steps: type one line, then paste ten lines, then twenty. Press `Shift+Enter` twice and type. Press
+`Enter`.
+
+Expected: the box grows with the text and stops growing at ten rows, scrolling inside itself after
+that. `Shift+Enter` makes a newline and does not send. `Enter` sends. This is measured layout, which
+is why it is here and not in the browser checks: they can press the keys but not tell you the box
+looks right at ten rows.
+
+### 6a.3 Ask mode from the composer sheet — **pending**
+
+§9.6, and the row Phase 5 left as 5.4 saying "a send there refuses inline, naming Phase 6". It does
+not refuse any more.
+
+Steps: on Today, open a row's `⋯` menu and choose **Ask about this**. Pick Ask if it is not already
+selected, type a question and send. Then press **Open in Chat**. Then come back to Today and ask a
+second question about the same task.
+
+Expected: the reply streams inside the sheet, under a heading naming the task. **Open in Chat** goes
+to `/chat?c=…` with that conversation open and the exchange in it, and the Chats panel lists it like
+any other conversation (Decision 37). The second question about the same task continues the same
+conversation rather than starting a second one — within this browser session, which is what §9.6
+means by "the same task within the session".
+
+### 6a.4 A conversation reads well in both themes — **pending**
+
+Steps: with a reply on screen containing a heading, a list, a code block, a table, inline math and a
+display equation, switch between the light and dark themes.
+
+Expected: every element is legible in both, the code block and the table scroll inside themselves
+rather than widening the column, and a display equation too wide for the pane scrolls rather than
+stretching it. KaTeX ships its own stylesheet, which is the part most likely to disagree with a
+theme, so this is worth doing deliberately.
+
+### 6a.5 A long conversation scrolls sensibly — **pending**
+
+Steps: send eight or ten messages, then scroll up and send another.
+
+Expected: the newest message is brought into view as it streams, and the scroller does not fight a
+person who has scrolled up to read something. §16.0 rule 6 says no virtualization in v1, so this is
+also the check that a few hundred messages stay comfortable.
+
+### 6a.6 What a crash leaves behind — **pending**
+
+The invariant `lib/agent/turn.ts` is built on: a message on disk that is not in the log is always
+`status: streaming`.
+
+Steps: start a slow reply and kill the dev server with `Ctrl+C` while it is streaming. Restart and
+open the conversation.
+
+Expected: both messages of that turn are on disk as `streaming`, and the view shows the reply as
+unfinished with a Retry — not as a completed answer. `npm run history -- list` shows no entry for
+that turn, and `git status --porcelain -- data` shows the two files as untracked or modified, which
+is the honest state: nothing recorded them, so nothing claims they happened.
 
 ---
 

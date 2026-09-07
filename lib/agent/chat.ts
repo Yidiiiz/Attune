@@ -1,11 +1,13 @@
 // Owns: the two shapes a Tasks-mode request can take. `runExtract` is one structured answer — the
-// §9.4 routing the composer's preview panel is built on. `runChatTurn` is PROJECT.md §13.2's loop:
-// stream, run the tools the model asks for, stream again, up to eight rounds.
+// §9.4 routing the composer's preview panel is built on. `streamModelTurn` is the model half of
+// PROJECT.md §13.2's loop: stream, run the tools the model asks for, stream again, up to eight
+// rounds.
 //
-// Scope, deliberately: the loop runs over a message array it is *given*. §13.2 describes it taking
-// conversation and message ids and writing deltas to a message file as it goes; that half belongs
-// to `lib/store/chats.ts`, which Phase 6 builds, and is what §17 means by Phase 5 owning the "Tasks
-// mode path". Nothing here reads or writes a conversation.
+// Scope, deliberately: the loop runs over a message array it is *given*, and reads and writes no
+// conversation. §13.2's `runChatTurn` — the one that takes conversation and message ids and writes
+// deltas to a message file as it goes — is `lib/agent/turn.ts`, and it drives this function. The
+// split is why this one was renamed in Phase 6a: §13.2's name belongs to the function §13.2
+// describes, and two functions cannot both have it.
 //
 // The provider and the tool executor are both parameters with defaults. That is not a general
 // seam-for-its-own-sake: it is what lets the routing above be tested against a scripted provider
@@ -54,7 +56,7 @@ export interface TurnInput {
   execute?: (name: string, input: unknown) => Promise<ToolOutcome>;
 }
 
-export async function* runChatTurn(input: TurnInput): AsyncIterable<TurnEvent> {
+export async function* streamModelTurn(input: TurnInput): AsyncIterable<TurnEvent> {
   const provider = input.provider ?? providerFor(input.model);
   const execute = input.execute ?? executeTool;
   const tools = toolsFor(input.mode);

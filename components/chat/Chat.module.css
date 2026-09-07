@@ -1,0 +1,480 @@
+/* The Chat tab: a 44px rail, a resizable panel, and the conversation. §10.2's geometry, with only
+   the Chats icon in the rail until Phase 8 adds the other three.
+
+   Z-tiers are the three in AGENTS.md and nowhere else: 20 for surfaces inside a scroller, 30 for
+   panels and bars, 40 for toasts and modals. The composer is a docked bar, so it is 30. */
+
+.layout {
+  display: flex;
+  align-items: stretch;
+  height: calc(100vh - var(--header-height, 52px));
+  min-height: 0;
+}
+
+/* ---- rail ---- */
+
+.rail {
+  flex: 0 0 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.railButton {
+  width: 36px;
+  height: 36px;
+  margin: 0 4px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--fg-muted);
+}
+
+.railButton:hover {
+  background: var(--bg-elevated);
+}
+
+.railButtonActive[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--border);
+  color: var(--fg);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- panel ---- */
+
+.panelFrame {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 240px;
+  max-width: 420px;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 30;
+}
+
+.resizer:hover {
+  background: var(--accent-soft);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.panelHead {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.newButton {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.panelList {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 6px 0 16px;
+}
+
+.groupHeading {
+  margin: 10px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.chatRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 10px;
+}
+
+.chatRow:hover {
+  background: var(--bg-sunken);
+}
+
+.chatRowOpen {
+  background: var(--accent-soft);
+}
+
+.chatLink {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMenuButton {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: var(--fg-faint);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.rowMenuButton:hover {
+  background: var(--bg-elevated);
+  color: var(--fg);
+}
+
+.rowMenu {
+  position: absolute;
+  top: 100%;
+  right: 6px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+}
+
+.rowMenu button {
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rowMenu button:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+.rowMenu button:disabled {
+  color: var(--fg-faint);
+  cursor: not-allowed;
+}
+
+.renameBox {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0;
+}
+
+.renameInput {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.inlineError {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* ---- the conversation ---- */
+
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.blank {
+  margin: auto;
+  padding: 32px;
+  text-align: center;
+}
+
+.blankTitle {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.view {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.viewHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.viewTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viewModel {
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+.scriptedBadge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--warning);
+  border-radius: 999px;
+  color: var(--warning);
+  font-size: 11px;
+  cursor: help;
+}
+
+.messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.empty {
+  color: var(--fg-muted);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.message {
+  max-width: 46rem;
+  width: 100%;
+}
+
+.fromUser {
+  align-self: flex-end;
+}
+
+.fromUser .messageBody {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 9px 13px;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.fromAssistant .messageBody {
+  padding: 0;
+}
+
+.messageBody {
+  font-size: 14.5px;
+}
+
+/* While it streams, the author's line breaks are all the structure there is. */
+.plain {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.thinking {
+  color: var(--fg-faint);
+}
+
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--fg-muted);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.messageError {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 12.5px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.byline {
+  margin: 5px 0 0;
+  color: var(--fg-faint);
+  font-size: 11.5px;
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---- the docked composer ---- */
+
+.composer {
+  position: relative;
+  z-index: 30;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  padding: 10px 20px 14px;
+}
+
+.composerError {
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12.5px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.composerRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+.textarea {
+  flex: 1 1 auto;
+  min-height: 38px;
+  resize: none;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  overflow-y: auto;
+}
+
+.textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.sendButton,
+.stopButton {
+  flex: 0 0 auto;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sendButton {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.sendButton:disabled {
+  background: var(--bg-sunken);
+  border-color: var(--border);
+  color: var(--fg-faint);
+  cursor: not-allowed;
+}
+
+.stopButton {
+  background: var(--bg-elevated);
+  color: var(--danger);
+  border-color: var(--danger);
+}

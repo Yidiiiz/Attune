@@ -15,13 +15,19 @@
 // message file inside a conversation, and the bytes must say `status: streaming`. Anything else is
 // a programming error and is refused rather than written.
 //
+// `streamingDiscard` is the same exception in the other direction — §16.3's "delete both files"
+// when a send is rejected before any delta. It is here rather than in the caller so that *every*
+// unlogged touch of `data/` is in this one file, behind the same guard, and it refuses to remove a
+// message that has stopped streaming: a finalized message is in the log, and deleting one outside
+// the log would leave an entry describing a file that is not there.
+//
 // Failure behavior: refuses loudly and writes nothing. A caller that reaches here with a finalized
 // message, a task file, or a path outside `chats/` gets `StoreError("invalid")` and has to go
 // through `runBatch` like everything else. There is no force and no option to relax either check:
 // the moment this accepts a path it was not designed for, `data/` has a writer nothing records.
 
 import { splitFrontmatter } from "../store/frontmatter.ts";
-import { writeText } from "../store/files.ts";
+import { deleteFile, exists, readText, writeText } from "../store/files.ts";
 import { StoreError } from "../store/paths.ts";
 
 /** `chats/<conv-id>/messages/<uuidv7>.md`, and nothing else (§4.7). */
@@ -35,7 +41,7 @@ const STREAMING_TARGET =
  * it, because the guard below has to read the same bytes that reach the disk rather than a shape
  * that was promised to it.
  */
-export async function streamingWrite(rel: string, content: string): Promise<void> {
+function requireMessagePath(rel: string): void {
   if (!STREAMING_TARGET.test(rel)) {
     throw new StoreError(
       "invalid",
@@ -43,6 +49,10 @@ export async function streamingWrite(rel: string, content: string): Promise<void
         `chats/<id>/messages/<uuid>.md and everything else goes through runBatch`,
     );
   }
+}
+
+export async function streamingWrite(rel: string, content: string): Promise<void> {
+  requireMessagePath(rel);
 
   const { data } = splitFrontmatter(content);
   if (data.status !== "streaming") {
@@ -54,4 +64,27 @@ export async function streamingWrite(rel: string, content: string): Promise<void
   }
 
   await writeText(rel, content);
+}
+
+/**
+ * Remove a message that never finished — the optimistic pair behind a send the provider rejected
+ * before it said anything (§16.3). Nothing logged it, so nothing has to un-log it.
+ *
+ * A file that is missing is not an error: the caller is unwinding, and unwinding twice must be
+ * safe. A file that is no longer streaming *is* an error, because it belongs to the log now.
+ */
+export async function streamingDiscard(rel: string): Promise<void> {
+  requireMessagePath(rel);
+  if (!(await exists(rel))) return;
+
+  const { data } = splitFrontmatter(await readText(rel));
+  if (data.status !== "streaming") {
+    throw new StoreError(
+      "invalid",
+      `refusing to delete ${rel} outside the log: its status is ${JSON.stringify(data.status)}, so ` +
+        `it has been recorded and only an undo may remove it`,
+    );
+  }
+
+  await deleteFile(rel);
 }

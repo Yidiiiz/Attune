@@ -17,6 +17,8 @@ import Attachments, { AttachButton } from "./Attachments";
 import type { Attachment } from "./Attachments";
 import { DRAFT_KEY } from "./draft";
 import type { Mode } from "./draft";
+import AskPanel from "./AskPanel";
+import { useAskTurn } from "./useAskTurn";
 import ModeSelector from "./ModeSelector";
 import PreviewPanel from "./PreviewPanel";
 import { useComposerTurn } from "./useComposerTurn";
@@ -39,8 +41,6 @@ export interface ComposerSheetProps {
 const MAX_ROWS = 10;
 const rowsFor = (text: string): number => Math.min(MAX_ROWS, Math.max(1, text.split("\n").length));
 
-const ASK_REFUSAL = "Ask mode arrives in Phase 6, with the conversation it streams into.";
-
 export default function ComposerSheet(props: ComposerSheetProps) {
   const { open, mode, onMode, onClose, categories, viewDate, askingAbout } = props;
   const router = useRouter();
@@ -56,6 +56,8 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     router.refresh();
     onClose();
   }, [router, onClose]);
+
+  const askTurn = useAskTurn();
 
   const turn = useComposerTurn({
     ...(viewDate === undefined ? {} : { viewDate }),
@@ -117,14 +119,14 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     const text = prompt.trim();
     if (text === "") return;
 
-    // Ask mode needs a conversation to stream into, which is `lib/store/chats.ts` and Phase 6. The
-    // refusal is inline and no request is made, so nothing reaches a provider (§9.6).
+    // §9.6: Ask streams into a real conversation under `data/chats/` (Decision 17), which the
+    // sheet shows in place and hands over to the Chat tab with "Open in Chat". The prompt is
+    // cleared only once the turn has landed, like every other send here.
     if (mode === "ask") {
-      turn.setError(
-        askingAbout === undefined
-          ? `${ASK_REFUSAL} Nothing was sent.`
-          : `${ASK_REFUSAL} Nothing about '${askingAbout.title}' was sent.`,
-      );
+      turn.setError(null);
+      const problem = await askTurn.ask(text, askingAbout === undefined ? [] : [askingAbout.id]);
+      if (problem === null) setPrompt("");
+      else turn.setError(problem);
       return;
     }
 
@@ -162,6 +164,14 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           </button>
         </div>
 
+        <AskPanel
+          reply={askTurn.reply}
+          streaming={askTurn.streaming}
+          conversationId={askTurn.conversationId}
+          {...(askingAbout === undefined ? {} : { about: askingAbout.title })}
+          onStop={askTurn.stop}
+        />
+
         {turn.result === null ? null : (
           <PreviewPanel
             result={turn.result}
@@ -188,7 +198,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             className={styles.textarea}
             rows={rowsFor(prompt)}
             value={prompt}
-            disabled={turn.busy === "sending"}
+            disabled={turn.busy === "sending" || askTurn.streaming}
             data-composer="input"
             placeholder={
               turn.result?.kind === "question"
@@ -219,7 +229,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             type="button"
             className={styles.send}
             onClick={() => void submit()}
-            disabled={busy || prompt.trim() === ""}
+            disabled={busy || askTurn.streaming || prompt.trim() === ""}
             data-composer="send"
           >
             {turn.busy === "sending" ? <span className={styles.spinner} aria-label="Sending" /> : "Send"}

@@ -1,0 +1,141 @@
+// Owns: PROJECT.md §9.6 — Ask mode from the floating sheet. It creates a real conversation under
+// `data/chats/` (Decision 17), streams the reply into the sheet, and remembers which conversation
+// belongs to which task for the rest of the session so a second question about the same task
+// continues rather than starting again.
+//
+// A conversation is created **before** the first send rather than lazily afterwards, because the
+// message route needs one to write into and because Decision 37 says these are ordinary
+// conversations: they appear in the Chats panel like any other, and a question that turns out to
+// matter should already be findable.
+//
+// The session map is deliberately in memory. It is "the same task within this session", not a
+// stored association — `conversation.context.taskIds` is the durable record, and rebuilding the map
+// from it on load would silently reopen a conversation from last week (§16.9).
+//
+// Failure behavior: §13.5's routing, the same as `useComposerTurn`'s — an authentication or
+// configuration failure raises a toast because its remedy is the Settings screen, everything else
+// is returned to be shown inline in the sheet beside the text that caused it. A send that fails
+// before any delta leaves nothing: `runChatTurn` removes the optimistic pair, and the sheet keeps
+// what was typed.
+
+"use client";
+
+import { useCallback, useRef, useState } from "react";
+import { uuidv7 } from "@/lib/chat/uuid";
+import { reportFailure, send as post } from "@/components/tasks/writes";
+import type { ModelTaskDraft } from "@/lib/agent/tools";
+
+/** taskId → conversation, for this page's lifetime only. */
+const started = new Map<string, string>();
+
+export interface AskTurn {
+  conversationId: string | null;
+  reply: string;
+  streaming: boolean;
+  /** Task drafts the model proposed during the turn, for the preview panel (§9.6). */
+  proposed: ModelTaskDraft[];
+  ask: (text: string, taskIds: string[]) => Promise<string | null>;
+  stop: () => void;
+  reset: () => void;
+}
+
+export function useAskTurn(): AskTurn {
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [reply, setReply] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [proposed, setProposed] = useState<ModelTaskDraft[]>([]);
+  const abort = useRef<AbortController | null>(null);
+
+  const reset = useCallback(() => {
+    setReply("");
+    setProposed([]);
+  }, []);
+
+  const ask = useCallback(
+    async (text: string, taskIds: string[]): Promise<string | null> => {
+      const key = taskIds.join(",");
+      let id = conversationId ?? (key.length > 0 ? started.get(key) ?? null : null);
+
+      if (id === null) {
+        const created = await post("/api/chats", {
+          method: "POST",
+          body: JSON.stringify({ context: { file: null, taskIds } }),
+        });
+        if (created.error !== null) {
+          reportFailure("The conversation was not started", created.error);
+          return null;
+        }
+        id = created.data.id as string;
+        if (key.length > 0) started.set(key, id);
+      }
+      setConversationId(id);
+      setReply("");
+      setProposed([]);
+      setStreaming(true);
+
+      const controller = new AbortController();
+      abort.current = controller;
+      let failure: { message: string; code: string } | null = null;
+      let delivered = "";
+
+      try {
+        const response = await fetch(`/api/chats/${id}/messages`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            userMessageId: uuidv7(),
+            text,
+            assistantMessageId: uuidv7(),
+            mode: "ask",
+          }),
+        });
+
+        if (!response.ok || response.body === null) {
+          const problem = await response.json().catch(() => ({}));
+          failure = { message: problem.error ?? response.statusText, code: problem.code ?? "error" };
+        } else {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const raw of lines) {
+              if (raw.trim().length === 0) continue;
+              const event = JSON.parse(raw);
+              if (event.type === "delta") {
+                delivered += event.text;
+                setReply(delivered);
+              } else if (event.type === "proposal" && event.proposal?.kind === "tasks") {
+                setProposed(event.proposal.items as ModelTaskDraft[]);
+              } else if (event.type === "error") {
+                failure = { message: event.message, code: event.code };
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) failure = { message: (err as Error).message, code: "error" };
+      } finally {
+        abort.current = null;
+        setStreaming(false);
+      }
+
+      if (failure === null) return null;
+      if (failure.code === "auth" || failure.code === "provider") {
+        reportFailure("The question was not sent", failure.message);
+        return null;
+      }
+      return failure.message;
+    },
+    [conversationId],
+  );
+
+  const stop = useCallback(() => abort.current?.abort(), []);
+
+  return { conversationId, reply, streaming, proposed, ask, stop, reset };
+}

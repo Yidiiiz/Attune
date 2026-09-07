@@ -50,7 +50,10 @@ export interface Message extends MessageFields {
 export const ConversationSchema = z.looseObject({
   schema: z.number().int().default(1),
   id: z.string(),
-  title: z.string().default(""),
+  // An empty title is written as a bare `title:` key, which YAML reads back as null — so the two
+  // spellings of "no title yet" both have to land on the empty string, or a conversation that has
+  // not been named yet fails to load the moment it is read back. Found by the first send.
+  title: z.string().nullish().transform((value) => value ?? ""),
   /** The entire branch state (§16.1). Last-write-wins; there are no concurrent writers (§16.0). */
   activeLeafId: z.string().nullable().default(null),
   pinned: z.boolean().default(false),

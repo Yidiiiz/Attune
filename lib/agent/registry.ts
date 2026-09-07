@@ -13,6 +13,7 @@
 // answering: the reply would be attributed to a model that never saw the prompt.
 
 import * as anthropic from "./anthropic.ts";
+import * as scripted from "./scripted.ts";
 import type { ContextBlock } from "./context.ts";
 import type { z } from "zod";
 
@@ -112,13 +113,21 @@ export interface Provider {
 // other has not finished initializing. Nothing is dereferenced until a request is actually made.
 export const PROVIDERS: Record<ModelEntry["provider"], Provider> = { anthropic };
 
-/** The provider for a model id, refusing rather than substituting one. */
+/**
+ * The provider for a model id, refusing rather than substituting one.
+ *
+ * The single exception is the scripted provider (`lib/agent/scripted.ts`), which replaces every
+ * provider while `ATTUNE_FAKE_PROVIDER` is set outside production. It is checked here rather than
+ * inside each provider so there is one place to read the answer to "was a model involved at all".
+ * The model id is still validated first: a scripted run must fail on an unknown model exactly
+ * where a real one would, or a check would pass against a model the app cannot actually use.
+ */
 export function providerFor(model: string): Provider {
   const entry = modelEntry(model);
   if (entry === null) {
     throw new AgentError("unsupported", `${model} is not a model this app knows about`);
   }
-  return PROVIDERS[entry.provider];
+  return scripted.isScripted() ? scripted : PROVIDERS[entry.provider];
 }
 
 /** The effort to send, or null when this model does not take one (§11.4). */

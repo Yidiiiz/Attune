@@ -7,7 +7,7 @@
 // tool call, and how a failure leaves the turn.
 
 import { describe, expect, it } from "vitest";
-import { runChatTurn, runExtract } from "./chat.ts";
+import { streamModelTurn, runExtract } from "./chat.ts";
 import type { ExtractResult, TurnEvent } from "./chat.ts";
 import type { ChatEvent, ChatRequest, ParseRequest, Provider } from "./registry.ts";
 import type { ContextBlock } from "./context.ts";
@@ -156,7 +156,7 @@ describe("runExtract routes the three answers of §9.4", () => {
 });
 
 const turn = (provider: Provider, execute?: (name: string, input: unknown) => Promise<ToolOutcome>) =>
-  runChatTurn({
+  streamModelTurn({
     mode: "tasks",
     model: "claude-opus-5",
     system: SYSTEM,
@@ -166,7 +166,7 @@ const turn = (provider: Provider, execute?: (name: string, input: unknown) => Pr
     ...(execute === undefined ? {} : { execute }),
   });
 
-describe("runChatTurn drives the §13.2 loop", () => {
+describe("streamModelTurn drives the §13.2 loop", () => {
   it("streams text and ends on the stop reason the provider gave", async () => {
     const events = await collect(
       turn(

@@ -1,0 +1,35 @@
+// Owns: the throwaway checkout the browser checks run against. Wiped and re-seeded before every
+// run, so a check never inherits state from the last one and never sees the owner's `data/`.
+//
+// It is a real git repository, because the §15 item about commits is one of the things being
+// checked: "a conversation with three branches produces one commit per finalized message" is a
+// claim about `git log`, and a directory that is not a repository cannot answer it.
+//
+// Failure behavior: throws, which fails the run before a single check has misled anyone. A harness
+// that quietly ran against a directory it could not prepare would report passes that mean nothing.
+
+import { execFileSync } from "node:child_process";
+import { cp, mkdir, rm } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+export const SANDBOX = path.join(REPO, ".e2e-sandbox");
+
+export default async function globalSetup(): Promise<void> {
+  await rm(SANDBOX, { recursive: true, force: true });
+  await mkdir(SANDBOX, { recursive: true });
+  await cp(path.join(REPO, "seed"), path.join(SANDBOX, "data"), { recursive: true });
+
+  const git = (...args: string[]): void => {
+    execFileSync("git", args, { cwd: SANDBOX, stdio: "ignore" });
+  };
+  git("init", "-q");
+  git("config", "user.email", "checks@example.invalid");
+  git("config", "user.name", "browser checks");
+  // No hooks: the pre-commit scan is checked by its own test, and a hook path pointing back at the
+  // real repository would make this sandbox depend on it.
+  git("config", "core.hooksPath", ".githooks-none");
+  git("add", "-A");
+  git("commit", "-q", "-m", "seed", "--allow-empty");
+}

@@ -1,0 +1,52 @@
+// Owns: how the browser checks run. They exist because Phase 6b's annotation gutter is collision
+// layout aligned to `getClientRects()[0]`, and there is no price at which that is verifiable
+// without a layout engine — plus the §15 chat items, which are about what a person sees on a page
+// and not only about what reaches disk.
+//
+// Three deliberate choices:
+//
+//   - **`next dev`, not `next start`.** The checks need `ATTUNE_FAKE_PROVIDER`, and that flag is
+//     ignored when `NODE_ENV` is production (Phase 6a approval, condition 2) — which `next start`
+//     sets. A harness that could run against the production build would mean the flag was not
+//     actually locked out of one, so this is the guard working rather than a limitation.
+//   - **A throwaway checkout**, seeded from `seed/` by `e2e/setup.ts` and pointed at with
+//     `ATTUNE_REPO_DIR` (Decision 45). Nothing here can touch the owner's `data/`.
+//   - **Chromium only.** One browser, because these check this app's behaviour rather than the
+//     web platform's.
+//
+// Failure behavior: `npm run check:ui` refuses with the install command when the browser is absent
+// (`scripts/check-ui.mjs`); running `npx playwright test` directly is Playwright's own error.
+
+import { defineConfig, devices } from "@playwright/test";
+
+const PORT = 3123;
+
+export default defineConfig({
+  testDir: "./e2e",
+  globalSetup: "./e2e/setup.ts",
+  fullyParallel: false, // one app, one data directory, one git repository
+  workers: 1,
+  retries: 0,
+  reporter: [["list"]],
+  timeout: 45_000,
+  expect: { timeout: 10_000 },
+  use: {
+    baseURL: `http://127.0.0.1:${PORT}`,
+    trace: "retain-on-failure",
+    ...devices["Desktop Chrome"],
+  },
+  projects: [{ name: "chromium" }],
+  webServer: {
+    command: `npx next dev -p ${PORT}`,
+    url: `http://127.0.0.1:${PORT}/chat`,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: {
+      ATTUNE_REPO_DIR: ".e2e-sandbox",
+      ATTUNE_FAKE_PROVIDER: "1",
+      NODE_ENV: "development",
+    },
+  },
+});

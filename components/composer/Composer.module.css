@@ -510,3 +510,64 @@
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* ---- Ask mode (§9.6): the reply streams here, in the sheet, before it is opened in Chat. ---- */
+
+.askPanel {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  max-height: 34vh;
+  overflow-y: auto;
+  font-size: 13.5px;
+}
+
+.askHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.askLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.askPlain {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.askCaret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--fg-muted);
+  animation: askBlink 1s steps(2, start) infinite;
+}
+
+@keyframes askBlink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}

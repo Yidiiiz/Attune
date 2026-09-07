@@ -3,7 +3,8 @@
 // SDK's events and errors back again, so nothing above it imports the SDK or knows a wire format.
 //
 // The option names here were checked against the installed version rather than remembered:
-// `messages.stream` and `messages.parse` are declared in the SDK's `resources/messages/messages.d.ts`,
+// `messages.stream` is declared in the SDK's `resources/messages/messages.d.ts` (so is
+// `messages.parse`, which this file deliberately does not use — see `parse` below and Decision 27),
 // `output_config.effort` takes exactly the five values §11.4 lists, and `Tool.strict` is a real
 // field. `zodOutputFormat` imports `zod/v4`, which is the zod this project already has.
 //

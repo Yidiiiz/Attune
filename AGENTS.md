@@ -14,7 +14,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 2 follow-up — amendment `h`, the write-path secret scan | complete | `4682fab` |
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
-| 5 — Composer | **next** | — |
+| 5 — Composer | **in progress — Stage A** | — |
 | 6–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
@@ -205,6 +205,71 @@ Rolling / Month / Week and the day grouping, pure); `GET /api/calendar?from&to`;
 `scheduled`, or `due` with `Shift`, one `task.update` batch per drop; and the Phase 4 rows in
 `docs/CHECKLIST.md`. Per the headless-browser paragraph above, Phase 4 does not open that question:
 what needs a pointer goes to the checklist.
+
+### Approved conditions — Phase 5 (rule 9)
+
+Written before the build, verbatim from the approval. The plan proposed two stages and six open
+calls; the approval kept the split, answered all six, and refined the first two.
+
+**Plan approved with the split. Six answers.**
+
+**1. MODE SELECTOR** — approved, with one refinement. Render all three segments; the geometry
+argument is right and rebuilding the control twice is worse. But do not build a refusal path for
+Build: nothing routes to it, so make that segment disabled with a tooltip naming Phase 9. Ask stays
+selectable because "Ask about this" is a real caller that needs it to open and show the context it
+would carry; a send there refuses inline as you proposed. Build's approval toggle lands in Phase 9
+with the mode it gates.
+
+**2. `/api/agent/apply`** — approved exactly as proposed. Phase 7 owns `lib/store/knowledge.ts`, so
+a named refusal for knowledge and collection is the honest shape. Collection card renders with its
+Add disabled, same pattern as Build's segment.
+
+**3. KEY ERRORS** — your reading is right, and tighten the rule so it is not re-litigated. The
+principle is not "which surface" but "where the remedy is": authentication and configuration errors
+toast, because the fix is on another screen and the composer text did not cause them; every other
+error raised while a surface is open goes inline on that surface. That explains both §17's check and
+§13.5's rule rather than reconciling them case by case. Write it into §13.5.
+
+**4. `.env.local` SCOPE** — approved as `user`. Reword §12's rule to say what it means rather than
+leaving an exception outside it: user scope is anything personal to the owner — everything under
+`data/`, plus `.env.local`; project is code, `seed/` and docs. Record as a Decision.
+
+**5. THE UNDO HAZARD** — good catch, and your fix is right. `undoBatch` refuses a batch whose
+`{fields}` or `{content}` targets are not `data/`-relative. It is correctly narrow: `code.change`
+uses `{git: true}` and takes the revert path, so today this bites only the key batch. Two
+conditions: it lands in Stage A with the code that creates the case, and the refusal message says
+WHY — a key change records only the name, never the value, so there is nothing to restore — rather
+than reading as a path error.
+
+**6. LIVE CHECKS** — build Stage A without a key; nothing in it needs one. The four
+provider-dependent checks move to the Stage A/B boundary: report at the end of Stage A which of them
+are blocked, and I will decide about a key then. Do not defer them silently into the checklist —
+name them as blocked so the decision is explicit.
+
+If a key does arrive: record results as observations with date and model id, in the three-state
+checklist convention, and do NOT wire them into `npm test`. A non-deterministic check inside the
+suite is one you stop trusting.
+
+**Both pre-checks noted:** amendment `m` correctly does not fire, and amendment `j` getting
+`meta.prompt` as a third surface is the right catch.
+
+**Conditions into the status block first, then Stage A, then stop.**
+
+**Scope, as planned and approved.** *Stage A — the agent layer and its routes, stopping for review;
+nothing renders.* `@anthropic-ai/sdk` installed with its resolved version recorded in the table
+below; `lib/agent/registry.ts`, `anthropic.ts`, `prompts.ts`, `context.ts`, `tools.ts`, and
+`chat.ts` (the §13.2 loop over an in-memory message array — the conversation-persisting half is
+Phase 6's, which is what §17 means by "Tasks mode path" — with an injectable provider so the routing
+is testable without a key); `lib/store/env.ts`; `/api/agent/extract`, `/api/agent/apply`,
+`/api/agent/context`, `/api/files/upload` with a `file.add` builder in `lib/history/actions.ts`, and
+`/api/settings/keys`; `POST /api/tasks` extended with `prompt` → `meta.prompt` and the §9.5 summary;
+the §7.2 undo guard of answer 5; tests for context assembly, the tool executors, and the three-way
+`ExtractResult` routing against a scripted fake provider. *Stage B — the composer UI:*
+`components/composer/` (`ComposerButton`, `ComposerSheet`, `ModeSelector`, `PreviewPanel`,
+`TaskCard`, one CSS module), mounted from Today and Calendar only; `components/settings/ApiKeys.tsx`
+in the settings page; the Phase 3 stub panel in `TodayView` replaced by the real sheet in Ask mode;
+and the Phase 5 rows in `docs/CHECKLIST.md`. Per the headless-browser paragraph above, Phase 5 does
+not open that question.
 
 ## Deferred amendments
 

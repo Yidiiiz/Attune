@@ -14,7 +14,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 2 follow-up — amendment `h`, the write-path secret scan | complete | `4682fab` |
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
-| 5 — Composer | **in progress — Stage A** | — |
+| 5 — Composer | **in progress — Stage B** | — |
 | 6–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
@@ -270,6 +270,52 @@ the §7.2 undo guard of answer 5; tests for context assembly, the tool executors
 in the settings page; the Phase 3 stub panel in `TodayView` replaced by the real sheet in Ask mode;
 and the Phase 5 rows in `docs/CHECKLIST.md`. Per the headless-browser paragraph above, Phase 5 does
 not open that question.
+
+### Approved conditions — Phase 5 Stage A review (rule 9)
+
+Stage A approved at `03e2b4b`. Six items before Stage B, verbatim.
+
+**1. §13.1 CACHE PREFIX** — fix it, and the fix is a spec change I'm making. Split the settings
+preamble in two: stable settings (name, timezone, day shape) stay in position 1 and remain
+cacheable; the current local time moves to a new uncached block AFTER the cache breakpoint,
+immediately before the view-tasks table. Caching is prefix-based, so volatile content ahead of the
+breakpoint invalidates everything behind it on every call — you are currently paying the 1.25x
+cache-write premium for zero hits. Update §13.1's block order and record it as a Decision citing
+your finding.
+
+**2. `batch.ts`** — keep `targets` on `BatchResult` and accept 330. `runBatch` already computes
+targets for the log, so returning them exposes an existing fact; any alternative re-derives what
+`runBatch` knows. But name the seam NOW, while you have the file in your head: if it passes 350,
+what comes out? Write that into the Decision 56 watch note so the split is decided in advance
+rather than under pressure in Phase 6.
+
+**3. `actions.ts` at 299** — no action, but record that it splits by domain (task builders / file
+builders / settings builders) rather than by layer. It is a flat list of independent builders, so
+the coupling hard rule 5 guards against is low and the seam is obvious.
+
+**4. BOTH DEVIATIONS APPROVED.** `TurnEvent.error` carrying `code` is right — pattern-matching
+§13.5's routing on error prose would break the first time a message is reworded. The flat-object
+extract schema is right too: strict structured output over `anyOf` is exactly where these go wrong.
+Record the second as a Decision, since `ExtractResult` stays a discriminated union in TypeScript
+while the wire schema is flat — that difference should be written down, not discovered.
+
+**5. `manifest.ts` UTC bug** — fix it in Stage B. It picks the `YYYY-MM` directory and the `added`
+column from UTC while everything else in the app goes through `dates.ts`. Stage B exercises uploads
+from the composer, so it is the right moment. One call to the existing timezone helper.
+
+**6. RUN THE BAD-KEY HALF NOW.** You are right that it needs a live call but not a valid key — put a
+garbage string in `.env.local` in the throwaway checkout and confirm the 401 path produces one toast
+and no files. That closes half of §17's fifth check for free.
+
+Then Stage B as approved, including the amendment `j` surface and the Phase 5 checklist rows.
+
+**What item 6 actually found.** The rejected-key run failed on something else first: the SDK refuses
+a *non-streaming* request client-side, before any network call, once `max_tokens` exceeds
+128000/6 ≈ 21333 (`calculateNonstreamingTimeout` in the installed client). `messages.parse` is
+non-streaming, so `runExtract` at §13.2's `max_tokens: 64000` threw every time — with a valid key
+too. `parse` now runs over `messages.stream`, which carries the same `output_config.format` and
+returns the same `parsed_output` with no ceiling. The bad-key check passes on the second run: 401,
+`code: auth`, no task, no log line, no commit. This is the argument for insisting on the live half.
 
 ## Deferred amendments
 

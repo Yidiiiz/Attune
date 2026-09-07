@@ -20,7 +20,7 @@ Every call the brief left open, or where this spec deviates from it. One line of
 6. **Added `repeat`, `source`, and `collection` to tasks; added `tasks` to collections.** `source` records the prompt or conversation that produced the task; `collection` and `tasks` are the two ends of the promote-to-task link.
 7. **Task filenames are fixed at creation.** Changing `due` does not rename the file. Renames churn git and break links; the date prefix is a hint, not an index.
 8. **Message deletion:** hard delete is refused for any message with children. Leaves soft-delete (`deleted: true` in frontmatter, body kept). Childless *failed* assistant messages may be hard-deleted because they never held content worth keeping. Conversation deletion removes the directory as one batch, recoverable through git.
-9. **No message index file.** A directory scan of a few hundred small files is milliseconds. If a conversation ever needs thousands, add `messages.index.json` then, not now.
+9. **No message index file.** A directory scan of a few hundred small files is milliseconds. If a conversation ever needs thousands, add `messages.index.json` then, not now. **What stands in for the index is the filename order**, so this decision depends on Decision 61: a sorted listing is a timeline only because `uuidv7()` is monotonic.
 10. **Chats in the graph: one node per conversation, never per message.** Conversation nodes are on by default; edges come from task ids and `data/` paths referenced in messages.
 11. **`activeLeafId` changes are ordinary logged, committed actions** (`chat.update`). Consistency with "everything is reversible" wins over commit noise; the history view hides this type by default.
 12. **Schema version on every frontmatter record from the first commit** (`schema: 1`). Cheapest possible insurance.
@@ -96,6 +96,16 @@ Every call the brief left open, or where this spec deviates from it. One line of
 58. **Undo restores `{fields}` and `{content}` snapshots only under `data/`, and says why when it refuses.** Every store path is resolved relative to `data/`, so applying a `fields` snapshot whose target is `.env.local` would not rewrite the real file — it would create `data/.env.local` with frontmatter, silently, and report success. The §11.5 key batch is the only writer that names a path outside `data/` today, and undoing it is meaningless in any case: the snapshot records `ANTHROPIC_API_KEY: "set" | "unset"`, the name and never the value, so there is nothing to restore from. `undoBatch` therefore refuses such a batch with a message giving that reason rather than a path error, because a refusal that reads like a bug gets "fixed" into the silent write it was preventing. `{git: true}` is deliberately untouched: it reconstructs from a commit rather than through the store, which is how `code.change` reaches repository paths correctly. Found by reading `applySnapshot` while planning the key writes, before either existed.
 
 59. **The settings preamble is split so the cache prefix can actually hit.** §13.1 originally put the whole preamble first and marked the four blocks behind it `cache: true`. The preamble carries the current local time, so its text changed on every request; prompt caching is prefix-based, and a breakpoint whose prefix changes every call is a breakpoint that never matches. The effect was not neutral — it paid the 1.25x cache-write premium on every request for zero reads. The fix is to split by volatility rather than by topic: the stable half (name, timezone, day shape, categories, formats) joins the cached prefix, and the clock becomes its own uncached block placed immediately before the view tasks table, where the rest of the per-request content already is. Found while building Phase 5's `context.ts`, by asking what the `cache: true` flag would actually do rather than only setting it.
+
+**During Phase 6a (2026-09-07)**
+
+61. **`uuidv7()` is monotonic within a millisecond, and that is load-bearing rather than tidy.** The chain is three links long and every one of them is elsewhere in this file, which is why it is written down here as one thing. Decision 9 says there is no message index. `readConversation` therefore takes its ordering from a sorted directory listing (`lib/store/chats.ts`). And that listing is a timeline **only** if the ids sort in creation order — which UUIDv7's timestamp cannot deliver on its own, because it has millisecond resolution and several messages are easily written inside one. The generator ported from `HANDOFF-CHAT.md` Part B left those ids in random order; the 12 bits after the version now carry a counter that increments while the clock stands still (the monotonic-random method the UUIDv7 spec allows), and a clock that jumps backwards is ignored in favour of the last millisecond issued.
+
+    **The guard is the creation-order case in `lib/chat/uuid.test.ts`, which mints a thousand ids and asserts the array is already sorted.** A thousand ids take well under a millisecond, so it fails the moment the counter goes away. **If it ever fails, the generator has regressed — the test is not wrong and must not be relaxed**; loosening it to "sorts across milliseconds" would restore exactly the bug it was written for, and the symptom in the app is not an error but messages quietly coming back in the wrong order.
+
+    The residual is deliberate and small: the counter is per process, so two browser tabs minting inside the same millisecond can still tie, and the tie breaks on the random half. That costs the display order of two sibling branches. **Structure is unaffected** — it comes from `parentId`, and `lib/chat/tree.ts` orders siblings by `(createdAt, id)`, never by a filename.
+
+62. **`lib/chat/types.ts` holds the `Message`, `Conversation` and `Annotation` shapes**, as zod schemas with the TypeScript types inferred from them, so each is defined once rather than as an interface and a validator that drift. It exists because of §3's own rule rather than as a preference: components may not import `lib/store/`, so with the shapes living in `lib/store/chats.ts` a component would learn what a message looks like by importing a module that touches `node:fs`. `lib/chat/` is already the directory for what both sides need and neither side may make impure (Decision 30), so the model goes there and the file access stays in the store.
 
 60. **`ExtractResult` is a discriminated union in TypeScript and a flat object on the wire.** §9.4 defines the three answers as a union, and that is what callers get: `narrow()` in `lib/agent/chat.ts` is the only place the two shapes meet. The schema handed to the structured-output request is deliberately not that union. A discriminated union becomes `anyOf` in JSON Schema, which is the construct strict structured output handles least well and most inconsistently across models; a single closed object whose every key is present — `kind`, plus `tasks`, `collection`, `collectionItems`, `question`, `note` with the irrelevant halves nulled — is a shape a strict schema can enforce. The cost is one narrowing function that refuses an answer its own fields do not support: a `kind: "question"` with no question is a provider error, not a `question` with an empty string. Written down because the difference between the two shapes is otherwise something the next reader discovers rather than reads.
 
@@ -180,11 +190,13 @@ lib/
     timeline.ts              # packDay()
     calendar.ts              # gridFor(), shiftAnchor(), groupDays()
   chat/                      # pure functions, no fs, no DOM
-    tree.ts                  # activePath, siblingsOf, latestLeafUnder, buildPairs
+    types.ts                 # Message, Conversation, Annotation: zod schemas + inferred types
+    tree.ts                  # buildTree, activePath, siblingsOf, latestLeafUnder, buildPairs
     text-match.ts            # ported verbatim from HANDOFF Part E
     anchoring.ts             # findQuote, findAnchorText (pure half)
-    refs.ts                  # extractRefs(text), parseQuoteReply(text)
-    uuid.ts                  # uuidv7(), ported verbatim from HANDOFF Part B
+    refs.ts                  # extractRefs(text)
+    quotes.ts                # parseQuoteReply(text) and its source lookup (§16.6)
+    uuid.ts                  # uuidv7(), ported from HANDOFF Part B (monotonic — Decision 61)
   agent/                     # ONLY module that talks to a provider
     registry.ts              # model registry + Provider type
     anthropic.ts             # Provider implementation
@@ -223,6 +235,7 @@ Who may touch the store, stated once so it stops eroding:
 
 - **Route-level server files — `app/**/page.tsx`, `app/**/layout.tsx`, and `app/api/**/route.ts` — may call `lib/store` read functions directly.** They are the server-side edge of the app, the same category as an API adapter, and a page that fetched its own data over HTTP from itself would not be the boring option.
 - **Everything under `components/` goes through an API route.** Components never import `lib/store/` or `lib/history/`; they may import pure modules (`lib/chat/`, `lib/schedule/`).
+- **A record's *shape* is therefore not the store's to own.** `lib/chat/types.ts` holds `Message`, `Conversation` and `Annotation` for exactly this reason: a component has to know what a message is, and if that lived in `lib/store/chats.ts` the only way to find out would be to import a module that touches `node:fs`. The rule above is what creates the seam, so the seam is named here rather than discovered per phase (Decision 62).
 - **Every mutation goes through an API route and `runBatch()`, whichever kind of file is asking.** The read exemption above is a read exemption; a `page.tsx` writes no more directly than a component does.
 
 ---

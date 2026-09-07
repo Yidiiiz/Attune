@@ -16,7 +16,8 @@
 // that increments while the clock stands still (the "monotonic random" method the UUIDv7 spec
 // allows), and a clock that jumps backwards is ignored in favour of the last millisecond issued.
 // Ordering is then exact for every id this process mints. Found by a test asserting the property
-// the rest of the app was already relying on.
+// the rest of the app was already relying on, and recorded as PROJECT.md Decision 61 — which also
+// says what to do when the creation-order test fails: fix this file, never that test.
 //
 // Failure behavior: nothing here can fail — no I/O and no parsing, so a caller that gets a string
 // back has a well-formed id. The counter is the one piece of state, and it is per process: two

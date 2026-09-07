@@ -23,6 +23,10 @@ describe("uuidv7", () => {
   it("sorts in creation order *within* a millisecond too, which is the case that bites", () => {
     // Minting a thousand ids takes well under a millisecond, so without the counter these come back
     // in random order — and a conversation's messages are read from a sorted directory listing.
+    //
+    // DO NOT RELAX THIS CASE (Decision 61). A failure here means `uuidv7` regressed, not that the
+    // assertion is too strict: Decision 9 spends the message index on filename order, and the app
+    // does not error when this breaks — messages just come back out of order.
     const minted = Array.from({ length: 1000 }, () => uuidv7());
     expect([...minted].sort()).toEqual(minted);
   });

@@ -118,14 +118,28 @@ export default function Attachments({ files, onFiles, onError, active, onReady }
   );
 }
 
-/** The picker itself, rendered in the input row rather than above it. */
-export function AttachButton({ onPick }: { onPick: (files: File[]) => void }) {
+/**
+ * The picker itself, rendered in the input row rather than above it.
+ *
+ * The `id` is a prop because there are two composers now — the sheet's and the chat tab's — and a
+ * `<label for>` needs an id that is unique on the page. They never mount together today (§9.1 keeps
+ * the `+` button off Chat), so this is not a bug being fixed; it is the assumption being removed
+ * before a third surface makes it one. Deferred amendment `p` is the note about where this file
+ * goes when that happens.
+ */
+export function AttachButton({
+  onPick,
+  id = "composer-attach",
+}: {
+  onPick: (files: File[]) => void;
+  id?: string;
+}) {
   return (
     <>
       <input
         type="file"
         multiple
-        id="composer-attach"
+        id={id}
         hidden
         onChange={(event) => {
           const chosen = Array.from(event.target.files ?? []);
@@ -134,7 +148,7 @@ export function AttachButton({ onPick }: { onPick: (files: File[]) => void }) {
           onPick(chosen);
         }}
       />
-      <label className={styles.iconButton} htmlFor="composer-attach" title="Attach a file">
+      <label className={styles.iconButton} htmlFor={id} title="Attach a file">
         📎
       </label>
     </>

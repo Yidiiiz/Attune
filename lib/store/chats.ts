@@ -38,7 +38,6 @@ export const messagesDir = (convId: string): string => `${conversationDir(convId
 export const messagePath = (convId: string, id: string): string => `${messagesDir(convId)}/${id}.md`;
 export const annotationsDir = (convId: string): string => `${conversationDir(convId)}/annotations`;
 export const annotationPath = (convId: string, id: string): string => `${annotationsDir(convId)}/${id}.md`;
-export const attachmentsDir = (convId: string): string => `${conversationDir(convId)}/attachments`;
 
 /** The order each record's frontmatter is written in, matching the examples in §4.7 and §16.4. */
 const CONVERSATION_ORDER = [

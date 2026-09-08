@@ -6,22 +6,35 @@
 // makes a newline, `Esc` clears an error. While a reply is arriving the send button becomes Stop,
 // because a stream that cannot be interrupted is one you close the tab to escape.
 //
+// **Attachments come from the sheet's component, not from a second copy of it** (§10.2, deferred
+// amendment `o`). `components/composer/Attachments.tsx` owns §9.2's upload, chips and drop overlay,
+// and this is its second importer; amendment `p` records that a third moves it to a shared home.
+// What is different here is only where it mounts: the sheet is a modal that is either open or not,
+// so its drop target is gated on `active`, while this composer is always on screen and its drop
+// target is always live.
+//
 // Failure behavior: **the text is never cleared until the send has landed** (§13.5, Decision 50).
-// A refusal — a credential in the message, a route that said no — leaves every character where it
-// was typed, with the reason above the box, next to the button that would try again.
+// A refusal — a credential in the message, a route that said no, a model that cannot read the
+// attachment — leaves every character where it was typed, with the reason above the box, next to
+// the button that would try again. The chips stay too: a refused send has not spent them, and a
+// model that cannot read a PDF is fixed by changing the model rather than by re-attaching.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Attachments, { AttachButton } from "@/components/composer/Attachments";
+import type { Attachment } from "@/components/composer/Attachments";
 import styles from "./Chat.module.css";
 
 export interface ChatComposerProps {
   /** Returns a message to show inline, or null when the send landed. */
-  onSend: (text: string) => Promise<string | null>;
+  onSend: (text: string, attachments: string[]) => Promise<string | null>;
   onStop: () => void;
   streaming: boolean;
   error: string | null;
   onDismissError: () => void;
+  /** An upload that did not stick. It has an on-screen origin, so it shows inline (§13.5). */
+  onError: (message: string) => void;
   placeholder?: string;
 }
 
@@ -33,11 +46,15 @@ export default function ChatComposer({
   streaming,
   error,
   onDismissError,
+  onError,
   placeholder,
 }: ChatComposerProps) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<Attachment[]>([]);
   const area = useRef<HTMLTextAreaElement | null>(null);
+  // Handed back by `Attachments` so a paste of files reaches the same upload path a drop does.
+  const attach = useRef<(chosen: File[]) => void>(() => {});
 
   // §9.2's auto-growing box, 1–10 rows: measured rather than counted, so a wrapped line grows it too.
   useEffect(() => {
@@ -50,12 +67,20 @@ export default function ChatComposer({
 
   async function submit(): Promise<void> {
     const value = text.trim();
-    if (value.length === 0 || busy || streaming) return;
+    // An attachment with no words is still a message worth sending — "what is this?" is often the
+    // whole question — so the box may be empty as long as something is attached.
+    if ((value.length === 0 && files.length === 0) || busy || streaming) return;
     setBusy(true);
-    const problem = await onSend(value);
+    const problem = await onSend(
+      value,
+      files.map((file) => file.path),
+    );
     setBusy(false);
-    // Cleared only on success. A refused send keeps every character (Decision 50).
-    if (problem === null) setText("");
+    // Cleared only on success. A refused send keeps every character, and its chips (Decision 50).
+    if (problem === null) {
+      setText("");
+      setFiles([]);
+    }
   }
 
   return (
@@ -69,7 +94,18 @@ export default function ChatComposer({
         </p>
       )}
 
+      <Attachments
+        files={files}
+        onFiles={setFiles}
+        onError={onError}
+        active
+        onReady={(fn) => {
+          attach.current = fn;
+        }}
+      />
+
       <div className={styles.composerRow}>
+        <AttachButton id="chat-attach" onPick={(chosen) => attach.current(chosen)} />
         <textarea
           ref={area}
           className={styles.textarea}
@@ -78,6 +114,14 @@ export default function ChatComposer({
           placeholder={placeholder ?? "Ask anything, or say what you are working on"}
           data-ui="chat-input"
           onChange={(event) => setText(event.target.value)}
+          onPaste={(event) => {
+            // §9.2: a pasted image is an attachment, not text. Only intercepted when the clipboard
+            // actually carries files, so pasting prose is untouched.
+            const pasted = Array.from(event.clipboardData.files);
+            if (pasted.length === 0) return;
+            event.preventDefault();
+            attach.current(pasted);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
@@ -97,7 +141,7 @@ export default function ChatComposer({
             type="button"
             className={styles.sendButton}
             onClick={() => void submit()}
-            disabled={busy || text.trim().length === 0}
+            disabled={busy || (text.trim().length === 0 && files.length === 0)}
             data-ui="send"
           >
             {busy ? "Sending…" : "Send"}

@@ -168,9 +168,15 @@ function flatten(nodes: TreeNode[]): string[] {
 }
 
 /**
- * Delete a whole conversation — its record, its messages, its annotations and its attachments — as
- * one batch (Decision 8). Text files are snapshotted inline so undo restores them without git;
- * attachments are `{ git: true }`, which is what "recoverable through git" means for bytes.
+ * Delete a whole conversation — its record, its messages and its annotations — as one batch
+ * (Decision 8). Every file in it is text and is snapshotted inline, so undo restores the whole
+ * conversation without git.
+ *
+ * **It does not delete the conversation's attachments, and cannot** (Decision 65). They live in
+ * `data/files/` with the rest of §9.2's uploads, deduplicated by content hash, so the file a message
+ * points at may be the same file another conversation points at; sweeping it would break the other
+ * one. What is left behind is an upload whose manifest `used-by` has gone empty, which `kb:check`
+ * reports. That is a known trade rather than an oversight, and Decision 65 is where it is argued.
  */
 export function removeConversation(convId: string, summary?: string): ActionSpec {
   return {
@@ -178,13 +184,12 @@ export function removeConversation(convId: string, summary?: string): ActionSpec
     summary: summary ?? "Delete a conversation",
     apply: async (store: Store) => {
       const dir = store.chats.conversationDir(convId);
-      const attachments = store.chats.attachmentsDir(convId);
       const targets = flatten(await store.files.listTree(dir));
 
       const before: Snapshots = {};
       const after: Snapshots = {};
       for (const rel of targets) {
-        before[rel] = rel.startsWith(`${attachments}/`) ? { git: true } : await store.snapshotContent(rel);
+        before[rel] = await store.snapshotContent(rel);
         after[rel] = null;
       }
 

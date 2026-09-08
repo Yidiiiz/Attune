@@ -60,9 +60,18 @@ export class AgentError extends Error {
   }
 }
 
-/** One part of one message. `tool_result` is how a local executor's answer re-enters the loop. */
+/**
+ * One part of one message. `tool_result` is how a local executor's answer re-enters the loop.
+ *
+ * `image` and `document` carry base64 rather than a path, because the path means nothing to a
+ * provider and this type is the boundary where "a file in `data/`" stops being the unit. Which
+ * models may be handed either is `images` and `pdf` on `ModelEntry`, read by
+ * `lib/agent/attachments.ts` before a turn starts (deferred amendment `o`).
+ */
 export type ContentPart =
   | { type: "text"; text: string }
+  | { type: "image"; mediaType: string; data: string }
+  | { type: "document"; mediaType: string; data: string; name?: string }
   | { type: "tool_use"; id: string; name: string; input: unknown }
   | { type: "tool_result"; toolUseId: string; content: string; isError?: boolean };
 

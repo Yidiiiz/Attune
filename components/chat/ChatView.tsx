@@ -216,11 +216,12 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
         </div>
 
         <ChatComposer
-          onSend={(text) => send(text)}
+          onSend={(text, attachments) => send(text, { attachments })}
           onStop={stop}
           streaming={streamingId !== null}
           error={error}
           onDismissError={() => setError(null)}
+          onError={setError}
         />
       </section>
 

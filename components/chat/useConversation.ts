@@ -48,6 +48,8 @@ export interface SendOptions {
   parentId?: string | null;
   /** No new prompt: a regenerate appends only an assistant sibling. */
   withoutPrompt?: boolean;
+  /** `data/`-relative paths from §9.2's upload, carried on the user message (§4.7, amendment `o`). */
+  attachments?: string[];
 }
 
 const draft = (id: string, parentId: string | null, role: Message["role"], text: string): Message => ({
@@ -140,7 +142,9 @@ export function useConversation(initial: ConversationState) {
 
       // Drawn before the request leaves, so the exchange appears the moment Enter is pressed.
       const optimistic: Message[] = [
-        ...(userMessageId === null ? [] : [draft(userMessageId, parentId, "user", text)]),
+        ...(userMessageId === null
+          ? []
+          : [{ ...draft(userMessageId, parentId, "user", text), attachments: options.attachments ?? [] }]),
         draft(assistantMessageId, userMessageId ?? parentId, "assistant", ""),
       ];
       setState((current) => ({
@@ -162,7 +166,9 @@ export function useConversation(initial: ConversationState) {
           headers: { "content-type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            ...(userMessageId === null ? {} : { userMessageId, text }),
+            ...(userMessageId === null
+              ? {}
+              : { userMessageId, text, attachments: options.attachments ?? [] }),
             assistantMessageId,
             ...(options.parentId === undefined ? {} : { parentId: options.parentId }),
             mode: "ask",

@@ -129,6 +129,26 @@ export default function MessageRow({
         </p>
       ) : null}
 
+      {message.attachments.length > 0 ? (
+        // A message that carries a file and shows nothing is the silent failure this project keeps
+        // refusing elsewhere (§16.4). The link is the raw route, so a picture opens as a picture.
+        <ul className={styles.rowFiles} data-ui="message-files">
+          {message.attachments.map((path) => (
+            <li key={path}>
+              <a
+                className={styles.rowFile}
+                href={`/api/files/raw?path=${encodeURIComponent(path)}`}
+                target="_blank"
+                rel="noreferrer"
+                data-attachment={path}
+              >
+                {path.slice(path.lastIndexOf("/") + 1)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {message.role === "assistant" && message.status === "complete" && message.model !== null ? (
         <p className={styles.byline} data-ui="byline">
           {message.model}

@@ -37,6 +37,7 @@ import { nowIso } from "../schedule/dates.ts";
 import { assembleContext } from "./context.ts";
 import { streamModelTurn } from "./chat.ts";
 import type { TurnEvent } from "./chat.ts";
+import { attachmentsFor } from "./attachments.ts";
 import type { Effort, ProviderMessage } from "./registry.ts";
 import type { Annotation, Conversation, Message } from "../chat/types.ts";
 
@@ -145,6 +146,11 @@ interface Started {
 /** Step 1: both files on disk, uncommitted, and the prompt the provider will be given. */
 async function start(input: ChatTurnInput): Promise<Started> {
   const { conversation, messages, annotations } = await readConversation(input.conversationId);
+
+  // Amendment `o`. Before the first file is written, because a model that cannot read the
+  // attachment refuses the send and §16.3 wants that refusal to leave nothing behind.
+  const files = await attachmentsFor(input.model ?? conversation.model, input.userMessage?.attachments ?? []);
+
   const createdAt = await now();
   const parentId = input.parentId === undefined ? conversation.activeLeafId : input.parentId;
 
@@ -169,8 +175,17 @@ async function start(input: ChatTurnInput): Promise<Started> {
 
   const tree = buildTree(user === null ? messages : [...messages, user]);
   const path = activePath(tree, user === null ? parentId : user.id);
+  const prompt = toProviderMessages(path, annotations);
 
-  return { conversation, user, assistant, messages: toProviderMessages(path, annotations) };
+  // The files ride on the last user turn, which is the one they were attached to. They are not
+  // built inside `toProviderMessages` because that function shapes the whole conversation and is
+  // pure and synchronous; reading bytes is not part of shaping it.
+  const last = prompt[prompt.length - 1];
+  if (files.length > 0 && last !== undefined && last.role === "user") {
+    last.content = [...last.content, ...files];
+  }
+
+  return { conversation, user, assistant, messages: prompt };
 }
 
 const write = (convId: string, message: Message): Promise<void> =>

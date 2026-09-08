@@ -54,6 +54,21 @@ function toSystem(blocks: ContextBlock[]): Anthropic.TextBlockParam[] {
 
 function toContent(part: ContentPart): Anthropic.ContentBlockParam {
   if (part.type === "text") return { type: "text", text: part.text };
+  // Amendment `o`. The registry's `images`/`pdf` flags decided whether these could be built at all
+  // (`lib/agent/attachments.ts`), so by here the model is known to accept them.
+  if (part.type === "image") {
+    return {
+      type: "image",
+      source: { type: "base64", media_type: part.mediaType as "image/png", data: part.data },
+    };
+  }
+  if (part.type === "document") {
+    return {
+      type: "document",
+      source: { type: "base64", media_type: "application/pdf", data: part.data },
+      ...(part.name === undefined ? {} : { title: part.name }),
+    };
+  }
   if (part.type === "tool_use") return { type: "tool_use", id: part.id, name: part.name, input: part.input };
   return {
     type: "tool_result",

@@ -15,7 +15,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
-| 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d` |
+| 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277` |
 | 6b — Chat: branching, sidebar, annotations | **next** | — |
 | 7–11 | not started | — |
 
@@ -419,6 +419,25 @@ by writing that check. Second: a failure routed to a toast returned "no error" t
 which cleared the box — losing the text §15 says a rejected send keeps. Third: an empty conversation
 title round-tripped through YAML as `null` and failed its own schema on the first send.
 
+**The Phase 6a close added a fourth `code:` commit, `ff4b277`, for the orphan sweep** (Decision 64).
+Draining on client disconnect closed the case the browser checks found; process death is the same
+wound with no in-flight fix available, and Decision 63's invariant is what makes the result
+invisible — a `streaming` message reads exactly like a live one. `sweepInterruptedMessages()` in
+`lib/history/streaming.ts` runs from `scripts/dev.mjs` at startup beside `clearStaleIndexLock`, and
+repairs anything `streaming` that no log entry names: the prompt to `complete`, the reply to
+`failed` with an interrupted reason, through `runBatch` so the repair is itself logged, committed
+and undoable.
+
+**What the sweep's own checks found.** `readActions` skips a torn line and keeps going — right for
+the history view, wrong as this function's only input, because the line it drops could be the entry
+naming the message about to be "repaired", and a log that fails to parse entirely reads as an empty
+one, which would make every message look orphaned. The sweep now counts parsed entries against
+non-empty lines and does nothing at all on a mismatch. Verified end to end against a throwaway
+checkout as well as in `lib/history/sweep.test.ts`: two files left `streaming` with an empty log,
+one startup, and afterwards `status: complete` and `status: failed` with the reason, two
+`chat.update` entries, one commit `chat: recover 2 messages left by an interrupted run`, a clean
+`git status --porcelain -- data`, and a second run reporting nothing.
+
 **Three things Phase 6b inherits.** `lib/agent/turn.ts` is at 297 lines, which is the cap; its
 obvious seam if branching pushes it over is `finalizeTurn` plus the discard path, which is §16.3's
 own paragraph rather than an invented one. `runChatTurn` already takes `parentId` and an optional
@@ -427,9 +446,10 @@ than new machinery — Retry in `ChatView` is already the regenerate case. And t
 **a message on disk that is not in the log is always `status: streaming`**, which is what makes
 `streamingWrite` and `streamingDiscard` safe to have at all.
 
-**What Phase 6a leaves unverified.** `docs/CHECKLIST.md` rows 6a.1–6a.6: the rail's drag and its
+**What Phase 6a leaves unverified.** `docs/CHECKLIST.md` rows 6a.1–6a.5: the rail's drag and its
 persisted width, the composer's ten-row ceiling, §9.6's Ask mode end to end, both themes against
-KaTeX, long-conversation scrolling, and what a crash mid-turn leaves behind. Nine browser checks
+KaTeX, and long-conversation scrolling. Row 6a.6 has an expected result now and its mechanism has
+been run, but the `Ctrl+C`-at-a-real-terminal half of it is still a person's job. Nine browser checks
 cover the rest and run from `npm run check:ui`; row 5.4 is superseded by 6a.3, since Ask mode no
 longer refuses. The Phase 5 provider-dependent row 5.5 is still blocked on the key.
 

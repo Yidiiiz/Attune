@@ -524,6 +524,46 @@ accumulate.
 
 **Then update the status block and stop.**
 
+### Approved conditions — Phase 6b (rule 9)
+
+Verbatim from the approval. Five answers to the plan's five open calls, then two additions and the
+stage terms. The plan proposed four stages — A branching, B sidebar and conversation header, C
+annotations and quote replies, D amendment `o` — with A stopping for review.
+
+**Plan approved. Five answers, two additions.**
+
+**1. LAYOUT.** The gutter is BESIDE the 640, not inside it — §16.5's figure is the message column
+alone. As written the two specs don't compose: a 300px gutter inside 640 leaves a 340px reading
+column. State the cascade explicitly in §16.5 rather than leaving it to emerge from two independent
+rules: message column reserved first, then the gutter (300/200/hidden), then the sidebar
+(280/strip), with the left panel's collapse as the release valve the user already controls.
+
+Your yield order stands — gutter before the sidebar drops — but when the gutter hides it owes a
+count, "N notes hidden", for the same reason §16.4 refuses to let off-path annotations vanish
+silently. Record as a Decision.
+
+**2. AMENDMENT `o`'S ON-RAMP — approved.** Attach, paste and drop on ChatComposer reusing
+`components/composer/Attachments.tsx`. Your amendment `m` reading is right: the trigger named
+`components/today/`, not this. But note the same pattern is now forming — Attachments has two
+importers; if a third arrives, it moves to a shared home under the same reasoning `m` used.
+
+**3. ONE HOME, `data/files/` — approved**, correct §4.7 as a Decision, and name the consequence in
+it: deleting a conversation no longer deletes its attachments, because content-hash dedup means
+another message may reference the same file. The manifest's `used-by` going empty is the visible
+signal and `kb:check` is where it surfaces. Garbage collection is not this phase's problem, but it
+should be a known trade rather than a surprise. `attachmentsDir()` and §4.7's tree entry go.
+
+**4. READ ALOUD — approved exactly as proposed.** Build it, assert the observable half including the
+unmount-when-absent path, and put "did you hear it" in the checklist rather than pretending.
+
+**5. SPEC SPLIT — correct under the Conventions rule, build and report.** Add a threshold while you
+are there, the same way Decision 56 named 350 for `batch.ts`: name the `check:ui` runtime past which
+the suite needs sharding or selective running. Five minutes is my suggestion. Below it, always run
+everything.
+
+**Stage A stops for review; B, C and D are pre-approved to follow, reported together. Conditions
+into the status block first.**
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -545,8 +585,9 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | n | **`npm run publish-check` must never invoke `npm run check:ui`.** The fresh-clone half of `publish-check` installs into a temp directory and starts the app; a clone has no Playwright browser binaries, so calling the browser checks there would turn "is this repo publishable" into "did someone run `playwright install` on this machine". The note also lives in `scripts/check-ui.mjs`, where the phase that writes `publish-check` will be looking | Phase 6a approval, condition 1 | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
 | o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** — the last chat phase, so an untargeted amendment here would land nowhere | **outstanding** |
 | m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
+| p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
 
-`n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b is the last chat phase there is. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` is a trigger rather than a task: nobody builds it, the third importer trips it.
+`n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b is the last chat phase there is. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 
 ## How we work
 
@@ -596,6 +637,7 @@ npm install            # postinstall sets core.hooksPath=.githooks on every mach
 npm run dev            # scripts/dev.mjs → next dev, flushes git push on exit
 npm run init           # seed/ → data/ (refuses if data/ is non-empty)
 npm test               # check-lib-imports, then vitest
+npm run check:ui       # Playwright, chromium, dev server + throwaway checkout — not part of `npm test`
 npm run history -- list [--n 20] | undo <batch> [--force] | redo <batch>
 npm run kb:check       # orphans, broken links, size caps
 npm run check-secrets  # also runs from .githooks/pre-commit
@@ -611,6 +653,7 @@ npm run publish-check  # readiness for the public remote
 - **`data-*` test hooks are sanctioned, and named the same way everywhere: `data-<thing>` on the element that *is* one of those things, valued with that record's stable identity.** `data-date` on a calendar cell, `data-task` on a task row, `data-message` on a message row (Phase 6), `data-node` on a graph node (Phase 8). Singular, kebab-case, a noun for what the element is — never what it looks like or where it sits. Application code never reads one: if the app needs the value, it already has it in props or state, and an attribute the app depends on is not a test hook but an undeclared piece of state. They exist so a check can name an element without a fragile selector, and the reason to settle the convention rather than let each phase invent one is in `HANDOFF-CHAT.md`: `dom-map.ts` was 265 lines of mapping rendered DOM back to message identity, caused entirely by a DOM that carried no ids, and it is listed there under the fights that do not exist for this project because we render from our own data. That advantage is only real if the ids are actually put in the markup.
 - **Splitting a file along a seam the spec already draws needs no approval and gets reported. Inventing a seam to fit a line count is a stop-and-ask.** Hard rule 5's ~300-line cap and rule 7's "say why first and wait" pull against each other the moment a file grows past it, and the resolution is *where the seam came from*, not how big the file was. If `PROJECT.md` already treats the parts as separate things — its own paragraph, its own numbered step, its own section — then the split is the spec's and building it is ordinary work; say in the phase report that it happened and why. If the parts only became separate because a number had to come down, the split is a design decision the owner has not made, and a file over the cap is the better outcome until they do: an invented seam is a coupling claim, and a wrong one costs more than the length it bought back. **Phase 5's composer is the first case and is on the right side of it:** `ComposerSheet.tsx` hit 428, and `Attachments.tsx` and `VoiceButton.tsx` are §9.2's two optional inputs, `useComposerTurn.ts` is §9.4 and §9.5's whole conversation with the server, and `draft.ts` is §9.5 step 4's merge rule. None of the four is a category invented on the spot.
 - **Timers are never correctness.** Wait on the observable consequence; a timeout is a failure guard.
+- **`npm run check:ui` runs everything until it passes five minutes** (`PROJECT.md` Decision 67). Below that, a partial run is a claim about what was checked and is not worth the minutes it saves. Past it, shard across workers — which needs a sandbox per worker first, since `fullyParallel: false` is there because one data directory and one git repository are shared — or run by spec file. Splitting a spec file along §17's step letters is the split rule above, not this threshold.
 - **A reader that tolerates malformed input is safe for display and unsafe as an authority.** Skipping what will not parse and carrying on is right for a view — one broken file must not blank a page — but a function that makes a **destructive or repairing** decision from what it read has to verify it read *everything* first: count the records it parsed against the raw records present, and refuse on a mismatch rather than trusting a lenient reader's silence. **`sweepInterruptedMessages` in `lib/history/streaming.ts` is the first case**, and it shows the trap: it decides which messages nothing recorded, so a torn line `readActions` skipped could be the very entry naming a message it is about to "repair" — and **a log that fails to parse entirely reads as an empty one, which makes every message look orphaned.** Both failures run the same direction, which is the dangerous one: the less it manages to read, the more it does. `listTasks` has the same shape today — it skips a file and leaves the path in `listTasks.errors` — and is safe only because nothing destructive reads it; the first caller that acts on its output owes this check. **Phase 7's `kb:check` and Phase 8's link index are the next two places it applies**: both decide what is orphaned or broken from a scan, which is the sweep's shape exactly.
 - **Dirty-check writes.** Never write a value that is already set.
 - **Atomic file writes** (tmp + rename) in the store; whole-file writes, never read-modify-write of shared arrays.

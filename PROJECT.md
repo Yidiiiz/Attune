@@ -118,6 +118,18 @@ Every call the brief left open, or where this spec deviates from it. One line of
 60. **`ExtractResult` is a discriminated union in TypeScript and a flat object on the wire.** §9.4 defines the three answers as a union, and that is what callers get: `narrow()` in `lib/agent/chat.ts` is the only place the two shapes meet. The schema handed to the structured-output request is deliberately not that union. A discriminated union becomes `anyOf` in JSON Schema, which is the construct strict structured output handles least well and most inconsistently across models; a single closed object whose every key is present — `kind`, plus `tasks`, `collection`, `collectionItems`, `question`, `note` with the irrelevant halves nulled — is a shape a strict schema can enforce. The cost is one narrowing function that refuses an answer its own fields do not support: a `kind: "question"` with no question is a provider error, not a `question` with an empty string. Written down because the difference between the two shapes is otherwise something the next reader discovers rather than reads.
 
 
+**During Phase 6b (2026-09-08)**
+
+65. **Message attachments live in `data/files/`, and §4.7's conversation-local `attachments/` directory is deleted.** The spec said both: §4.7 showed `data/chats/<conv-id>/attachments/<sha256-8>-<name>` and called the field "relative to the conversation dir", while §9.2 uploads through `POST /api/files/upload` into `data/files/<kind>/<YYYY-MM>/`, which is what the code actually does. Nothing ever wrote to the first one — `attachmentsDir()` existed in `lib/store/chats.ts` and had exactly one reader, `removeConversation`, sweeping a directory that is always empty. One home wins, and it is `data/files/`, because that is the one with §4.8's manifest, content-hash dedup, `used-by` backlinks and an undo story; a second uploads directory means a second of each of those. A message stores `data/`-relative paths, the same shape `refs` already uses.
+
+    **The consequence, named rather than discovered: deleting a conversation no longer deletes its attachments.** It cannot. Dedup is by content hash, so the file a message points at may be the same file another message in another conversation points at, and a delete that swept it would break the other one. What is left behind is a file whose manifest `used-by` has gone empty, which is a **visible** signal rather than an invisible leak: `npm run kb:check` is where it surfaces, alongside orphans and broken links. Garbage collection is not Phase 6b's problem and is not being built here; the point of writing this down is that the trade was chosen, so the first person to see an orphaned upload reads this instead of filing a bug.
+
+66. **The chat pane's width cascade is ordered, and the annotation gutter is outside the message column rather than inside it.** §16.4 gives the gutter 300 px preferred / 200 minimum / hidden, and §16.5 gives the sidebar full width while "the main pane can keep ≥ 640 px". Read independently the two do not compose: a 300 px gutter taken out of 640 leaves a 340 px reading column, which is narrower than either section would accept and which neither section says. So §16.5 now states the order outright — message column, then gutter, then sidebar, each taking what the ones above it left — rather than leaving it to emerge from two rules that were never checked against each other. The left panel's collapse is the release valve, deliberately the reader's control rather than an automatic reflow.
+
+    **And a gutter that hides owes a count.** §16.4 already refuses to let an off-path annotation vanish silently; a hidden gutter is the same disappearance by a different cause, so it gets the same remedy — "N notes hidden" in the conversation header. The rule underneath both is that an annotation which exists and is not drawn must still say so, and the fix is one the reader can act on.
+
+67. **`npm run check:ui` past five minutes needs sharding or selective running, and until then always runs everything.** Decision 56's precedent is the shape here: name the threshold in advance, so the decision is made once while it is cheap rather than under pressure by whoever first finds the suite slow. The browser checks ran nine cases in about 41 seconds at the end of Phase 6a; Phase 6b roughly triples that count, and every later phase with a surface adds more. Five minutes is the number, and below it the answer is always the whole suite: a partial run is a claim about what was checked, and the cost of getting that claim wrong is higher than four minutes of waiting. Past it, the options in order of preference are sharding across workers — which `fullyParallel: false` currently forbids, for the good reason that there is one data directory and one git repository, so it means a sandbox per worker first — and then selective running by spec file. Splitting `e2e/chat.spec.ts` along §17's own step letters is not that; it is the Conventions split rule, and it happened in Phase 6b as ordinary reported work.
+
 ---
 
 ## 1. Hard rules
@@ -370,7 +382,6 @@ data/chats/<conv-id>/
   conversation.md
   messages/<uuidv7>.md
   annotations/<uuidv7>.md
-  attachments/<sha256-8>-<name>
 ```
 
 `conversation.md`:
@@ -404,7 +415,7 @@ role: assistant                                    # user | assistant
 status: complete                                   # streaming | complete | failed
 createdAt: 2026-09-03T16:01:12.410-04:00
 model: claude-opus-5
-attachments: []                                    # relative to the conversation dir
+attachments: []                                    # paths under data/, from §4.8's manifest
 refs: [t_20260903_7fa2, knowledge/notes/office-hours-math221.md]
 deleted: false
 error:                                             # set when status = failed
@@ -414,6 +425,8 @@ The message text, verbatim markdown.
 ```
 
 `refs` is computed at finalize by `extractRefs(text)` (§16.9) and stored so the link index does not have to parse every message body.
+
+`attachments` holds `data/`-relative paths into `data/files/` (§4.8, §9.2) — the same shape as `refs`, and **not** a conversation-local directory. There is one uploads directory in this project and it is the one with a manifest, content-hash dedup, `used-by` backlinks and an undo story (Decision 65).
 
 `annotations/<id>.md`: frontmatter exactly the `Annotation` type in §16.4 plus `schema: 1`; body is the annotation text.
 
@@ -818,6 +831,8 @@ Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed differ
 
 **Context debug view:** a "Context" toggle in the conversation header shows the exact blocks `assembleContext` sent for the last turn, with per-block token estimates and total.
 
+**Attachments:** the docked chat composer takes attach, paste and drop, through the same `components/composer/Attachments.tsx` the sheet uses and the same `POST /api/files/upload` (§9.2). The message stores `data/`-relative paths (§4.7) and §13.2 turns them into image or document blocks for models whose registry entry allows them; a model that does not refuses the send with a reason naming the model, rather than dropping the file silently.
+
 ### 10.3 Calendar
 
 `app/calendar/page.tsx`. Views: **Rolling** (default: today plus the next 27 days as 4 rows of 7, scrolling by a week with ↑/↓), **Month**, **Week**. Arrows move by the current unit; a Today button returns.
@@ -1114,7 +1129,8 @@ interface Annotation {
 
 - **Port `text-match.ts` verbatim** and `findQuote` / `findAnchorText` from HANDOFF Part E into `lib/chat/`; the DOM half (`indexText`, `rangeFromOffsets`, `offsetOfPoint`, `firstLineRect`) goes in `components/chat/anchoring-dom.ts` with the injected-UI filter changed to `[data-ui]`.
 - Use the markdown-insensitive mode: stored text is markdown, displayed text is rendered.
-- Cards sit in a right gutter inside the message scroller (300 px preferred, 200 px minimum, hidden below that rather than overlapping), sorted by anchor y, pushed down on collision, with a connector line. Align to the first line of a multi-line quote via `getClientRects()[0]`.
+- Cards sit in a right gutter beside the message column (300 px preferred, 200 px minimum, hidden below that rather than overlapping), sorted by anchor y, pushed down on collision, with a connector line. Align to the first line of a multi-line quote via `getClientRects()[0]`. The gutter is outside the message column's 640 px, not inside it; §16.5 has the whole cascade.
+- **A hidden gutter owes a count.** When there is no room for it, the conversation header shows "N notes hidden" beside the off-path count, for the same reason the off-path case is not allowed to be silent: an annotation that exists and is not drawn must still say so, and the remedy — widen the window, or collapse the left panel — is one the reader controls.
 - Quote not found → card pinned to the message top with an "anchor moved" flag. Target message deleted or missing → "Unanchored" tray. **Target off the active path → a count "N notes on other branches" in the conversation header that opens a list; clicking one switches to that branch.** Silent is not acceptable.
 - Soft delete with a restore tray at the bottom of the gutter. Whole-file save per annotation; no shared array.
 - Composer: opens in the gutter at the anchor before insertion, focused with `preventScroll`, `Enter` sends, `Shift+Enter` newline, `Esc` cancels, closes on outside pointer-down only when empty; the composer's `top` is handed to the new card so it becomes the card in one frame.
@@ -1124,7 +1140,8 @@ interface Annotation {
 - The list is `buildPairs(activePath())`: `{ prompt: Message; response: Message | null }[]`, recomputed on every render, nothing stored. A pair whose prompt has more than one sibling becomes a section header showing its own branch number; beneath it only the *other* branches, each with its real 1-based number, first two shown, rest behind "N more".
 - **Current-message tracking:** the current message is the last row whose top is at or above the scroller's top plus an 80 px reading margin. Exceptions: parked at the bottom with the true last message on screen → that message; parked at the top with the first message mounted → the first message. Zero-height rows never win. Assistant messages normalize to their prompt.
 - Auto-center the current entry; pause when the user scrolls the sidebar; resume when the current message changes. A guard flag distinguishes programmatic scroll.
-- **Width mode from available space only**: full (280 px) when the main pane can keep ≥ 640 px, strip (36 px) otherwise, never from conversation length. A persisted collapse preference forces strip.
+- **Width mode from available space only**: full (280 px) when the message column can keep ≥ 640 px, strip (36 px) otherwise, never from conversation length. A persisted collapse preference forces strip.
+- **The width cascade, in order, because §16.4 and §16.5 do not compose if each is read alone.** The 640 px is the *message column*; the annotation gutter sits beside it, not inside it — a 300 px gutter taken out of 640 would leave a 340 px reading column, which is not what either section means. So the main pane is divided in this order: **message column first** (640 px, its reserved share), **then the gutter** (300 preferred / 200 minimum / hidden below), **then the sidebar** (280 full / 36 strip). Each step takes what is left after the ones above it. The yield order follows: the gutter hides before the sidebar drops to strip, and a hidden gutter says so (§16.4). The **left panel's collapse is the release valve**, and it is deliberately the one the reader already controls rather than something the layout does on their behalf: 240–420 px come back the moment they ask for them.
 - Skip the render-signature guard and summary memo in v1; HANDOFF Part C has both and they are the first optimizations to reach for.
 
 ### 16.6 Quote replies

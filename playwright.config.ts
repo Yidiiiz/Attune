@@ -14,12 +14,12 @@
 //   - **Chromium only.** One browser, because these check this app's behaviour rather than the
 //     web platform's.
 //
-// Failure behavior: `npm run check:ui` refuses with the install command when the browser is absent
+// Failure behavior: `npm run check:ui` refuses with the install command when the browser is absent,
+// and refuses again when something is already listening on this port or on the app's dev port
 // (`scripts/check-ui.mjs`); running `npx playwright test` directly is Playwright's own error.
 
 import { defineConfig, devices } from "@playwright/test";
-
-const PORT = 3123;
+import { E2E_PORT as PORT } from "./e2e/ports.ts";
 
 export default defineConfig({
   testDir: "./e2e",

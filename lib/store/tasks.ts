@@ -143,6 +143,12 @@ async function scan(): Promise<{ tasks: Task[]; errors: string[] }> {
 /**
  * Every task on disk. Cached by path and mtime, so a repeat call re-parses only what changed.
  * `listTasks.errors` holds the paths skipped by the last scan (§5).
+ *
+ * **This is a lenient reader, so it is an authority on nothing.** It answers "the tasks I could
+ * read", which is the right answer for a view and the wrong one for a decision to delete, repair or
+ * mark something orphaned: the fewer files parse, the more such a caller would do. Every caller
+ * today is a view. A destructive one owes the check in `AGENTS.md` Conventions first — count what
+ * parsed against what is there, and refuse on a mismatch — the way `sweepInterruptedMessages` does.
  */
 export interface TaskLister {
   (): Promise<Task[]>;

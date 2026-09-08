@@ -2,7 +2,7 @@
 // run, so a check never inherits state from the last one and never sees the owner's `data/`.
 //
 // It is a real git repository, because the §15 item about commits is one of the things being
-// checked: "a conversation with three branches produces one commit per finalized message" is a
+// checked: "a conversation with three branches produces one commit per finalized turn" is a
 // claim about `git log`, and a directory that is not a repository cannot answer it.
 //
 // Failure behavior: throws, which fails the run before a single check has misled anyone. A harness

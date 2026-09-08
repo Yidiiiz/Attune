@@ -29,7 +29,11 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   timeout: 45_000,
-  expect: { timeout: 10_000 },
+  // A failure guard, never a measurement (AGENTS.md, Conventions: timers are never correctness).
+  // Raised from 10s because a single `runBatch` commit on a loaded machine has been observed at
+  // eight seconds, and a guard tight enough to fire on a slow commit reports the machine as a
+  // defect. Every wait in these specs is on a state transition, so a correct run never spends this.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     trace: "retain-on-failure",

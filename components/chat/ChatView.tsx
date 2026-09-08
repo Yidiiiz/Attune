@@ -30,6 +30,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { activePath, buildPairs, buildTree, siblingsOf } from "@/lib/chat/tree";
+import { groupAnnotations } from "@/lib/chat/annotations";
+import { paneLayout } from "@/lib/chat/pane-layout";
+import { parseQuoteReply } from "@/lib/chat/quotes";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import MessageRow from "./MessageRow";
 import ChatComposer from "./ChatComposer";
@@ -37,6 +40,9 @@ import ConversationHeader from "./ConversationHeader";
 import ContextView from "./ContextView";
 import FeatureBoundary from "./FeatureBoundary";
 import Sidebar from "./Sidebar";
+import AnnotationPane from "./AnnotationPane";
+import QuoteReply from "./QuoteReply";
+import { useAnnotationDraft } from "./useAnnotationDraft";
 import { scrollMessageIntoView, useSidebar } from "./useSidebar";
 import { useConversation } from "./useConversation";
 import type { ModelChoice } from "./ConversationHeader";
@@ -72,14 +78,35 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
   );
   const pairs = useMemo(() => buildPairs(path), [path]);
 
-  // `wantGutter` is false until Stage C's annotations exist: a gutter with nothing in it should not
-  // take width from the message column, and §16.4's hidden count would then be counting nothing.
-  const { layout, current } = useSidebar({
-    scroller,
-    pane,
-    list,
-    pairs,
-    wantGutter: false,
+  const groups = useMemo(
+    () => groupAnnotations(state.annotations, tree, path.map((message) => message.id)),
+    [state.annotations, tree, path],
+  );
+
+  // §16.6: the feature costs nothing when unused, so it is not mounted at all unless some message
+  // on the path opens with a blockquote. The scan below is one regex per message; `findQuoteSource`,
+  // which builds a dense index per candidate, runs only for the rows that get a bar.
+  const hasQuoteReplies = useMemo(
+    () => path.some((message) => parseQuoteReply(message.text) !== null),
+    [path],
+  );
+
+  // A gutter is asked for only when there is something to put in it — otherwise it would take width
+  // from the message column to draw nothing, and §16.4's hidden count would be counting zero. The
+  // trays count as something: removing the last card must not unmount the tray that holds it, or
+  // §16.4's soft delete becomes a delete with extra steps.
+  const hasNotes =
+    groups.onPath.length > 0 || groups.removed.length > 0 || groups.unanchored.length > 0;
+
+  // The hook measures; the cascade is run once, here, with the only `wantGutter` there is — so the
+  // sidebar and the gutter can never disagree about how the width was divided. `roomForGutter` asks
+  // the counterfactual, because the composer needs somewhere to open before the first note exists.
+  const { current, available } = useSidebar({ scroller, pane, list, pairs });
+  const roomForGutter = paneLayout({ available, wantGutter: true, collapsed: false }).gutter > 0;
+  const { draft, clear: clearDraft, annotate } = useAnnotationDraft(scroller, roomForGutter);
+  const layout = paneLayout({
+    available,
+    wantGutter: hasNotes || draft !== null,
     collapsed: false,
   });
 
@@ -116,6 +143,11 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
     router.refresh(); // the panel's list shows the conversation's own timestamp
   };
 
+  // Decision 66: an annotation that exists and is not drawn must still say so. When the cascade
+  // leaves no room for a gutter, the notes that would have been in it are counted in the header —
+  // with a remedy the reader controls, which is why the title says to widen or collapse.
+  const hiddenCount = layout.gutter === 0 ? groups.onPath.length : 0;
+
   return (
     <div className={styles.pane} ref={setPane}>
       <section
@@ -131,6 +163,12 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
           contextOpen={contextOpen}
           onToggleContext={() => setContextOpen((open) => !open)}
           onModelChange={(model) => void setModel(model)}
+          offPath={groups.offPath.length}
+          hidden={hiddenCount}
+          onShowOffPath={() => {
+            const first = groups.offPath[0];
+            if (first !== undefined) void switchTo(first.targetMessageId);
+          }}
         />
 
         {contextOpen ? (
@@ -146,10 +184,23 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
           {path.length === 0 ? (
             <p className={styles.empty}>Nothing said yet. What are you working on?</p>
           ) : (
-            path.map((message) => (
+            path.map((message, index) => (
               <MessageRow
                 key={message.id}
                 message={message}
+                {...(hasQuoteReplies
+                  ? {
+                      quoteBar: (
+                        <QuoteReply
+                          message={message}
+                          path={path}
+                          index={index}
+                          onGoTo={(id) => scrollMessageIntoView(scroller, id)}
+                        />
+                      ),
+                    }
+                  : {})}
+                {...(message.status === "complete" ? { onAnnotate: annotate } : {})}
                 streaming={message.id === streamingId}
                 siblings={siblingsOf(tree, message.id)}
                 onSwitch={(id) => void switchTo(id)}
@@ -172,6 +223,26 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
           onDismissError={() => setError(null)}
         />
       </section>
+
+      {/* §16.4, in its own boundary for the same reason the sidebar has one: annotation placement
+          reads geometry, and geometry is where a throw comes from. */}
+      {layout.gutter > 0 ? (
+        <FeatureBoundary feature="Annotations">
+          <AnnotationPane
+            conversationId={state.conversation.id}
+            groups={groups}
+            scroller={scroller}
+            width={layout.gutter}
+            // The two things that move a rectangle: the conversation re-rendered, or the column
+            // changed width. Deltas live in `messages`, so a streaming reply re-places the cards
+            // below it as it grows.
+            revision={state.messages.length + layout.gutter}
+            draft={draft}
+            onDraftDone={clearDraft}
+            reload={reload}
+          />
+        </FeatureBoundary>
+      ) : null}
 
       {/* §16.7: its own boundary, so a sidebar that throws costs the sidebar and hands its width
           back to the message column rather than taking the conversation down with it. */}

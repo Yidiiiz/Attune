@@ -27,8 +27,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentMessage, promptOf } from "@/lib/chat/current-message";
 import type { RowBox } from "@/lib/chat/current-message";
-import { paneLayout } from "@/lib/chat/pane-layout";
-import type { PaneLayout } from "@/lib/chat/pane-layout";
 import type { Pair } from "@/lib/chat/tree";
 import type { MessageId } from "@/lib/chat/types";
 
@@ -40,15 +38,19 @@ export interface SidebarInput {
   /** The sidebar's own scroller, auto-centred on the current entry. */
   list: HTMLElement | null;
   pairs: Pair[];
-  /** False until Stage C's annotations exist; the gutter asks for no room without them. */
-  wantGutter: boolean;
-  collapsed: boolean;
 }
 
 export interface SidebarState {
-  layout: PaneLayout;
   /** The prompt id of the exchange being read, or null before anything has laid out. */
   current: MessageId | null;
+  /**
+   * The measured pane width, which is all this hook decides about layout. The cascade itself is
+   * `paneLayout` and the caller runs it, because the caller is the only one that knows whether a
+   * gutter is wanted — and it has to ask "is there *room* for one?" before there is anything to put
+   * in one, which is a different question from "is one being drawn?". Computing the cascade here
+   * would make that circular: no notes, so no gutter, so no room, so never a first note.
+   */
+  available: number;
 }
 
 /**
@@ -66,14 +68,7 @@ function measure(scroller: HTMLElement): RowBox[] {
   return rows;
 }
 
-export function useSidebar({
-  scroller,
-  pane,
-  list,
-  pairs,
-  wantGutter,
-  collapsed,
-}: SidebarInput): SidebarState {
+export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): SidebarState {
   const [available, setAvailable] = useState(0);
   const [reading, setReading] = useState<MessageId | null>(null);
 
@@ -164,12 +159,7 @@ export function useSidebar({
     list.scrollTo({ top: target });
   }, [list, current]);
 
-  const layout = useMemo(
-    () => paneLayout({ available, wantGutter, collapsed }),
-    [available, wantGutter, collapsed],
-  );
-
-  return { layout, current };
+  return { current, available };
 }
 
 /** Exported for the sidebar's click handler: centring should not fight a jump the reader asked for. */

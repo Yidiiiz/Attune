@@ -20,10 +20,12 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import Markdown from "@/components/markdown/Markdown";
 import BranchBar from "./BranchBar";
 import MessageActions from "./MessageActions";
 import MessageEditor from "./MessageEditor";
+import ReadAloud from "./ReadAloud";
 import type { Message } from "@/lib/chat/types";
 import styles from "./Chat.module.css";
 
@@ -40,6 +42,10 @@ export interface MessageRowProps {
   onBranch?: (message: Message, text: string) => Promise<string | null>;
   onRetry?: (message: Message) => void;
   onDelete?: (message: Message) => void;
+  /** §16.6's bar, rendered by the caller only when the path has quote replies at all. */
+  quoteBar?: ReactNode;
+  /** The gutter's "annotate this selection" hook, absent when no gutter is drawn. */
+  onAnnotate?: (message: Message) => void;
 }
 
 /** §16.3's reason, in the words a person would use. */
@@ -58,6 +64,8 @@ export default function MessageRow({
   onBranch,
   onRetry,
   onDelete,
+  quoteBar,
+  onAnnotate,
 }: MessageRowProps) {
   const [editing, setEditing] = useState<"edit" | "branch" | null>(null);
   const unfinished = message.status === "failed" || (message.status === "streaming" && !streaming);
@@ -78,14 +86,18 @@ export default function MessageRow({
     >
       <div className={styles.messageTop}>
         <BranchBar siblings={siblings} currentId={message.id} onSwitch={onSwitch} />
+        {message.status === "complete" ? <ReadAloud text={message.text} /> : null}
         <MessageActions
           message={message}
           {...(onEdit === undefined ? {} : { onEdit: () => setEditing("edit") })}
           {...(onRetry === undefined ? {} : { onRegenerate: () => onRetry(message) })}
           {...(onBranch === undefined ? {} : { onBranch: () => setEditing("branch") })}
           {...(onDelete === undefined ? {} : { onDelete: () => onDelete(message) })}
+          {...(onAnnotate === undefined ? {} : { onAnnotate: () => onAnnotate(message) })}
         />
       </div>
+
+      {quoteBar}
 
       {editing === "edit" && onEdit !== undefined ? (
         <MessageEditor

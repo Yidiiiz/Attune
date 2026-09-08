@@ -4,8 +4,10 @@
 //
 // Failure behavior: reads throw StoreError("not_found") and writes throw "forbidden_path" rather
 // than guessing. Every write is tmp + rename, so a crash leaves either the old file or the new one
-// and never half of either. A tree walk that cannot read one directory omits it and keeps walking:
-// one unreadable folder should cost you that folder, not the browser.
+// and never half of either — and the rename retries a transient Windows `EPERM`, which is another
+// process holding the file for a moment rather than a permission problem (see `renameAtomic`). A
+// tree walk that cannot read one directory omits it and keeps walking: one unreadable folder should
+// cost you that folder, not the browser.
 
 import { createHash } from "node:crypto";
 import {
@@ -119,6 +121,39 @@ export async function exists(rel: string): Promise<boolean> {
 }
 
 /**
+ * The rename half of every atomic write, with the one retry Windows makes necessary.
+ *
+ * On Windows a rename over an existing file fails with `EPERM` (or `EBUSY`, or `EACCES`) whenever
+ * anything else has the destination or the temporary file open for a moment — a virus scanner
+ * reading a file that was just created, an indexer, a backup agent. It is transient by nature: the
+ * same call succeeds a few milliseconds later. Phase 6b's browser checks caught it once in about
+ * thirty runs, as a chat turn that rolled back for no reason and read as flakiness; in the running
+ * app the same failure loses the message being written.
+ *
+ * The delay is a **failure guard, not a schedule** (Conventions: timers are never correctness). The
+ * observable consequence is the rename succeeding, which is what the loop waits on; the attempts
+ * are bounded so a genuinely permanent EPERM — a read-only file, a real permission problem — still
+ * surfaces as itself rather than hanging. On every other platform the first attempt succeeds and
+ * none of this runs.
+ */
+const RENAME_ATTEMPTS = 5;
+const RENAME_BACKOFF_MS = 20;
+const TRANSIENT = new Set(["EPERM", "EBUSY", "EACCES"]);
+
+async function renameAtomic(tmp: string, abs: string): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await fsRename(tmp, abs);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code ?? "";
+      if (attempt >= RENAME_ATTEMPTS || !TRANSIENT.has(code)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, RENAME_BACKOFF_MS * attempt));
+    }
+  }
+}
+
+/**
  * The one text write in the project: CRLF normalized away (Decision 42), dirty-checked, tmp +
  * rename. Every module that writes markdown goes through here so those three properties hold once.
  */
@@ -135,7 +170,7 @@ export async function writeText(rel: string, text: string): Promise<void> {
   await fsMkdir(path.dirname(abs), { recursive: true });
   const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
   await writeFile(tmp, normalized, "utf8");
-  await fsRename(tmp, abs);
+  await renameAtomic(tmp, abs);
   emitWrite([rel]);
 }
 
@@ -145,7 +180,7 @@ export async function writeBinary(rel: string, bytes: Buffer): Promise<void> {
   await fsMkdir(path.dirname(abs), { recursive: true });
   const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
   await writeFile(tmp, bytes);
-  await fsRename(tmp, abs);
+  await renameAtomic(tmp, abs);
   emitWrite([rel]);
 }
 
@@ -158,7 +193,9 @@ export async function rename(from: string, to: string): Promise<void> {
   const absTo = resolveData(to);
   await fsMkdir(path.dirname(absTo), { recursive: true });
   try {
-    await fsRename(resolveData(from), absTo);
+    // The same transient-Windows retry as an atomic write's rename: a file operation the reader
+    // asked for should not fail because an indexer had the file open for a moment.
+    await renameAtomic(resolveData(from), absTo);
   } catch (err) {
     notFound(from, err);
   }

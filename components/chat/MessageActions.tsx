@@ -30,6 +30,8 @@ export interface MessageActionsProps {
   onRegenerate?: () => void;
   /** A different question, parented at this message. */
   onBranch?: () => void;
+  /** §16.4: annotate the current selection inside this message. */
+  onAnnotate?: () => void;
   onDelete?: () => void;
 }
 
@@ -38,6 +40,7 @@ export default function MessageActions({
   onEdit,
   onRegenerate,
   onBranch,
+  onAnnotate,
   onDelete,
 }: MessageActionsProps) {
   const [open, setOpen] = useState(false);
@@ -85,6 +88,11 @@ export default function MessageActions({
           {onBranch === undefined ? null : (
             <button type="button" onClick={choose(onBranch)}>
               Branch from here
+            </button>
+          )}
+          {onAnnotate === undefined ? null : (
+            <button type="button" onClick={choose(onAnnotate)}>
+              Annotate selection
             </button>
           )}
           {onDelete === undefined ? null : (

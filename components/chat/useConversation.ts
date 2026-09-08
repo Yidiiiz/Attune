@@ -84,11 +84,31 @@ export function useConversation(initial: ConversationState) {
   // Unmounting aborts, which ends the request, which ends the server's turn and clears its buffer.
   useEffect(() => () => abort.current?.abort(), []);
 
+  /**
+   * Re-read the conversation and adopt it — **unless a later read has already been adopted.**
+   *
+   * The ticket is not defensive programming; it closes the second half of Decision 69's race and
+   * the browser checks found it too. `send` ends by re-reading, and `void send(...)` means nothing
+   * waits for that read. Meanwhile the view is already correct optimistically, so the reader can
+   * act — switch a branch, change the model — and their write's re-read can resolve *first*. The
+   * older payload then lands on top and silently undoes what they just did.
+   *
+   * Reads are ordered by issue rather than by arrival because a read issued later sees a state at
+   * least as new as one issued earlier. The discarded payload is still returned, since a caller
+   * asking "has this message stopped streaming?" wants the freshest answer either way.
+   */
+  const issued = useRef(0);
+  const applied = useRef(0);
   const reload = useCallback(async (id: string): Promise<ConversationState | null> => {
+    issued.current += 1;
+    const ticket = issued.current;
     const answer = await post(`/api/chats/${id}`);
     if (answer.error !== null) return null;
     const next = answer.data as unknown as ConversationState;
-    setState(next);
+    if (ticket > applied.current) {
+      applied.current = ticket;
+      setState(next);
+    }
     return next;
   }, []);
 

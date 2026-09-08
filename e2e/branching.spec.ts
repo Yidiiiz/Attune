@@ -56,9 +56,13 @@ test("regenerating makes a reply sibling under the same prompt", async ({ page }
   const first = await idOf(page, 1);
   await chooseAction(page, first, "Regenerate");
 
-  // Regenerate has no box to empty, so the branch bar appearing is the signal that the second reply
-  // exists — a retrying assertion, and the ids below are only read once it holds. Waiting on "the
-  // newest reply is complete" instead would pass on the *first* reply, which already is.
+  // Regenerate has no box to empty, so the signal that the second reply exists is the reply on the
+  // path having a *different id* — a retrying assertion on the one thing only a successful
+  // regenerate produces. The branch bar appearing is not enough on its own and neither is "the
+  // newest reply is complete": both are satisfied by the optimistic row, and both stay satisfied if
+  // the turn then rolls back, leaving the original reply in place and complete (AGENTS.md,
+  // Conventions). A rolled-back turn now fails here, where the error names what happened.
+  await expect(messages(page).nth(1)).not.toHaveAttribute("data-message", first);
   await expect(messages(page).nth(1).locator("[data-ui='branch-position']")).toHaveText("2/2");
   await expect(assistant(page)).toHaveAttribute("data-status", "complete");
 

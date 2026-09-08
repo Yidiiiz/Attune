@@ -38,17 +38,26 @@ test("the sidebar lists one entry per exchange and marks the one being read", as
 });
 
 test("clicking a sidebar entry brings that message into view", async ({ page }) => {
-  await page.setViewportSize({ width: 1400, height: 420 }); // short, so there is somewhere to scroll
+  await page.setViewportSize({ width: 1400, height: 380 }); // short, so there is somewhere to scroll
   await newConversation(page);
   await exchange(page, "the first thing said");
   await exchange(page, "the second thing said");
   await exchange(page, "the third thing said");
+  await exchange(page, "the fourth thing said");
 
-  const first = messages(page).nth(0);
-  await expect(first).not.toBeInViewport(); // scrolled off by three exchanges
+  // The scroller is pinned to the newest message, so it is scrolled down: that, rather than "the
+  // first message is off screen", is the precondition worth asserting. Whether a particular row
+  // clears a particular viewport depends on how tall a reply renders, and a check whose *setup* is
+  // marginal fails for reasons that have nothing to do with what it is checking.
+  const scroller = page.locator("[data-ui='messages']");
+  const before = await scroller.evaluate((el) => el.scrollTop);
+  expect(before).toBeGreaterThan(0);
 
   await page.locator("[data-ui='sidebar-entry']").nth(0).click();
-  await expect(first).toBeInViewport();
+
+  // The transition the click produces: the scroller moved up, and the first message is on screen.
+  await expect(messages(page).nth(0)).toBeInViewport();
+  expect(await scroller.evaluate((el) => el.scrollTop)).toBeLessThan(before);
 });
 
 test("a branch point becomes a section, and its alternatives switch the branch", async ({ page }) => {

@@ -454,9 +454,19 @@ ignore.
 
 ## Phase 6b — Chat: branching, sidebar, annotations
 
+**Most of Phase 6b is checked automatically.** `npm run check:ui` now runs **32 browser checks in
+about 2 minutes 30** — inside Decision 67's five minutes, so the whole suite still runs every time.
+Four spec files carry them: `branching.spec.ts` (six), `sidebar.spec.ts` (six), `annotations.spec.ts`
+(eight) and `attachments.spec.ts` (three), beside `chat.spec.ts`'s nine from Phase 6a.
+
+Two things about that number are worth keeping. It has been observed at **7 to 8 minutes** on the
+same machine with a stray `next dev` competing for the disk — the timings, not the failures, are the
+tell, which is what `scripts/check-ui.mjs` refuses a busy port over. And `expect.timeout` is 15
+seconds rather than 10 because a single `runBatch` commit has been seen taking eight; that is a
+failure guard, not a measurement, and a correct run never spends it.
+
 **Stage A (branching) is checked automatically.** `e2e/branching.spec.ts` adds six browser checks to
-`npm run check:ui`, which now runs fifteen in about 1 minute 20 — well inside Decision 67's five
-minutes, so the whole suite still runs every time. They cover: editing a prompt producing a sibling
+`npm run check:ui`. They cover: editing a prompt producing a sibling
 with the original still reachable; regenerating producing a reply sibling under the same prompt;
 branch-from-here forking the tail, with the switch surviving a reload; branching from the first
 message producing a second root (§15); three branches producing one commit per finalized turn, read
@@ -502,12 +512,53 @@ Expected: the arrows disable at the ends rather than wrapping. The count is tabu
 jitter between `1/4` and `4/4`. Switching is one click, and the conversation under it re-renders to
 the newest leaf of that branch rather than to the branch point.
 
-### 6b.4 Branching in both themes — **pending**
+### 6b.4 Branching, the gutter and the sidebar in both themes — **pending**
 
-Steps: with a branched conversation open, switch the theme.
+Steps: with a branched, annotated conversation open, switch the theme.
 
 Expected: the branch bar, the `⋯` button and the open menu all keep their contrast in both; the
-editor's focused border is visible against both grounds.
+editor's focused border is visible against both grounds; a gutter card and its "anchor moved" flag
+read against both; the sidebar's current row stays distinguishable from its neighbours.
+
+### 6b.5 Read aloud actually makes a sound — **pending**
+
+§10.2's `speechSynthesis` control. The browser checks assert the observable half — the button is
+there, it flips to Stop and back, and it is *absent* where the browser has no speech synthesis — and
+that is genuinely all a headless run can claim. This row is the other half, and it is here rather
+than pretended at (Phase 6b approval, answer 4).
+
+Steps: press ▶ on a reply with sound on. Press ◼ before it finishes. Press ▶ on a second reply while
+the first is still speaking. Navigate to another conversation mid-sentence.
+
+Expected: it speaks the reply's words. Stop is immediate, not at the end of the sentence. Starting a
+second cancels the first rather than overlapping it. Navigating away stops it — the utterance
+belongs to the message, and the message is gone.
+
+### 6b.6 The annotation composer where the pointer is — **pending**
+
+§16.4's last bullet, which is about placement in a way no assertion captures.
+
+Steps: select a phrase in the middle of a long reply and annotate it. Watch where the box opens and
+whether the page moved. Type two lines, then click into the conversation. Then press `Esc`. Open it
+again, type nothing, and click away.
+
+Expected: the box opens beside the selection with the caret in it and the conversation does not
+scroll (`preventScroll`). Clicking away with text in the box **keeps** it — the note is not
+discarded because someone looked back at the sentence. `Esc` closes it. Clicking away while it is
+empty closes it. When it becomes a card, the card is where the box was, in one frame.
+
+### 6b.7 A picture actually arrives — **pending**
+
+Amendment `o`. The browser checks confirm the file is uploaded, carried on the message, and refused
+when it cannot be sent; none of them can confirm the model *saw* it, because the scripted provider
+answers without looking and a real one needs a key (`5.5` is the same gap).
+
+Steps: with an API key set, attach a screenshot with legible text and ask what it says. Then attach
+a PDF and ask for its first heading.
+
+Expected: the answer quotes something only visible in the file. If it does not, the attachment is
+being dropped somewhere between `loadAttachments` and the provider — and the whole point of the
+refusal path is that this should never be a silent failure.
 
 ---
 

@@ -16,8 +16,9 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
-| 6b — Chat: branching, sidebar, annotations | **next** | — |
-| 7–11 | not started | — |
+| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578` |
+| 7 — Knowledge base and collections | **next** | — |
+| 8–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
@@ -38,6 +39,49 @@ Deferred out of Phase 2 into the phase that first uses each: `/api/tasks/[id]/co
 Left unverified by Phase 3, and now written down where they can actually be run: **`docs/CHECKLIST.md`**, started in Phase 3 rather than Phase 11 because Phase 3 was the first phase to produce checks no HTTP client can answer. Three items — the weather element arriving without moving the date (settled by construction: the weather sits in a **side** column, so the grid is `1fr auto 1fr` with the date in the `auto` middle, which is what makes the centre independent of it; the residual is a narrow window, where a side column can outgrow its share), the Ask panel opening, and dragging a timeline block. The Phase 1 mintty `Ctrl+C` item moved there too, rather than living in this paragraph forever.
 
 **Whether to add a headless browser is a decision for Phase 6's plan, not before.** Phase 3 wanted one and did not add it: jsdom was refused by the owner for having no layout engine, and Playwright or Puppeteer is a real dependency — a browser download, a second test runner, and a CI story — which is not something a phase adds mid-build to close three checklist rows. Phase 6 is where the question is actually forced: it is the largest phase, its checks are streaming, stop, retry, and branch-switching, and none of those can be observed over HTTP either, so its backlog is the one that makes the trade legible. Deciding it at plan time means it is weighed against `docs/CHECKLIST.md` as it stands then, in the open, rather than being reached for by whichever phase next finds itself unable to verify something. Phases 4 and 5 add their unverifiable checks to the checklist and do not open this; a phase that thinks it cannot wait says so in its plan and asks. Phase 4 did exactly that: rows `4.1`–`4.5` in `docs/CHECKLIST.md`, all pending, all needing a pointer or a rendering engine — the drag, the Shift hint that has to change while the key is held, the `+N more` expansion, the ↑/↓ keys, and the toolbar including a refused edit landing inline on a second surface. Phase 5 adds to the same list. **Phase 6a's plan decided it: yes, Playwright, landing in Stage B with the first UI.** The question is closed and is not reopened by a later phase; the terms are the first of the Phase 6a conditions below. What tipped it was not the backlog's size but Stage D: §16.4's gutter cards are collision-pushed and aligned to `getClientRects()[0]`, and there is no price at which that is verifiable without a layout engine.
+
+**Phase 6b carries four `code:` commits and three `docs:`, which is rule 4's stage clause plus one
+review.** `8b27de1` recorded the approval's five answers and the three spec calls they settle;
+`fcc5ad6` built Stage A and stopped for review; `747cb52` and `b2c89e1` carried that review's three
+items; `8c638ea`, `2dca761` and `4bd7578` built Stages B, C and D, which the review pre-approved to
+run together.
+
+**Six defects the browser checks found, five of them in code that was already committed.** Three
+are the same shape and it is worth naming the shape rather than the three: *a later write undone by
+an earlier read arriving after it*. `useConversation` adopted every server payload, so a
+`router.refresh()` from one send could revert the next (Decision 69); `reload` adopted every re-read
+whenever it resolved, so switching a branch could be undone by the send's own re-read landing after
+it; and a branch switch made *during* a turn is undone by that turn's own leaf write, which is the
+server behaving correctly and a check racing it. Reads are now ordered by issue, and the check waits
+for the turn to finalize. The other three: the annotation anchoring filter matched `[data-ui]`
+through `closest`, which walks past the message root to the scroller and rejected every text node;
+removing the last note unmounted the gutter and the restore tray with it; and "Annotate selection"
+read the selection when the menu entry fired, but opening that menu is a click and a click collapses
+the selection — it worked only when the browser had not got round to clearing it.
+
+**And one that is not this project's.** An atomic write's rename fails intermittently on Windows
+with `EPERM` when another process — a scanner, an indexer — holds the file for a moment. It appeared
+once in about thirty checks as a chat turn that rolled back for no reason. `renameAtomic` in
+`lib/store/files.ts` retries it a bounded number of times; in the running app the same failure loses
+the message being written, so this is a fix for the app and not for the harness.
+
+**What Phase 6b leaves unverified.** `docs/CHECKLIST.md` rows `6b.1`–`6b.7`, all pending: the `⋯`
+menu's reveal and reach at both panel extremes, the editor's `preventScroll` focus, a four-branch
+bar, all three surfaces in both themes, whether read aloud makes a sound, where the annotation
+composer opens and what keeps it open, and whether an attached picture actually reaches the model.
+The last needs an API key, which is row `5.5`'s gap; the rest need a pointer or an eye. Two branches
+of amendment `o`'s refusal exist and only one is reachable from a browser — every model in `MODELS`
+allows both images and PDFs today, so "this model cannot read this kind" is
+`lib/agent/attachments.test.ts` against a model the registry does not know.
+
+**Three things Phase 6b changed that later phases inherit.** `lib/chat/pane-layout.ts` is the single
+answer to how the chat main pane divides itself, and Decision 66 is the reasoning; anything that
+wants width in that pane goes through it. `FeatureBoundary` is §16.7's degrade-one-feature rule as a
+component, and it is the only class component in the project. And `lib/agent/turn.ts` is now 312 —
+over the ~300 cap, with the seam named at the Phase 6a close (`finalizeTurn` plus the discard path)
+still unspent; it was not split at the end of a long build for eleven lines, and it is watched the
+way `lib/history/batch.ts` is. `components/chat/useConversation.ts` at 310 is the same situation with
+a thinner seam — the turn versus the one-field writes — and is watched rather than split.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -616,12 +660,12 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | k | Timeline **edge resize**, deliberately not built, with the semantics settled so it is never guessed at: a **bottom-edge** drag moves the end, so it writes `estimateMin`; a **top-edge** drag moves the start while the end stays put, so it writes `estimateMin` **and** `scheduled` together. §10.1 said both edges write `scheduled`, which was wrong and is corrected. Not built because body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make | Phase 3 build; semantics fixed in the Phase 3 review | unscheduled — build it only if the form proves too slow for the case | **deferred, semantics settled** |
 | l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | **outstanding** |
 | n | **`npm run publish-check` must never invoke `npm run check:ui`.** The fresh-clone half of `publish-check` installs into a temp directory and starts the app; a clone has no Playwright browser binaries, so calling the browser checks there would turn "is this repo publishable" into "did someone run `playwright install` on this machine". The note also lives in `scripts/check-ui.mjs`, where the phase that writes `publish-check` will be looking | Phase 6a approval, condition 1 | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
-| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** — the last chat phase, so an untargeted amendment here would land nowhere | **outstanding** |
+| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** | closed — `4bd7578`; the `ContentPart` variants, base64 in `anthropic.ts`, the `images`/`pdf` flags read, and attach/paste/drop on the chat composer |
 | m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
 | p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
 | q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | unscheduled — the trigger is the first time a file under `data/` is expected to change while a view of it is open, without that view having made the change | **outstanding — a spec claim the code does not support** |
 
-`n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b is the last chat phase there is. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
+`n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 
 `q` is the odd one out and is filed here anyway: it is not a deferral of work anyone chose to skip but a **gap between the spec and the code found by checking a claim rather than assuming it**, and this table is the only place in the repo where "known, unbuilt, with the reason" is a recognised state. It is unscheduled on purpose — nothing in the app needs it today, since every writer is the app itself and every write is followed by a `router.refresh()` — and it is written down so that the next person to read Decision 20 does not take the second half of it for something that runs.
 

@@ -287,11 +287,6 @@
   text-overflow: ellipsis;
 }
 
-.viewModel {
-  font-size: 12px;
-  color: var(--fg-faint);
-}
-
 .scriptedBadge {
   margin-left: auto;
   padding: 2px 8px;
@@ -303,6 +298,11 @@
 }
 
 .messages {
+  /* Positioned so it is the offset parent of the rows inside it: `useSidebar` reads `offsetTop`
+     and compares it against this element's `scrollTop`, which only means anything if the two are
+     measured from the same origin. Without this the offsets carry the header's height as a
+     constant error and the reading margin sits in the wrong place. */
+  position: relative;
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 18px 20px 8px;
@@ -588,4 +588,301 @@
   background: var(--bg-elevated);
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/* ---- sidebar, conversation header, context view (§16.5, §10.2) ---- */
+
+/* The main pane's own flex row: message column, then the sidebar. The gutter lands between them
+   in Stage C, which is the order §16.5's cascade reserves them in. */
+.pane {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.modelSelect {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.headerCount {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.headerCount:hover {
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+
+.contextToggle {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 12px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.contextToggle[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+/* The scripted badge already claims `margin-left: auto`; with the toggle taking it, the badge
+   simply follows. Two elements claiming it is not a conflict — the first one wins. */
+
+.contextPanel {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+  padding: 10px 20px 12px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.contextHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+
+.contextTotal {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.contextTotalWarn {
+  composes: contextTotal;
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.contextBlock {
+  border-top: 1px solid var(--border);
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.contextBlock summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.contextLabel {
+  font-weight: 600;
+}
+
+.contextSource {
+  color: var(--fg-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.contextCached {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--fg-faint);
+  font-size: 10px;
+  padding: 0 6px;
+}
+
+.contextTokens {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.contextText {
+  margin: 6px 0 2px;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.side {
+  flex: 0 0 auto;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.sideStrip {
+  composes: side;
+  padding: 12px 0;
+  overflow-x: hidden;
+}
+
+.sideList {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px;
+}
+
+.sideItem,
+.sideSection {
+  margin: 0 0 2px;
+}
+
+.sideSection {
+  border-left: 2px solid var(--accent-soft);
+  padding-left: 6px;
+  margin-bottom: 6px;
+}
+
+.sideRow {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.sideRow:hover {
+  background: var(--bg-elevated);
+  color: var(--fg);
+}
+
+.sideRow[aria-current="true"] {
+  background: var(--accent-soft);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.sideIndex {
+  color: var(--fg-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+}
+
+.sideText {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sideBadge {
+  color: var(--fg-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sideBranches {
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+}
+
+.sideBranch {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.sideBranch:hover {
+  background: var(--bg-elevated);
+  color: var(--fg);
+}
+
+.sideBranchNumber {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  min-width: 12px;
+}
+
+.sideBranchText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sideMore {
+  border: 0;
+  background: transparent;
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  padding: 2px 6px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* The strip: the same list with the words taken out (§16.5). */
+.strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.stripMark {
+  display: block;
+  width: 14px;
+  height: 4px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--border-strong);
+  padding: 0;
+  cursor: pointer;
+}
+
+.stripMark:hover {
+  background: var(--fg-muted);
+}
+
+.stripMark[aria-current="true"] {
+  background: var(--accent);
+  height: 6px;
+}
+
+.stripForked {
+  width: 20px;
 }

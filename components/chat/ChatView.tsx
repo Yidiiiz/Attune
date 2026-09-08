@@ -1,9 +1,11 @@
 // Owns: one conversation on screen — the active path, the composer under it, and everything a
 // message row can be asked to do: retry, discard, delete, edit, regenerate, branch, and switch.
 //
-// What it renders is `activePath(buildTree(messages), activeLeafId)` and nothing else (§16.2). The
-// sidebar and annotations are the stages after this one; this file is deliberately the shape they
-// attach to rather than a smaller thing they would replace.
+// What it renders is `activePath(buildTree(messages), activeLeafId)` and nothing else (§16.2),
+// with §16.5's sidebar beside it and §10.2's header above it. It holds the three elements the
+// sidebar has to measure — the pane, the message scroller and the sidebar's own list — as state
+// rather than as refs, because the hook that measures them has to re-run when each one arrives and
+// a mutated ref re-renders nothing.
 //
 // **The three sibling-creating actions are one call with three parents** (§16.2), and that is the
 // whole of branching:
@@ -25,33 +27,61 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { activePath, buildTree, siblingsOf } from "@/lib/chat/tree";
+import { activePath, buildPairs, buildTree, siblingsOf } from "@/lib/chat/tree";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import MessageRow from "./MessageRow";
 import ChatComposer from "./ChatComposer";
+import ConversationHeader from "./ConversationHeader";
+import ContextView from "./ContextView";
+import FeatureBoundary from "./FeatureBoundary";
+import Sidebar from "./Sidebar";
+import { scrollMessageIntoView, useSidebar } from "./useSidebar";
 import { useConversation } from "./useConversation";
+import type { ModelChoice } from "./ConversationHeader";
 import type { ConversationState } from "./useConversation";
 import type { Message } from "@/lib/chat/types";
 import styles from "./Chat.module.css";
 
 export interface ChatViewProps {
   initial: ConversationState;
+  /** The registry's models, read on the server — see `ConversationHeader` for why not imported. */
+  models: ModelChoice[];
   /** True while `ATTUNE_FAKE_PROVIDER` is answering, so the page says so rather than looking odd. */
   scripted: boolean;
 }
 
-export default function ChatView({ initial, scripted }: ChatViewProps) {
+export default function ChatView({ initial, models, scripted }: ChatViewProps) {
   const router = useRouter();
-  const { state, streamingId, error, setError, send, stop, reload, switchTo } = useConversation(initial);
+  const { state, streamingId, error, setError, send, stop, reload, switchTo, setModel } =
+    useConversation(initial);
   const bottom = useRef<HTMLDivElement | null>(null);
+
+  // Callback refs rather than `useRef`: the sidebar hook needs to *re-run* when an element arrives,
+  // and a ref object mutating does not re-render anything.
+  const [pane, setPane] = useState<HTMLElement | null>(null);
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  const [list, setList] = useState<HTMLElement | null>(null);
+  const [contextOpen, setContextOpen] = useState(false);
 
   const tree = useMemo(() => buildTree(state.messages), [state.messages]);
   const path = useMemo(
     () => activePath(tree, state.conversation.activeLeafId),
     [tree, state.conversation.activeLeafId],
   );
+  const pairs = useMemo(() => buildPairs(path), [path]);
+
+  // `wantGutter` is false until Stage C's annotations exist: a gutter with nothing in it should not
+  // take width from the message column, and §16.4's hidden count would then be counting nothing.
+  const { layout, current } = useSidebar({
+    scroller,
+    pane,
+    list,
+    pairs,
+    wantGutter: false,
+    collapsed: false,
+  });
 
   // §16.0 rule 6: no virtualization, `scrollIntoView` for navigation. The newest message is what
   // someone wants to see, and it moves while a reply streams.
@@ -87,46 +117,83 @@ export default function ChatView({ initial, scripted }: ChatViewProps) {
   };
 
   return (
-    <section className={styles.view} data-ui="conversation" data-conversation={state.conversation.id}>
-      <header className={styles.viewHeader}>
-        <h1 className={styles.viewTitle}>{state.conversation.title || "New conversation"}</h1>
-        <span className={styles.viewModel}>{state.conversation.model}</span>
-        {scripted ? (
-          <span className={styles.scriptedBadge} title="ATTUNE_FAKE_PROVIDER is set: replies come from a script in lib/agent/scripted.ts, not from a model.">
-            scripted replies
-          </span>
-        ) : null}
-      </header>
+    <div className={styles.pane} ref={setPane}>
+      <section
+        className={styles.view}
+        data-ui="conversation"
+        data-conversation={state.conversation.id}
+      >
+        <ConversationHeader
+          models={models}
+          title={state.conversation.title}
+          model={state.conversation.model}
+          scripted={scripted}
+          contextOpen={contextOpen}
+          onToggleContext={() => setContextOpen((open) => !open)}
+          onModelChange={(model) => void setModel(model)}
+        />
 
-      <div className={styles.messages} data-ui="messages">
-        {path.length === 0 ? (
-          <p className={styles.empty}>Nothing said yet. What are you working on?</p>
-        ) : (
-          path.map((message) => (
-            <MessageRow
-              key={message.id}
-              message={message}
-              streaming={message.id === streamingId}
-              siblings={siblingsOf(tree, message.id)}
-              onSwitch={(id) => void switchTo(id)}
-              onDelete={(m: Message) => void remove(m)}
-              {...(message.role === "user" ? { onEdit: edit } : { onRetry: retry })}
-              {...(message.role === "assistant" && message.status === "complete"
-                ? { onBranch: branch }
-                : {})}
+        {contextOpen ? (
+          <FeatureBoundary feature="The context view">
+            <ContextView
+              openFile={state.conversation.context.file ?? null}
+              taskIds={state.conversation.context.taskIds}
             />
-          ))
-        )}
-        <div ref={bottom} />
-      </div>
+          </FeatureBoundary>
+        ) : null}
 
-      <ChatComposer
-        onSend={(text) => send(text)}
-        onStop={stop}
-        streaming={streamingId !== null}
-        error={error}
-        onDismissError={() => setError(null)}
-      />
-    </section>
+        <div className={styles.messages} data-ui="messages" ref={setScroller}>
+          {path.length === 0 ? (
+            <p className={styles.empty}>Nothing said yet. What are you working on?</p>
+          ) : (
+            path.map((message) => (
+              <MessageRow
+                key={message.id}
+                message={message}
+                streaming={message.id === streamingId}
+                siblings={siblingsOf(tree, message.id)}
+                onSwitch={(id) => void switchTo(id)}
+                onDelete={(m: Message) => void remove(m)}
+                {...(message.role === "user" ? { onEdit: edit } : { onRetry: retry })}
+                {...(message.role === "assistant" && message.status === "complete"
+                  ? { onBranch: branch }
+                  : {})}
+              />
+            ))
+          )}
+          <div ref={bottom} />
+        </div>
+
+        <ChatComposer
+          onSend={(text) => send(text)}
+          onStop={stop}
+          streaming={streamingId !== null}
+          error={error}
+          onDismissError={() => setError(null)}
+        />
+      </section>
+
+      {/* §16.7: its own boundary, so a sidebar that throws costs the sidebar and hands its width
+          back to the message column rather than taking the conversation down with it. */}
+      <FeatureBoundary feature="The sidebar">
+        <nav
+          className={layout.strip ? styles.sideStrip : styles.side}
+          style={{ width: layout.sidebar }}
+          data-ui="sidebar"
+          data-mode={layout.strip ? "strip" : "full"}
+          aria-label="Conversation outline"
+          ref={setList}
+        >
+          <Sidebar
+            pairs={pairs}
+            tree={tree}
+            current={current}
+            strip={layout.strip}
+            onGoTo={(id) => scrollMessageIntoView(scroller, id)}
+            onSwitch={(id) => void switchTo(id)}
+          />
+        </nav>
+      </FeatureBoundary>
+    </div>
   );
 }

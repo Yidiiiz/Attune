@@ -257,5 +257,28 @@ export function useConversation(initial: ConversationState) {
     [reload, state.conversation.activeLeafId, state.conversation.id, state.messages],
   );
 
-  return { state, streamingId, error, setError, send, stop, reload, switchTo };
+  /**
+   * The model this conversation runs on (§10.2). Another one-field `PATCH`, and the same dirty
+   * check: re-choosing what is already chosen writes no batch and makes no commit.
+   */
+  const setModel = useCallback(
+    async (model: string): Promise<void> => {
+      if (model === state.conversation.model) return;
+      const conversationId = state.conversation.id;
+      const answer = await post(`/api/chats/${conversationId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ model }),
+      });
+      if (answer.error !== null) {
+        // The select snaps back to the conversation's model on the next render, because the value
+        // it shows is the conversation's and the conversation did not change.
+        reportFailure("The model was not changed", answer.error);
+        return;
+      }
+      await reload(conversationId);
+    },
+    [reload, state.conversation.id, state.conversation.model],
+  );
+
+  return { state, streamingId, error, setError, send, stop, reload, switchTo, setModel };
 }

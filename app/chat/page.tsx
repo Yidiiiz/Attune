@@ -16,6 +16,7 @@ import { listConversations, readConversation } from "@/lib/store/chats";
 import { readSettings } from "@/lib/store/settings";
 import { addDays, todayIn } from "@/lib/schedule/dates";
 import { isScripted } from "@/lib/agent/scripted";
+import { MODELS } from "@/lib/agent/registry";
 import ChatsPanel from "@/components/chat/ChatsPanel";
 import ChatView from "@/components/chat/ChatView";
 import Rail from "@/components/chat/Rail";
@@ -64,7 +65,12 @@ export default async function Page({ searchParams }: Search) {
             </p>
           </div>
         ) : (
-          <ChatView key={open.conversation.id} initial={open} scripted={isScripted()} />
+          <ChatView
+            key={open.conversation.id}
+            initial={open}
+            models={MODELS.map((entry) => ({ id: entry.id, label: entry.label }))}
+            scripted={isScripted()}
+          />
         )}
       </main>
     </div>

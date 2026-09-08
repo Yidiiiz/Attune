@@ -12,9 +12,8 @@
 
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
 import { SANDBOX } from "./setup";
-import { assistant, chooseAction, idOf, messages, newConversation, say } from "./helpers";
+import { assistant, chooseAction, exchange, idOf, messages, newConversation, reprompt } from "./helpers";
 
 test.use({ testIdAttribute: "data-ui" });
 
@@ -25,28 +24,6 @@ function commitsFor(conversationId: string): string[] {
     encoding: "utf8",
   });
   return out.split("\n").filter((line) => line.trim().length > 0);
-}
-
-// Both helpers below wait on a box emptying rather than on a reply completing, and the difference
-// matters in a branching spec: "the newest assistant message is complete" is already true of the
-// *previous* turn, so it passes before the new one has rendered and the next line reads stale ids.
-// The composer clears and the editor closes only when `send` resolved without a failure, which is
-// after `finalizeTurn` has written and the conversation has been re-read.
-
-/** Send from the docked composer, and wait for the turn to land. */
-async function exchange(page: Page, text: string): Promise<void> {
-  await say(page, text);
-  await expect(page.locator("[data-ui='chat-input']")).toHaveValue("");
-  await expect(assistant(page)).toHaveAttribute("data-status", "complete");
-}
-
-/** Open the editor on a message, type, and send — the shape of edit and of branch-from-here. */
-async function reprompt(page: Page, messageId: string, label: string, text: string): Promise<void> {
-  await chooseAction(page, messageId, label);
-  await page.locator("[data-ui='editor-input']").fill(text);
-  await page.locator("[data-ui='editor-send']").click();
-  await expect(page.locator("[data-ui='message-editor']")).toHaveCount(0);
-  await expect(assistant(page)).toHaveAttribute("data-status", "complete");
 }
 
 test("editing a prompt makes a sibling and leaves the original where it was", async ({ page }) => {

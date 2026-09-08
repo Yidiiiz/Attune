@@ -479,6 +479,28 @@ that is the last chat phase, and an untargeted amendment on the last chat phase 
 
 **Then update the status block and stop.**
 
+### Approved conditions — Phase 6a close, two additions (rule 9)
+
+Verbatim from the approval that followed the close. Both are conventions rather than features; the
+first outlives this phase and is why it is in Conventions rather than only in a comment.
+
+**Two small additions, then stop — 6b in a new session.**
+
+**1. CONVENTION, from your `readActions` finding:** a reader that tolerates malformed input is safe
+for display and unsafe as an authority. Any function making a destructive or repairing decision must
+verify it read everything — count parsed records against raw records and refuse on a mismatch —
+rather than trusting a lenient reader's silence. Name `sweepInterruptedMessages` as the first case
+and the specific trap: a log that fails to parse entirely reads as an empty one, which makes every
+message look orphaned. Note that `listTasks` has the same shape today with no destructive caller,
+and Phase 7's `kb:check` and Phase 8's link index are the next places it applies.
+
+**2. `npm run check:ui` should refuse to start when something is already listening on the dev port,
+naming what to kill.** Stray servers from timed-out invocations are what turned a clear failure into
+a 9.9-minute mystery, and a tool invocation that times out never runs `dev.mjs`'s shutdown, so they
+accumulate.
+
+**Then update the status block and stop.**
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -566,6 +588,7 @@ npm run publish-check  # readiness for the public remote
 - **`data-*` test hooks are sanctioned, and named the same way everywhere: `data-<thing>` on the element that *is* one of those things, valued with that record's stable identity.** `data-date` on a calendar cell, `data-task` on a task row, `data-message` on a message row (Phase 6), `data-node` on a graph node (Phase 8). Singular, kebab-case, a noun for what the element is — never what it looks like or where it sits. Application code never reads one: if the app needs the value, it already has it in props or state, and an attribute the app depends on is not a test hook but an undeclared piece of state. They exist so a check can name an element without a fragile selector, and the reason to settle the convention rather than let each phase invent one is in `HANDOFF-CHAT.md`: `dom-map.ts` was 265 lines of mapping rendered DOM back to message identity, caused entirely by a DOM that carried no ids, and it is listed there under the fights that do not exist for this project because we render from our own data. That advantage is only real if the ids are actually put in the markup.
 - **Splitting a file along a seam the spec already draws needs no approval and gets reported. Inventing a seam to fit a line count is a stop-and-ask.** Hard rule 5's ~300-line cap and rule 7's "say why first and wait" pull against each other the moment a file grows past it, and the resolution is *where the seam came from*, not how big the file was. If `PROJECT.md` already treats the parts as separate things — its own paragraph, its own numbered step, its own section — then the split is the spec's and building it is ordinary work; say in the phase report that it happened and why. If the parts only became separate because a number had to come down, the split is a design decision the owner has not made, and a file over the cap is the better outcome until they do: an invented seam is a coupling claim, and a wrong one costs more than the length it bought back. **Phase 5's composer is the first case and is on the right side of it:** `ComposerSheet.tsx` hit 428, and `Attachments.tsx` and `VoiceButton.tsx` are §9.2's two optional inputs, `useComposerTurn.ts` is §9.4 and §9.5's whole conversation with the server, and `draft.ts` is §9.5 step 4's merge rule. None of the four is a category invented on the spot.
 - **Timers are never correctness.** Wait on the observable consequence; a timeout is a failure guard.
+- **A reader that tolerates malformed input is safe for display and unsafe as an authority.** Skipping what will not parse and carrying on is right for a view — one broken file must not blank a page — but a function that makes a **destructive or repairing** decision from what it read has to verify it read *everything* first: count the records it parsed against the raw records present, and refuse on a mismatch rather than trusting a lenient reader's silence. **`sweepInterruptedMessages` in `lib/history/streaming.ts` is the first case**, and it shows the trap: it decides which messages nothing recorded, so a torn line `readActions` skipped could be the very entry naming a message it is about to "repair" — and **a log that fails to parse entirely reads as an empty one, which makes every message look orphaned.** Both failures run the same direction, which is the dangerous one: the less it manages to read, the more it does. `listTasks` has the same shape today — it skips a file and leaves the path in `listTasks.errors` — and is safe only because nothing destructive reads it; the first caller that acts on its output owes this check. **Phase 7's `kb:check` and Phase 8's link index are the next two places it applies**: both decide what is orphaned or broken from a scan, which is the sweep's shape exactly.
 - **Dirty-check writes.** Never write a value that is already set.
 - **Atomic file writes** (tmp + rename) in the store; whole-file writes, never read-modify-write of shared arrays.
 - **LF everywhere.** `.gitattributes` forces `eol=lf`; the store normalizes CRLF to LF before writing. Byte-for-byte checks compare hashes, not `git diff`.

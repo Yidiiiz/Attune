@@ -1190,7 +1190,7 @@ Button, sheet, attachments, voice, modes, `lib/agent/registry.ts`, `anthropic.ts
 
 In this order, each step verified before the next: (a) `lib/chat/tree.ts`, `uuid.ts`, `refs.ts` with tests; (b) `lib/store/chats.ts` and a round-trip test through a temp dir; (c) linear chat: send, stream, finalize, the failure path, retry, discard, stop; (d) branching: edit, regenerate, branch from here, switching; (e) sidebar; (f) annotations, quote replies, read aloud, model selector, context debug view.
 This is the largest phase; if (c) or (f) grows past a day of work, it splits into 6a/6b at plan time.
-**Checks:** the §15 chat items (failed not complete; rejected send leaves nothing; one commit per finalized message across three branches; branch from the first message; off-branch annotation count); tree, text-match, and anchoring tests pass.
+**Checks:** the §15 chat items (failed not complete; rejected send leaves nothing; one commit per finalized turn across three branches; branch from the first message; off-branch annotation count); tree, text-match, and anchoring tests pass.
 
 ### Phase 7 — Knowledge base and collections
 

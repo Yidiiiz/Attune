@@ -21,14 +21,26 @@
 // message that has stopped streaming: a finalized message is in the log, and deleting one outside
 // the log would leave an entry describing a file that is not there.
 //
+// `sweepInterruptedMessages` is the other end of the same idea: the two guards above keep the hole
+// narrow while the app is running, and this one closes what a process that died left in it. It is
+// the only thing in this file that goes *through* `runBatch` rather than around it, and it is the
+// reason the exception stays honest — every file that skips the log is either being written right
+// now or is repaired at the next startup (Decision 64).
+//
 // Failure behavior: refuses loudly and writes nothing. A caller that reaches here with a finalized
 // message, a task file, or a path outside `chats/` gets `StoreError("invalid")` and has to go
 // through `runBatch` like everything else. There is no force and no option to relax either check:
 // the moment this accepts a path it was not designed for, `data/` has a writer nothing records.
 
 import { splitFrontmatter } from "../store/frontmatter.ts";
-import { deleteFile, exists, readText, writeText } from "../store/files.ts";
+import { deleteFile, exists, listTree, readText, writeText } from "../store/files.ts";
+import { CHATS_DIR, parseMessage } from "../store/chats.ts";
 import { StoreError } from "../store/paths.ts";
+import { runBatch } from "./batch.ts";
+import { repairInterrupted } from "./chat-actions.ts";
+import { readActions, readLogText } from "./log.ts";
+import type { TreeNode } from "../store/files.ts";
+import type { Message } from "../chat/types.ts";
 
 /** `chats/<conv-id>/messages/<uuidv7>.md`, and nothing else (§4.7). */
 const STREAMING_TARGET =
@@ -87,4 +99,76 @@ export async function streamingDiscard(rel: string): Promise<void> {
   }
 
   await deleteFile(rel);
+}
+
+/**
+ * Find the messages a previous run abandoned mid-turn and repair them (Decision 64).
+ *
+ * The wound this closes is the one the guards above cannot: `streamingDiscard` and the route's
+ * drain handle a client going away, but a process that dies has no chance to do either, and what it
+ * leaves is a message file that says `streaming` with nothing in the log. Decision 63's invariant
+ * is what makes that recognisable — and, until this runs, invisible, because a `streaming` message
+ * is drawn exactly like a reply that is still on its way.
+ *
+ * **Why it is safe to assume an orphan.** It runs at startup, so this process has no live streams;
+ * §16.0 rule 2 says there are no concurrent writers; and a path that appears in any log entry is
+ * left alone regardless. So a `streaming` file that nothing recorded can only be one an earlier run
+ * did not finish.
+ *
+ * Failure behavior: **a log that did not read cleanly means nothing is swept.** `readActions` skips
+ * a torn line and keeps going, which is right for the history view and wrong as this function's
+ * only input: the line it dropped could be the very entry naming a message about to be "repaired",
+ * and a log that failed to parse entirely would read as an empty one, making every message look
+ * orphaned. So the parsed entries are counted against the non-empty lines, and a mismatch stops the
+ * sweep. A *message* file it cannot parse is different — that one is skipped and named, and the
+ * rest are still repaired. Anything `runBatch` refuses fails the whole sweep and leaves the files
+ * as they were, which is the same answer as not having run: the next startup tries again.
+ */
+export async function sweepInterruptedMessages(): Promise<{ repaired: number }> {
+  let logged: Set<string>;
+  try {
+    const lines = (await readLogText()).split("\n").filter((line) => line.trim().length > 0);
+    const entries = await readActions();
+    if (entries.length !== lines.length) {
+      console.error(
+        `history: ${lines.length - entries.length} action log line(s) did not parse, so no ` +
+          "interrupted messages were swept; a dropped line could be the one recording them",
+      );
+      return { repaired: 0 };
+    }
+    logged = new Set(entries.flatMap((entry) => entry.targets));
+  } catch (err) {
+    console.error(`history: could not read the action log, so no interrupted messages were swept (${(err as Error).message})`);
+    return { repaired: 0 };
+  }
+
+  const flatten = (nodes: TreeNode[]): string[] =>
+    nodes.flatMap((node) => (node.type === "file" ? [node.path] : flatten(node.children ?? [])));
+
+  const orphans: Array<{ convId: string; message: Message }> = [];
+  for (const rel of flatten(await listTree(CHATS_DIR))) {
+    if (!STREAMING_TARGET.test(rel) || logged.has(rel)) continue;
+    try {
+      const message = parseMessage(await readText(rel));
+      if (message.status !== "streaming") continue;
+      orphans.push({ convId: rel.split("/")[1], message });
+    } catch (err) {
+      console.error(`history: skipping ${rel} while sweeping (${(err as Error).message})`);
+    }
+  }
+
+  if (orphans.length === 0) return { repaired: 0 };
+
+  const count = `${orphans.length} message${orphans.length === 1 ? "" : "s"}`;
+  await runBatch({
+    actor: "user",
+    scope: "user",
+    summary: `recover ${count} left by an interrupted run`,
+    commitPrefix: "chat",
+    meta: { interruptedSweep: true },
+    actions: orphans.map((orphan) => repairInterrupted(orphan.convId, orphan.message)),
+  });
+
+  console.error(`history: recovered ${count} left streaming by an earlier run; the replies are marked unfinished`);
+  return { repaired: orphans.length };
 }

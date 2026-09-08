@@ -216,3 +216,42 @@ export function saveAnnotation(convId: string, annotation: Annotation, summary?:
 export async function conversationName(store: Store, convId: string): Promise<string> {
   return name(await readMeta(store, convId));
 }
+
+/**
+ * What `error` says on a reply the app never finished (Decision 64). It is a sentence rather than a
+ * code because it is what someone reads under the message — and it says what happened rather than
+ * what failed, since nothing failed: the process stopped.
+ */
+export const INTERRUPTED = "The app stopped while this reply was arriving.";
+
+/**
+ * Repair one message left `streaming` by a run that ended mid-turn — the startup sweep's action
+ * (Decision 64). The repair is the state §16.3 would have reached had the process survived: the
+ * prompt is `complete`, because it was written whole in one go and never partially, and the reply
+ * is `failed`, because it was not.
+ *
+ * It goes through `runBatch` like everything else on purpose. Writing it outside the log would
+ * leave a message that is neither `streaming` nor recorded, which breaks Decision 63's invariant
+ * from the other side and would make the *next* interruption unrecognisable.
+ */
+export function repairInterrupted(convId: string, message: Message): ActionSpec {
+  const repaired: Message =
+    message.role === "user"
+      ? { ...message, status: "complete", error: null }
+      : { ...message, status: "failed", error: INTERRUPTED };
+
+  return {
+    type: "chat.update",
+    summary: `Recover an interrupted ${message.role === "user" ? "message" : "reply"}`,
+    apply: async (store: Store) => {
+      const rel = store.chats.messagePath(convId, message.id);
+      const before = await store.snapshotContent(rel);
+      await store.chats.writeMessage(convId, repaired);
+      return {
+        targets: [rel],
+        before: single(rel, before),
+        after: single(rel, await store.snapshotContent(rel)),
+      };
+    },
+  };
+}

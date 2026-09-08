@@ -20,6 +20,19 @@ const PUSH_TIMEOUT_MS = 20_000;
 const { clearStaleIndexLock } = await import("../lib/history/git.ts");
 await clearStaleIndexLock();
 
+// And the same idea for chat: a run that died mid-turn leaves a message file saying `streaming`
+// that nothing recorded, and Decision 63's invariant makes it look exactly like a live stream. At
+// startup there are no live streams, so anything in that state is an orphan and is repaired to what
+// §16.3 would have left. Startup only, like the lock above: mid-session, a streaming file is real.
+const { sweepInterruptedMessages } = await import("../lib/history/streaming.ts");
+try {
+  await sweepInterruptedMessages();
+} catch (err) {
+  // A sweep that cannot run must not stop the dev server. The files stay as they are and the next
+  // startup tries again; the message says so rather than failing silently.
+  console.error(`dev: could not recover interrupted messages (${err.message}); starting anyway`);
+}
+
 const child = spawn(process.execPath, [NEXT_BIN, "dev", ...process.argv.slice(2)], {
   stdio: "inherit",
   windowsHide: true,

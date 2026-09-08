@@ -15,7 +15,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
-| 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277` |
+| 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | **next** | — |
 | 7–11 | not started | — |
 
@@ -397,7 +397,8 @@ with all of Decision 31; `app/chat/page.tsx` with the rail's Chats panel; `compo
 linear conversation; §9.6's Ask mode replacing Phase 5's inline refusal; Playwright and
 `ATTUNE_FAKE_PROVIDER` on the terms above; and the Phase 6a rows in `docs/CHECKLIST.md`.
 
-**Phase 6a carries three `code:` commits and three `docs:`.** `c06ed47` recorded the approval's
+**Phase 6a's build carries three `code:` commits and three `docs:`**; the two rounds after it, which
+take the totals to five and four, are the paragraphs below. `c06ed47` recorded the approval's
 nine conditions; `58ac40d` built Stage A — the pure layer, the conversation store, the chat builders
 and §8's streaming bypass, with nothing rendering — and stopped for review; `27e5e7f` and `c79d151`
 carried that review's two items, Decisions 61 and 62 and the cross-references to them; `a63cb8d`
@@ -437,6 +438,28 @@ checkout as well as in `lib/history/sweep.test.ts`: two files left `streaming` w
 one startup, and afterwards `status: complete` and `status: failed` with the reason, two
 `chat.update` entries, one commit `chat: recover 2 messages left by an interrupted run`, a clean
 `git status --porcelain -- data`, and a second run reporting nothing.
+
+**Two additions after that, a fifth `code:` commit and a fourth `docs:` — `f235db1` and `475298e`.**
+The first promotes the finding above from one function's comment to a rule in Conventions: a reader
+that tolerates malformed input is safe for display and unsafe as an authority, so anything making a
+destructive or repairing decision counts what it parsed against what is there and refuses on a
+mismatch. `sweepInterruptedMessages` is named as the first case with its trap spelled out;
+`listTasks` is named as having the same shape and no destructive caller, so the first one that
+appears owes the check; Phase 7's `kb:check` and Phase 8's link index are named as the next two
+places it applies, both being scans that decide what is orphaned or broken. The second closes the
+hole that made this phase's one flaky-looking run a mystery: `npm run check:ui` now refuses to start
+when something is listening on the harness's port or on the app's dev port and the two Next walks to
+when 3000 is taken, and it names the pid and the command to kill it. The ports live once, in
+`e2e/ports.ts`, because a guard watching a port nothing runs on would pass silently. The scan runs
+*before* the browser check on purpose — placed after, it could only ever be exercised on a machine
+with the Chromium download, and `scripts/check-ui.test.ts` covers it in three cases from `npm test`.
+
+**What that guard does not claim.** The suite ran 9 passed in 41.2s afterwards against 5.3 minutes
+before, and the guard is not the reason — nothing was listening either time, so it never fired; the
+warm `.next` cache is the likelier explanation and this is not evidence either way. What the guard
+buys is a refusal instead of a slow, plausible-looking failure. The Phase 6a run that failed on a
+10-second `expect` under contention is still the only sighting; if it recurs on a machine the guard
+has cleared, that timeout is the thing to look at rather than the environment.
 
 **Three things Phase 6b inherits.** `lib/agent/turn.ts` is at 297 lines, which is the cap; its
 obvious seam if branching pushes it over is `finalizeTurn` plus the discard path, which is §16.3's

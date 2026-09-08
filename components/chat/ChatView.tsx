@@ -14,12 +14,9 @@
 //   - **Branch from here** hangs a new prompt from *this* message, forking the tail rather than
 //     replacing the head.
 //
-// §16.2's sentence for the third is "the same call with a new prompt", which read literally would
-// make it identical to Edit with an empty box. It is read here as the distinct operation, because
-// §10.2 lists both by name and two names for one action is not what that list means; the parent is
-// what separates them. Branch is offered on replies and Edit on prompts for the same reason: the
-// other pairing produces a user message whose sibling is an assistant message, which the tree
-// permits and nothing on screen could explain.
+// The reasoning for reading the third as a distinct operation, and for offering Edit on prompts
+// and Branch on replies, is PROJECT.md Decision 68 — where an argument about what the spec means
+// belongs, rather than in a component header.
 //
 // Failure behavior: every write here goes through an API route and then re-reads, so nothing on
 // screen is a local guess. §13.5's split is applied in `useConversation` — a key error toasts, a

@@ -72,18 +72,14 @@ export function useConversation(initial: ConversationState) {
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  // The server is the source of truth for *which* conversation is open, and a navigation replaces
-  // the lot. It is deliberately not the source of truth for what is *in* the open one, and adopting
-  // every `initial` was a bug the branching checks found: `send` ends with `router.refresh()` for
-  // the panel's sake, that payload arrives whenever it arrives, and a second send's `reload` could
-  // therefore be overwritten by the *first* send's refresh — the view snapping back to the state
-  // before the edit. The same race truncates a streaming reply, since deltas live in this state
-  // too. Within one conversation `reload()` is what keeps this current; §16.8 rules out a
-  // filesystem watcher, so there is no other writer to hear from.
-  const openId = state.conversation.id;
-  useEffect(() => {
-    if (initial.conversation.id !== openId) setState(initial);
-  }, [initial, openId]);
+  // `initial` seeds this state once and is never adopted again (Decision 69). Opening another
+  // conversation is a remount, not an update: `app/chat/page.tsx` keys `ChatView` by conversation
+  // id. So a server render arriving mid-session is always a *stale* view of the conversation
+  // already open — `send` ends with `router.refresh()` for the panel's sake, and that payload
+  // lands whenever it lands, which is how a first send's refresh used to overwrite a second send's
+  // `reload` and snap the view back to the state before the edit. `reload()` is the only path in,
+  // because it is ours and therefore ordered. §16.8 rules out a filesystem watcher, and Decision
+  // 20's focus refetch does not exist yet (amendment `q`); when it does it calls `reload`.
 
   // Unmounting aborts, which ends the request, which ends the server's turn and clears its buffer.
   useEffect(() => () => abort.current?.abort(), []);

@@ -1,24 +1,36 @@
-// Owns: one conversation on screen — the active path, the composer under it, and the four things
-// a linear chat can do with a message: retry, discard, delete, and scroll to the newest.
+// Owns: one conversation on screen — the active path, the composer under it, and everything a
+// message row can be asked to do: retry, discard, delete, edit, regenerate, branch, and switch.
 //
-// What it renders is `activePath(buildTree(messages), activeLeafId)` and nothing else (§16.2).
-// Branch switching, the sidebar and annotations are Phase 6b; this file is deliberately the shape
-// they attach to rather than a smaller thing they would replace.
+// What it renders is `activePath(buildTree(messages), activeLeafId)` and nothing else (§16.2). The
+// sidebar and annotations are the stages after this one; this file is deliberately the shape they
+// attach to rather than a smaller thing they would replace.
 //
-// **Retry is a regenerate**, per §16.3: a failed reply is not rewritten in place — a complete
-// message is immutable and a failed one is a fact — so Retry appends an assistant sibling under the
-// same prompt. Discard hard-deletes the failed leaf, which is the one deletion §16.2 allows to
-// remove a file outright.
+// **The three sibling-creating actions are one call with three parents** (§16.2), and that is the
+// whole of branching:
+//
+//   - **Edit** hangs a new prompt from the edited one's *parent*, so the two versions are siblings
+//     and the original is untouched — a message that was said is a fact, and a fact is not edited.
+//   - **Regenerate** (which is what Retry is) hangs a new reply from the original reply's parent.
+//   - **Branch from here** hangs a new prompt from *this* message, forking the tail rather than
+//     replacing the head.
+//
+// §16.2's sentence for the third is "the same call with a new prompt", which read literally would
+// make it identical to Edit with an empty box. It is read here as the distinct operation, because
+// §10.2 lists both by name and two names for one action is not what that list means; the parent is
+// what separates them. Branch is offered on replies and Edit on prompts for the same reason: the
+// other pairing produces a user message whose sibling is an assistant message, which the tree
+// permits and nothing on screen could explain.
 //
 // Failure behavior: every write here goes through an API route and then re-reads, so nothing on
 // screen is a local guess. §13.5's split is applied in `useConversation` — a key error toasts, a
-// refusal lands inline above the composer with the text still in the box.
+// refusal lands inline above the composer with the text still in the box. A delete refused for
+// having replies under it (§16.2) toasts, because a row menu has no on-screen origin of its own.
 
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { activePath, buildTree } from "@/lib/chat/tree";
+import { activePath, buildTree, siblingsOf } from "@/lib/chat/tree";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import MessageRow from "./MessageRow";
 import ChatComposer from "./ChatComposer";
@@ -35,12 +47,13 @@ export interface ChatViewProps {
 
 export default function ChatView({ initial, scripted }: ChatViewProps) {
   const router = useRouter();
-  const { state, streamingId, error, setError, send, stop, reload } = useConversation(initial);
+  const { state, streamingId, error, setError, send, stop, reload, switchTo } = useConversation(initial);
   const bottom = useRef<HTMLDivElement | null>(null);
 
+  const tree = useMemo(() => buildTree(state.messages), [state.messages]);
   const path = useMemo(
-    () => activePath(buildTree(state.messages), state.conversation.activeLeafId),
-    [state.messages, state.conversation.activeLeafId],
+    () => activePath(tree, state.conversation.activeLeafId),
+    [tree, state.conversation.activeLeafId],
   );
 
   // §16.0 rule 6: no virtualization, `scrollIntoView` for navigation. The newest message is what
@@ -53,6 +66,14 @@ export default function ChatView({ initial, scripted }: ChatViewProps) {
   const retry = (message: Message): void => {
     void send("", { parentId: message.parentId, withoutPrompt: true });
   };
+
+  /** Edit and resend: a user sibling of the edited prompt, then a reply under it. */
+  const edit = (message: Message, text: string): Promise<string | null> =>
+    send(text, { parentId: message.parentId });
+
+  /** Branch from here: a new prompt parented at this message, forking everything after it. */
+  const branch = (message: Message, text: string): Promise<string | null> =>
+    send(text, { parentId: message.id });
 
   const remove = async (message: Message): Promise<void> => {
     const answer = await post(`/api/chats/${state.conversation.id}/messages/${message.id}`, {
@@ -89,7 +110,13 @@ export default function ChatView({ initial, scripted }: ChatViewProps) {
               key={message.id}
               message={message}
               streaming={message.id === streamingId}
-              {...(message.role === "assistant" ? { onRetry: retry, onDelete: (m: Message) => void remove(m) } : {})}
+              siblings={siblingsOf(tree, message.id)}
+              onSwitch={(id) => void switchTo(id)}
+              onDelete={(m: Message) => void remove(m)}
+              {...(message.role === "user" ? { onEdit: edit } : { onRetry: retry })}
+              {...(message.role === "assistant" && message.status === "complete"
+                ? { onBranch: branch }
+                : {})}
             />
           ))
         )}

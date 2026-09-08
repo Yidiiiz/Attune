@@ -6,6 +6,11 @@
 // has answered and an annotation can anchor to an id that already exists. The route echoes them
 // back as the first line, which is the handshake that says the server agreed.
 //
+// **Branching is this same `send` with a different parent** (§16.2). Edit, regenerate and branch
+// from here are not three code paths: they are `parentId` and `withoutPrompt`, which the route and
+// `runChatTurn` already understood before anything on screen could ask for them. `switchTo` is the
+// other half — one field on `conversation.md` — and between them that is the whole of §16.2.
+//
 // **Optimistic inserts roll back.** A send rejected before any delta removes both rows and puts the
 // text back in the composer — §16.3's rule, and the §15 item that says a rejected send leaves no
 // message behind. A failure *after* deltas keeps the rows: something was said, and the reply is
@@ -27,6 +32,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uuidv7 } from "@/lib/chat/uuid";
+import { buildTree, latestLeafUnder } from "@/lib/chat/tree";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import type { Annotation, Conversation, Message } from "@/lib/chat/types";
 
@@ -66,8 +72,18 @@ export function useConversation(initial: ConversationState) {
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  // The server is the source of truth for what a conversation is; a navigation replaces the lot.
-  useEffect(() => setState(initial), [initial]);
+  // The server is the source of truth for *which* conversation is open, and a navigation replaces
+  // the lot. It is deliberately not the source of truth for what is *in* the open one, and adopting
+  // every `initial` was a bug the branching checks found: `send` ends with `router.refresh()` for
+  // the panel's sake, that payload arrives whenever it arrives, and a second send's `reload` could
+  // therefore be overwritten by the *first* send's refresh — the view snapping back to the state
+  // before the edit. The same race truncates a streaming reply, since deltas live in this state
+  // too. Within one conversation `reload()` is what keeps this current; §16.8 rules out a
+  // filesystem watcher, so there is no other writer to hear from.
+  const openId = state.conversation.id;
+  useEffect(() => {
+    if (initial.conversation.id !== openId) setState(initial);
+  }, [initial, openId]);
 
   // Unmounting aborts, which ends the request, which ends the server's turn and clears its buffer.
   useEffect(() => () => abort.current?.abort(), []);
@@ -215,5 +231,35 @@ export function useConversation(initial: ConversationState) {
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
-  return { state, streamingId, error, setError, send, stop, reload };
+  /**
+   * Switch to a sibling branch (§16.2). The whole operation is one field: resolve the branch to the
+   * leaf that should be active under it — newest child at each step, `latestLeafUnder`'s policy —
+   * and `PATCH activeLeafId`. Nothing else moves, because nothing else is branch state.
+   *
+   * It writes rather than setting local state on purpose: which branch is open survives a reload
+   * and is what the next session opens on, so a switch that lived only in this component would be
+   * forgotten by the navigation that follows it. The dirty check is Conventions': a click on the
+   * branch already open writes nothing.
+   */
+  const switchTo = useCallback(
+    async (messageId: string): Promise<void> => {
+      const conversationId = state.conversation.id;
+      const leafId = latestLeafUnder(buildTree(state.messages), messageId);
+      if (leafId === state.conversation.activeLeafId) return;
+
+      const answer = await post(`/api/chats/${conversationId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ activeLeafId: leafId }),
+      });
+      if (answer.error !== null) {
+        // A branch arrow has no on-screen origin of its own, so §13.5 sends this to a toast.
+        reportFailure("The branch was not switched", answer.error);
+        return;
+      }
+      await reload(conversationId);
+    },
+    [reload, state.conversation.activeLeafId, state.conversation.id, state.messages],
+  );
+
+  return { state, streamingId, error, setError, send, stop, reload, switchTo };
 }

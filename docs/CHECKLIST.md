@@ -452,6 +452,65 @@ ignore.
 
 ---
 
+## Phase 6b — Chat: branching, sidebar, annotations
+
+**Stage A (branching) is checked automatically.** `e2e/branching.spec.ts` adds six browser checks to
+`npm run check:ui`, which now runs fifteen in about 1 minute 20 — well inside Decision 67's five
+minutes, so the whole suite still runs every time. They cover: editing a prompt producing a sibling
+with the original still reachable; regenerating producing a reply sibling under the same prompt;
+branch-from-here forking the tail, with the switch surviving a reload; branching from the first
+message producing a second root (§15); three branches producing one commit per finalized turn, read
+from the sandbox's `git log` (§15); and a delete refused for having replies under it, landing in a
+toast with the message still on screen.
+
+Rows below are what those cannot answer.
+
+### 6b.1 The `⋯` menu appears when it should, and reaches where it must — **pending**
+
+§10.2's per-message actions, and the hover reveal added with them.
+
+Steps: hover a prompt and a reply; tab to the menu button with the keyboard; open the menu on the
+first message in a conversation and on the last; open it on a reply while the left panel is at its
+widest (420 px) and at its narrowest (240 px).
+
+Expected: the button fades in on hover and is reachable by keyboard without a mouse ever moving.
+The menu opens *into* the row — leftward from a prompt, rightward from a reply — and is fully on
+screen in every one of those four positions. This is the one the browser checks found the hard way:
+a right-anchored menu on a left-aligned reply opened across the panel, which reads as a z-index
+problem and is actually a menu opening the wrong way.
+
+### 6b.2 The editor is a box you can leave — **pending**
+
+§16.2's edit-and-resend and branch-from-here, which share `MessageEditor`.
+
+Steps: open Edit on a long prompt; watch where the caret lands and whether the page moved. Type a
+newline with `Shift+Enter`. Press `Esc`. Open it again, and press Enter on unchanged text.
+
+Expected: focus arrives without the scroller jumping (`preventScroll`), with the caret at the end.
+`Shift+Enter` makes a newline, `Enter` sends, `Esc` closes and discards. Resending unchanged text
+is allowed and makes a genuine sibling — there is no "nothing changed" refusal, because two
+identical prompts with different replies is a thing people do on purpose.
+
+### 6b.3 A branch bar on a busy conversation still reads — **pending**
+
+§16.2's `‹ k/n ›`, which the checks assert the text of but not the look of.
+
+Steps: build a conversation with four branches at one point and two at another; switch through all
+of them with the arrows; then switch with the keyboard alone.
+
+Expected: the arrows disable at the ends rather than wrapping. The count is tabular, so it does not
+jitter between `1/4` and `4/4`. Switching is one click, and the conversation under it re-renders to
+the newest leaf of that branch rather than to the branch point.
+
+### 6b.4 Branching in both themes — **pending**
+
+Steps: with a branched conversation open, switch the theme.
+
+Expected: the branch bar, the `⋯` button and the open menu all keep their contrast in both; the
+editor's focused border is visible against both grounds.
+
+---
+
 ## Phase 1 — carried forward
 
 ### 1.1 `Ctrl+C` on `npm run dev` from Git Bash (mintty) flushes the push — **pending**

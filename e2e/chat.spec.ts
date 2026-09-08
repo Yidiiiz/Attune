@@ -1,33 +1,19 @@
-// The browser half of PROJECT.md §15's chat items, plus the two properties that only exist on a
-// page: that a rejected send leaves the composer holding what was typed, and that a reply renders
-// as markdown with its math and without whatever HTML it happened to contain.
+// The browser half of PROJECT.md §17 step (c) — linear chat — plus the two properties that only
+// exist on a page: that a rejected send leaves the composer holding what was typed, and that a
+// reply renders as markdown with its math and without whatever HTML it happened to contain.
+//
+// One spec file per §17 step letter: branching is `branching.spec.ts`. The split is the step
+// letters' own, not a line count (AGENTS.md, Conventions), and it is what keeps `check:ui`
+// selectively runnable if it ever passes Decision 67's five minutes.
 //
 // Every reply comes from `lib/agent/scripted.ts` — no key, no network, and the directives in the
 // prompts are how a check asks for the failure it wants to see. The library half of the same list
 // is `lib/agent/turn.test.ts`; these are the assertions that one cannot make.
 
 import { expect, test } from "@playwright/test";
+import { assistant, newConversation, say } from "./helpers";
 
-/** Start a conversation and land on its page. */
-async function newConversation(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/chat");
-  await page.getByTestId("new-chat").click();
-  await expect(page.locator("[data-ui='conversation']")).toBeVisible();
-}
-
-async function say(page: import("@playwright/test").Page, text: string): Promise<void> {
-  await page.locator("[data-ui='chat-input']").fill(text);
-  await page.locator("[data-ui='send']").click();
-}
-
-const assistant = (page: import("@playwright/test").Page) =>
-  page.locator("[data-message][data-role='assistant']").last();
-
-test.beforeEach(async ({ page }) => {
-  // `data-ui` is the app's own hook convention (AGENTS.md); Playwright's default is `data-testid`.
-  page.context();
-});
-
+// `data-ui` is the app's own hook convention (AGENTS.md); Playwright's default is `data-testid`.
 test.use({ testIdAttribute: "data-ui" });
 
 test("the + button is absent on Chat and present on Today and Calendar", async ({ page }) => {

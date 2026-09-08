@@ -422,18 +422,33 @@ Expected: the newest message is brought into view as it streams, and the scrolle
 person who has scrolled up to read something. §16.0 rule 6 says no virtualization in v1, so this is
 also the check that a few hundred messages stay comfortable.
 
-### 6a.6 What a crash leaves behind — **pending**
+### 6a.6 What a crash leaves behind, and the sweep that repairs it — **pending**
 
-The invariant `lib/agent/turn.ts` is built on: a message on disk that is not in the log is always
-`status: streaming`.
+Decision 63's invariant — a message on disk that is not in the log is always `status: streaming` —
+is what lets `lib/history/streaming.ts` recognise an abandoned turn at startup, and Decision 64 is
+the sweep that repairs one.
 
-Steps: start a slow reply and kill the dev server with `Ctrl+C` while it is streaming. Restart and
-open the conversation.
+Steps: start a slow reply and kill the dev server with `Ctrl+C` while it is streaming. **Before
+restarting**, look at `data/chats/<id>/messages/` and at `npm run history -- list`. Then
+`npm run dev` again and open the conversation.
 
-Expected: both messages of that turn are on disk as `streaming`, and the view shows the reply as
-unfinished with a Retry — not as a completed answer. `npm run history -- list` shows no entry for
-that turn, and `git status --porcelain -- data` shows the two files as untracked or modified, which
-is the honest state: nothing recorded them, so nothing claims they happened.
+Expected, in that order:
+
+1. Before the restart: both files of that turn are on disk with `status: streaming`, and the log has
+   **no** entry for them. That is the wound — and on its own it is invisible, because a `streaming`
+   message renders exactly like a reply that is still arriving.
+2. The restart prints one line naming how many interrupted messages it repaired, in the same place
+   `dev` reports a stale index lock.
+3. The conversation now shows the prompt as an ordinary message and the reply as **unfinished, with
+   a Retry** — the state §16.3 would have left had the process survived long enough to finalize.
+4. `npm run history -- list` gains one `chat.update` batch whose summary names the repair, and
+   `git status --porcelain -- data` is clean: the sweep went through `runBatch`, so the repair is
+   recorded and committed like any other change, and `npm run history -- undo <batch>` puts the
+   files back to `streaming` if you want to see the before state again.
+
+Also worth doing once: start the dev server with no interrupted messages anywhere and confirm it
+prints **nothing**. A repair that announces itself when it did nothing is a line people learn to
+ignore.
 
 ---
 

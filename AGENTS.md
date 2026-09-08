@@ -433,6 +433,32 @@ KaTeX, long-conversation scrolling, and what a crash mid-turn leaves behind. Nin
 cover the rest and run from `npm run check:ui`; row 5.4 is superseded by 6a.3, since Ask mode no
 longer refuses. The Phase 5 provider-dependent row 5.5 is still blocked on the key.
 
+### Approved conditions — Phase 6a close (rule 9)
+
+Verbatim from the approval that closed Phase 6a. Three items, then 6b in a new session.
+
+**Phase 6a approved. Three things, then stop — 6b in a new session.**
+
+**1. THE ORPHAN SWEEP.** Draining on client disconnect fixes the case you found; process death
+still leaves a permanently-streaming file, and Decision 63's invariant is what makes it
+indistinguishable from a live stream. Add a startup sweep, same shape and same placement as
+`clearStaleIndexLock`: any `messages/*.md` with `status: streaming` that is not in the action log is
+an orphan — at startup there are no live streams from this process and this is a single-user local
+app — so mark it failed with an interrupted reason and log once. Record it as a Decision citing bug
+1 and Decision 63 together, since the invariant is both what makes the sweep safe and what makes the
+orphan invisible without it. Checklist row 6a.6 then has an expected result rather than an open
+question.
+
+**2. §15 WORDING.** "One commit per finalized message" contradicts §16.3's "commit both files as one
+`chat.message` batch". §16.3 is the specific one and your reading is right; change §15 to "one commit
+per finalized turn" so the two stop disagreeing.
+
+**3. AMENDMENT `o` NEEDS A TARGET PHASE.** Attachments stored but never sent to a provider is a real
+half-feature — §9.2 uploads them, §13.2 says they go as image or document blocks. Target it at 6b:
+that is the last chat phase, and an untargeted amendment on the last chat phase lands nowhere.
+
+**Then update the status block and stop.**
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -452,10 +478,10 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | k | Timeline **edge resize**, deliberately not built, with the semantics settled so it is never guessed at: a **bottom-edge** drag moves the end, so it writes `estimateMin`; a **top-edge** drag moves the start while the end stays put, so it writes `estimateMin` **and** `scheduled` together. §10.1 said both edges write `scheduled`, which was wrong and is corrected. Not built because body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make | Phase 3 build; semantics fixed in the Phase 3 review | unscheduled — build it only if the form proves too slow for the case | **deferred, semantics settled** |
 | l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | **outstanding** |
 | n | **`npm run publish-check` must never invoke `npm run check:ui`.** The fresh-clone half of `publish-check` installs into a temp directory and starts the app; a clone has no Playwright browser binaries, so calling the browser checks there would turn "is this repo publishable" into "did someone run `playwright install` on this machine". The note also lives in `scripts/check-ui.mjs`, where the phase that writes `publish-check` will be looking | Phase 6a approval, condition 1 | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
-| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | the phase that first sends one — Phase 6b's chat composer or Phase 8's document view | **outstanding** |
+| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** — the last chat phase, so an untargeted amendment here would land nowhere | **outstanding** |
 | m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
 
-`n` and `o` are Phase 6a's, and both are constraints rather than tasks: `n` is a thing Phase 11 must not do, and `o` is a feature nobody should build until something needs it. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` is a trigger rather than a task: nobody builds it, the third importer trips it.
+`n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b is the last chat phase there is. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` is a trigger rather than a task: nobody builds it, the third importer trips it.
 
 ## How we work
 

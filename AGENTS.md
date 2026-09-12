@@ -16,7 +16,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
-| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578` |
+| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853` |
 | 7 — Knowledge base and collections | **next** — its first task is the three named splits, below | — |
 | 8–11 | not started | — |
 
@@ -63,7 +63,11 @@ the selection — it worked only when the browser had not got round to clearing 
 with `EPERM` when another process — a scanner, an indexer — holds the file for a moment. It appeared
 once in about thirty checks as a chat turn that rolled back for no reason. `renameAtomic` in
 `lib/store/files.ts` retries it a bounded number of times; in the running app the same failure loses
-the message being written, so this is a fix for the app and not for the harness.
+the message being written, so this is a fix for the app and not for the harness. **The closing review
+asked where the retry lived and that question found the rest of it:** it covered `writeText`,
+`writeBinary` and `rename`, which is every markdown record and every upload, but `writeJsonAtomic` in
+`lib/store/settings.ts` and the `.env.local` write in `lib/store/env.ts` renamed themselves. It is
+now exported and every atomic write in the project goes through it (Decision 71).
 
 **What Phase 6b leaves unverified.** `docs/CHECKLIST.md` rows `6b.1`–`6b.7`, all pending: the `⋯`
 menu's reveal and reach at both panel extremes, the editor's `preventScroll` focus, a four-branch

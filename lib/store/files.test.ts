@@ -28,7 +28,8 @@ const BINDING = new RegExp(String.raw`\b${R}(?:Sync)?\b`);
 /** `import { … } from "node:fs"` and its `require` equivalent, for fs under any of its four names. */
 const FS_SOURCE = String.raw`["'](?:node:)?fs(?:\/promises)?["']`;
 const IMPORTED = new RegExp(String.raw`\{([^}]*)\}\s*(?:from|=\s*require\()\s*${FS_SOURCE}`, "g");
-/** `fs.rename(`, `fs.promises.rename(`, `anyNamespace.renameSync(` — not `.renameAtomic(`. */
+/** A member call on any fs namespace — the default import, its `promises`, a namespace import
+ *  under any name. Not the atomic wrapper: what follows the verb there is a letter, not a paren. */
 const MEMBER_CALL = new RegExp(String.raw`\.\s*${R}(?:Sync)?\s*\(`, "g");
 
 const SOURCE = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".mjs", ".cjs"]);

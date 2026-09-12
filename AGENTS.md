@@ -17,7 +17,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578` |
-| 7 — Knowledge base and collections | **next** | — |
+| 7 — Knowledge base and collections | **next** — its first task is the three named splits, below | — |
 | 8–11 | not started | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
@@ -77,11 +77,27 @@ allows both images and PDFs today, so "this model cannot read this kind" is
 **Three things Phase 6b changed that later phases inherit.** `lib/chat/pane-layout.ts` is the single
 answer to how the chat main pane divides itself, and Decision 66 is the reasoning; anything that
 wants width in that pane goes through it. `FeatureBoundary` is §16.7's degrade-one-feature rule as a
-component, and it is the only class component in the project. And `lib/agent/turn.ts` is now 312 —
-over the ~300 cap, with the seam named at the Phase 6a close (`finalizeTurn` plus the discard path)
-still unspent; it was not split at the end of a long build for eleven lines, and it is watched the
-way `lib/history/batch.ts` is. `components/chat/useConversation.ts` at 310 is the same situation with
-a thinner seam — the turn versus the one-field writes — and is watched rather than split.
+component, and it is the only class component in the project. And two files crossed the ~300 cap
+during the build — `lib/agent/turn.ts` at 312 and `components/chat/useConversation.ts` at 310 — and
+were left over it rather than split at the end of a long build. That is the right call in that
+direction and the wrong one to leave standing, which is what the paragraph below is for.
+
+**Phase 7's first task, before any of its own work: take the three named seams.** The cap is eroding
+— `lib/history/batch.ts` 334, `lib/agent/turn.ts` 312, `components/chat/useConversation.ts` 310,
+`lib/history/actions.ts` 299 — and the reason not to split at the *end* of a build applies in reverse
+at the *start* of one: nothing is half-finished, so the move is mechanical. Every seam is already
+named, so this is not a design session:
+
+| File | Lines | The cut, named in advance |
+|---|---|---|
+| `lib/history/batch.ts` | 334 | `scanBatch` with its `snapshotText` and `Rejection` helpers move to `lib/history/scan.ts` (Decision 56). They are the one part not in the ordered transaction — a pure predicate over a batch and its snapshots, sharing no state with the rollback. `applySnapshot` is the tempting alternative and is the wrong cut, because undo calls it and moving it splits the rollback across two files |
+| `lib/agent/turn.ts` | 312 | `finalizeTurn` plus the discard path, named at the Phase 6a close. That is §16.3's finality contract, which is one subject and reads as one |
+| `components/chat/useConversation.ts` | 310 | The turn versus the one-field writes. The thinnest of the three: the streaming send and its ticket-ordered reads on one side, the title/model/leaf writes on the other |
+
+`lib/history/actions.ts` at 299 is not in the list because it is not over, but its seam is named too
+and is the fourth if it moves: by domain — task builders, file builders, settings builders — never by
+layer, because it is a flat list of independent closures that never call one another (Decision 56).
+Do these first, in their own `code:` commit, before Phase 7 writes a line of its own.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -641,6 +657,43 @@ listener is the sync indicator. The id gate was also dead code, since `app/chat/
 `ChatView` by conversation id and a navigation is therefore a remount. So the effect is deleted
 rather than re-gated, and amendment `q` carries the unbuilt half of Decision 20.
 
+### Approved conditions — Phase 6b close (rule 9)
+
+Verbatim from the closing review. Phase 6b approved, three items, then stop — Phase 7 opens in a new
+session.
+
+**Phase 6b approved. Three things, then stop — Phase 7 in a new session.**
+
+**1. CONFIRM WHERE THE EPERM RETRY LIVES.** If `renameAtomic` is in `lib/store/io.ts` then every
+atomic write in the app is covered, which is what you want — a scanner holding a task file loses a
+task the same way a held message file loses a message. If the retry went in only on the message
+path, move it. Say which it is.
+
+**2. THE CAP IS ERODING — schedule the splits, don't take them now.** `turn.ts` 312,
+`useConversation.ts` 310, `batch.ts` 334, `actions.ts` near 299. Your reason for not splitting at the
+end of a long build is right, so apply it in the other direction: take the three named seams at the
+START of Phase 7, before its own work begins, when nothing is half-finished. Record that in the
+status block as Phase 7's first task, with the seams already named so it is mechanical rather than a
+design session.
+
+**3. AMENDMENT `q` NEEDS A TARGET PHASE, same as `o` did.** Decision 20 claims a window-focus refetch
+that does not exist. Target it at Phase 8: the document view is where "I edited this file in VS Code
+and came back" is most likely, and you have already worked out that it goes through `reload()` rather
+than `initial`, because `reload` is ordered against sends and can be skipped mid-stream. Record that
+reasoning with the amendment so Phase 8 inherits it rather than re-deriving it.
+
+Then update the status block and stop.
+
+**Item 1's answer is "neither, and it was incomplete".** There is no `lib/store/io.ts`; the retry is
+`renameAtomic` in `lib/store/files.ts`, which is more than the message path — `writeText`,
+`writeBinary` and `rename` all go through it, so every markdown record (conversations, messages,
+annotations, tasks, the file manifest) and every upload were already covered. But two writers had
+their own `node:fs/promises` rename and were not: `writeJsonAtomic` in `lib/store/settings.ts`, which
+is every JSON record the store owns and is what Phase 10's themes will use, along with the same
+file's corrupt-settings quarantine rename; and `lib/store/env.ts`, which writes `.env.local`. The
+condition's own reasoning covers all three — a scanner holding `settings.json` loses a setting the
+same way — so `renameAtomic` is now exported and those three call sites use it.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -663,11 +716,13 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** | closed — `4bd7578`; the `ContentPart` variants, base64 in `anthropic.ts`, the `images`/`pdf` flags read, and attach/paste/drop on the chat composer |
 | m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
 | p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
-| q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | unscheduled — the trigger is the first time a file under `data/` is expected to change while a view of it is open, without that view having made the change | **outstanding — a spec claim the code does not support** |
+| q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | **outstanding — a spec claim the code does not support** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 
-`q` is the odd one out and is filed here anyway: it is not a deferral of work anyone chose to skip but a **gap between the spec and the code found by checking a claim rather than assuming it**, and this table is the only place in the repo where "known, unbuilt, with the reason" is a recognised state. It is unscheduled on purpose — nothing in the app needs it today, since every writer is the app itself and every write is followed by a `router.refresh()` — and it is written down so that the next person to read Decision 20 does not take the second half of it for something that runs.
+`q` is the odd one out and is filed here anyway: it is not a deferral of work anyone chose to skip but a **gap between the spec and the code found by checking a claim rather than assuming it**, and this table is the only place in the repo where "known, unbuilt, with the reason" is a recognised state. It is written down so that the next person to read Decision 20 does not take the second half of it for something that runs.
+
+**`q` lands in Phase 8, and two things about it are already settled so Phase 8 inherits them rather than re-deriving them.** The *phase* is the document view, because that is the surface where the case is real: every writer today is the app itself and every write is followed by a `router.refresh()`, so nothing in the app needs a focus refetch yet — but "I edited this file in VS Code and came back to the tab" is the document view's ordinary Tuesday, and a view of a file that does not notice the file changing is the one place where Decision 20's claim stops being decorative. The *mechanism* is `reload()`, never `initial`, and the reason is Decision 69's: a server render is a snapshot with no ordering relative to the writes it might overtake, so adopting one as client state is how a later write gets undone by an earlier read. `reload()` is the opposite on both counts — it is ordered by issue against the sends it must not overtake (Decision 70), and it can be skipped outright while anything is in flight. So the shape is a listener per view calling that view's own reload, and the two ways to get it wrong are both already named. `o` is the precedent for giving it a phase: an untargeted amendment on a surface nobody owns lands nowhere.
 
 ## How we work
 

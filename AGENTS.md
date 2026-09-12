@@ -16,7 +16,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
-| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54` |
+| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96` |
 | 7 — Knowledge base and collections | **next** — its first task is the three named splits, below | — |
 | 8–11 | not started | — |
 
@@ -743,6 +743,13 @@ was caught: a member call on an fs default import, a `renameSync` named import, 
 an aliased `rename as mv`, and the `require` destructuring. A call to `renameAtomic` itself, bare and
 as a member, was not flagged. The exemption boundary was probed the same way — a second `fsRename`
 call added to `files.ts` outside `renameAtomic` fails the third test by line number.
+
+**And then it caught its own doc comment**, which is worth recording because of *when*. The forms
+in the pattern list were assembled from fragments for exactly this reason; a comment spelling the
+same forms out in prose was not, and it passed every run before the commit — because `git ls-files`
+is what "the project" means here, so a file enters its own scan only once it is in the repository.
+The first green run after `c2fde54` was the first honest one. Fixed in `2cfea96`; the comment now
+describes the forms instead of quoting them.
 
 **One thing it does not do**, named rather than left to be discovered: it reads text, so a rename
 reached through a computed property or a dynamic `import()` resolved at runtime passes it. That is

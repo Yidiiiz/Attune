@@ -727,9 +727,10 @@ reason, since this file is inside its own scan.
 **Two rules, because the forms divide in two.** An fs import that brings a rename binding in under
 *any* name catches the aliased case a text search for a member call would miss; a member call catches
 `fs.rename`, `fs.promises.rename` and a namespace import under any name. Together they cover the
-three forms the condition names. The scan walks the repository from its root with `files.ts`'s own
-`REPO_SKIP` set, so a directory added later is covered without anyone remembering to add it — which
-is the failure mode being closed, not a nicety.
+three forms the condition names. The scan is over `git ls-files` rather than a directory walk,
+because the things to leave out are not a fixed list — `.e2e-sandbox/` is a whole second checkout of
+this repo and `test-results/` comes and goes — and because a directory added later is then covered
+without anyone remembering to add it. Forgetting is the failure mode being closed.
 
 **The exemption is narrow on purpose.** `files.ts` is allowed to hold the import; the test then
 asserts its single call site sits inside `renameAtomic`'s body. An import `files.ts` is permitted to
@@ -759,6 +760,41 @@ that actually occur in a file someone writes by hand are the five above.
 `npm run check:ui` was not re-run for this commit: nothing outside a test file changed, and Decision
 67's five-minute run answers questions about the browser, which this does not touch.
 
+### Approved conditions — Phase 6b close, one deferred amendment (rule 9)
+
+Verbatim from the approval that followed the addition above. Recorded here rather than only in the
+table because the table row is the amendment; this is why it is worded the way it is.
+
+**One deferred amendment, then stop — Phase 7 in a new session.**
+
+Add amendment `r`, targeted at Phase 11: publish-check greps the repo for AI-authorship strings, and
+§12's skip list does not include `scripts/publish-check.mjs` — which must contain all four strings
+literally in order to search for them, so it will fail on itself.
+
+Record the fix rather than the symptom: assemble the patterns from fragments at runtime, the same as
+`SECRET_PATTERNS` and `lib/store/files.test.ts`, rather than adding the script to the skip list. A
+skip list is a rule scoped to an address, which is the shape that let three writers drift past
+Decision 71.
+
+Cite the self-scan blind spot you found here as the general case: a check that scans the project
+cannot see itself until it is tracked, so its first green run proves nothing about its own text.
+
+Then update the status block and stop.
+
+**Confirmed before it was recorded, rather than reasoned about.** §12's grep is four literal strings
+over the published file set with five skips, and `scripts/publish-check.mjs` is not among them —
+read at `PROJECT.md` §12, not recalled. Running that grep over the published set as it stands today
+returns one hit: `lib/store/env.ts:25`, `label: "Anthropic"` in `KNOWN_KEYS`. So the amendment covers
+two cases and not one, and the second is the better argument for the fix, because nobody would call
+it an authorship string.
+
+**`PROJECT.md` §12 carries a pointer, because that is the sentence Phase 11 builds from.** The
+amendment table is where the reasoning lives and the spec is where the requirement has to be, or a
+phase reads §12, writes the four literals, and meets the wall the amendment exists to remove.
+
+Nothing outside the written spec changed here, so `npm test`, `tsc` and `check:ui` answer questions
+this commit does not raise. `check-secrets` runs on the commit regardless, via the hook.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -782,12 +818,21 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
 | p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
 | q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | **outstanding — a spec claim the code does not support** |
+| r | **`publish-check` greps the published file set for four AI-authorship strings, and §12's skip list does not name `scripts/publish-check.mjs` — but the script has to contain all four literally in order to search for them, so it is the first thing its own grep finds.** The fix is to assemble the patterns from fragments at runtime, the way `SECRET_PATTERNS`' sample table and `lib/store/files.test.ts` do, rather than adding the script to the skip list: a skip list is a rule scoped to an address, which is the shape that let three writers drift past Decision 71 | Phase 6b close, one deferred amendment | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 
 `q` is the odd one out and is filed here anyway: it is not a deferral of work anyone chose to skip but a **gap between the spec and the code found by checking a claim rather than assuming it**, and this table is the only place in the repo where "known, unbuilt, with the reason" is a recognised state. It is written down so that the next person to read Decision 20 does not take the second half of it for something that runs.
 
 **`q` lands in Phase 8, and two things about it are already settled so Phase 8 inherits them rather than re-deriving them.** The *phase* is the document view, because that is the surface where the case is real: every writer today is the app itself and every write is followed by a `router.refresh()`, so nothing in the app needs a focus refetch yet — but "I edited this file in VS Code and came back to the tab" is the document view's ordinary Tuesday, and a view of a file that does not notice the file changing is the one place where Decision 20's claim stops being decorative. The *mechanism* is `reload()`, never `initial`, and the reason is Decision 69's: a server render is a snapshot with no ordering relative to the writes it might overtake, so adopting one as client state is how a later write gets undone by an earlier read. `reload()` is the opposite on both counts — it is ordered by issue against the sends it must not overtake (Decision 70), and it can be skipped outright while anything is in flight. So the shape is a listener per view calling that view's own reload, and the two ways to get it wrong are both already named. `o` is the precedent for giving it a phase: an untargeted amendment on a surface nobody owns lands nowhere.
+
+**`r` joins `n` as a constraint on a script nobody has written yet, and it is the second one because the first was not enough.** §12 already carries the principle in the `BUILD_PROMPT.md` form — a file that trips the AI-authorship grep is a file that should not be in the published set, "never a reason to lengthen the skip list" — and that sentence is right about the case it was written for and does not reach this one. `publish-check.mjs` *belongs* in the published set. It trips the grep because the grep is made of literal strings and the script is the file that holds them, which is a property of how the check is built rather than of what is in the repository. So the fix has to change the check, and there are only two ways to do that.
+
+**The skip list is the wrong one, for the reason Decision 71 cost three writers.** A skip list is a rule scoped to an address: it says *this file may*, and it stays true of that file no matter what the file later says. The rule it stands in for is about text — some mentions of a provider are legitimate and most are not — and an address is a poor proxy for text that gets worse every time it is extended. It is already imprecise here: run §12's grep over the published set as defined today and it has a second hit, `lib/store/env.ts:25`, where `KNOWN_KEYS` carries `label: "Anthropic"` so the settings key row has something to display. That is a legitimate provider name outside every skipped address, and the address-shaped fix for it is a sixth entry. `lib/agent/` is the one exemption that is honest, because naming a provider is what that module is for; the rest accumulate.
+
+**Assembling the patterns from fragments is the other one, and it is the same move twice already made in this repo.** `scripts/check-secrets.mjs` holds no pattern text at all — it imports `SECRET_PATTERNS` from `lib/security/secrets.ts`, and a regex source like a key prefix followed by a character class does not match itself, so the scanner is outside its own scan by construction. `publish-check`'s patterns are literal strings, so it has no such luck: the pattern *is* its own match. That is the structural difference, and it is why the two files that do face it — `lib/security/secrets.test.ts`'s sample table and `lib/store/files.test.ts` — both build their forbidden forms from fragments at runtime. The property that makes this better than an exemption is that it is scoped to the text rather than to the file: `publish-check.mjs` stays fully inside the scan, and an AI-authorship line pasted into it tomorrow is still caught.
+
+**And the general case, which is what the rename check bought at the cost of one commit: a check that scans the project cannot see itself until it is tracked, so its first green run proves nothing about its own text.** `lib/store/files.test.ts` assembled its pattern list from fragments and then failed on its own doc comment, which spelled the same forms out in prose — but only after being committed, because `git ls-files` is what "the project" means and an untracked file is not in it. Every run before that was green and none of them meant anything. `publish-check` will scan itself the same way and inherits the same blind spot, and it is worse placed than the test was: it clones into a temp directory, so the copy it scans is the committed one and the first honest run is the one after the commit that introduces it. Phase 11 should expect the first failure to be the script itself, and should read that as the check working.
 
 ## How we work
 

@@ -698,6 +698,44 @@ file's corrupt-settings quarantine rename; and `lib/store/env.ts`, which writes 
 condition's own reasoning covers all three — a scanner holding `settings.json` loses a setting the
 same way — so `renameAtomic` is now exported and those three call sites use it.
 
+### Approved conditions — Phase 6b close, one addition (rule 9)
+
+Verbatim from the approval that followed the close. Same shape as the Phase 6a close's two additions:
+a convention that outlives the phase rather than a feature.
+
+**One addition, then stop — Phase 7 in a new session.**
+
+Convert Decision 71 into a check, the same way `check-lib-imports` and the `SECRET_PATTERNS` sample
+table did for their invariants. A test that greps the project for direct `fs.rename` / `renameSync` /
+`fs.promises.rename` and fails on any occurrence outside `renameAtomic`'s own implementation in
+`files.ts`.
+
+Three writers drifted past a rule stated in prose; the fourth should not be able to. Wording the
+Decision as "every atomic write in the project" is right and still only prose — the check is what
+makes it true. Name the quarantine rename in the test's failure message as the reason it exists,
+since that is the one where the cost is losing the evidence of a problem you already have.
+
+Then update the status block and stop.
+
+**Where it goes.** `lib/store/files.test.ts`. The invariant belongs to `renameAtomic`, and the one
+place it cannot be enforced from is inside `renameAtomic` itself — a function cannot see who declined
+to call it. It takes after the `SECRET_PATTERNS` table rather than `check-lib-imports` in the respect
+that matters here: the samples there are assembled from fragments at runtime so the file does not
+trip the scanner that reads it, and the forbidden forms here are assembled the same way for the same
+reason, since this file is inside its own scan.
+
+**Two rules, because the forms divide in two.** An fs import that brings a rename binding in under
+*any* name catches the aliased case a text search for a member call would miss; a member call catches
+`fs.rename`, `fs.promises.rename` and a namespace import under any name. Together they cover the
+three forms the condition names. The scan walks the repository from its root with `files.ts`'s own
+`REPO_SKIP` set, so a directory added later is covered without anyone remembering to add it — which
+is the failure mode being closed, not a nicety.
+
+**The exemption is narrow on purpose.** `files.ts` is allowed to hold the import; the test then
+asserts its single call site sits inside `renameAtomic`'s body. An import `files.ts` is permitted to
+have and calls from somewhere else fails, because "outside `renameAtomic`'s own implementation" is
+what the condition says and the file is not the implementation.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

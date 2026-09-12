@@ -16,7 +16,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 4 — Calendar | complete | `91b0f70` |
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
-| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853` |
+| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54` |
 | 7 — Knowledge base and collections | **next** — its first task is the three named splits, below | — |
 | 8–11 | not started | — |
 
@@ -735,6 +735,22 @@ is the failure mode being closed, not a nicety.
 asserts its single call site sits inside `renameAtomic`'s body. An import `files.ts` is permitted to
 have and calls from somewhere else fails, because "outside `renameAtomic`'s own implementation" is
 what the condition says and the file is not the implementation.
+
+**What it found: nothing, and that is the result.** The three writers had already been moved, so the
+scan was green the moment it existed — which is exactly the state in which a check proves nothing
+until it has been made to fail. Each of the five forms was introduced into a tracked file and each
+was caught: a member call on an fs default import, a `renameSync` named import, `fs.promises.rename`,
+an aliased `rename as mv`, and the `require` destructuring. A call to `renameAtomic` itself, bare and
+as a member, was not flagged. The exemption boundary was probed the same way — a second `fsRename`
+call added to `files.ts` outside `renameAtomic` fails the third test by line number.
+
+**One thing it does not do**, named rather than left to be discovered: it reads text, so a rename
+reached through a computed property or a dynamic `import()` resolved at runtime passes it. That is
+the same limit `check-secrets` has and the same reason neither is the only defence — but the forms
+that actually occur in a file someone writes by hand are the five above.
+
+`npm run check:ui` was not re-run for this commit: nothing outside a test file changed, and Decision
+67's five-minute run answers questions about the browser, which this does not touch.
 
 ## Deferred amendments
 

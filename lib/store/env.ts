@@ -9,7 +9,8 @@
 // it manages. Writes are atomic (tmp + rename) and LF-only, like every other write in the store.
 // Nothing here ever logs, returns, or throws a value: the messages say the key's *name*.
 
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { renameAtomic } from "./files.ts";
 import { ENV_FILE } from "./paths.ts";
 
 export interface KnownKey {
@@ -106,7 +107,7 @@ export async function writeKey(name: string, value: string | null): Promise<void
 
   const tmp = `${ENV_FILE}.tmp`;
   await writeFile(tmp, next, "utf8");
-  await rename(tmp, ENV_FILE);
+  await renameAtomic(tmp, ENV_FILE);
 
   if (value === null) delete process.env[name];
   else process.env[name] = value;

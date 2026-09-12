@@ -5,11 +5,13 @@
 // Failure behavior: a missing file yields defaults and writes nothing — a read that writes is a
 // surprise. A file that will not parse is renamed to settings.json.broken-<ts> and replaced with
 // defaults, so the app always starts; the rename is reported to the caller so the UI can toast it.
-// Never throws on read.
+// Never throws on read. Both renames here go through `files.renameAtomic`, so a transient Windows
+// `EPERM` costs a retry rather than a setting.
 
-import { rename, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { renameAtomic } from "./files.ts";
 import { resolveData } from "./paths.ts";
 
 export const SETTINGS_PATH = "settings/settings.json";
@@ -89,7 +91,7 @@ export async function readSettingsResult(): Promise<ReadSettingsResult> {
   } catch {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const brokenRel = `${SETTINGS_PATH}.broken-${stamp}`;
-    await rename(abs, resolveData(brokenRel));
+    await renameAtomic(abs, resolveData(brokenRel));
     const settings = defaultSettings();
     await writeSettings(settings);
     return { settings, recoveredFrom: brokenRel };
@@ -120,5 +122,5 @@ export async function writeJsonAtomic(rel: string, value: unknown): Promise<void
 
   const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
   await writeFile(tmp, text, "utf8");
-  await rename(tmp, abs);
+  await renameAtomic(tmp, abs);
 }

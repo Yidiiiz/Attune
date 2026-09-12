@@ -130,6 +130,12 @@ export async function exists(rel: string): Promise<boolean> {
  * thirty runs, as a chat turn that rolled back for no reason and read as flakiness; in the running
  * app the same failure loses the message being written.
  *
+ * **Exported, and every atomic write in the project goes through it.** The reasoning does not stop
+ * at messages: a scanner holding `settings.json` loses a setting the same way a held message file
+ * loses a message, so `lib/store/settings.ts` and `lib/store/env.ts` call this rather than renaming
+ * themselves. It takes absolute paths and resolves nothing, which is what lets `.env.local` — the
+ * one write outside the data tree — use it too.
+ *
  * The delay is a **failure guard, not a schedule** (Conventions: timers are never correctness). The
  * observable consequence is the rename succeeding, which is what the loop waits on; the attempts
  * are bounded so a genuinely permanent EPERM — a read-only file, a real permission problem — still
@@ -140,7 +146,7 @@ const RENAME_ATTEMPTS = 5;
 const RENAME_BACKOFF_MS = 20;
 const TRANSIENT = new Set(["EPERM", "EBUSY", "EACCES"]);
 
-async function renameAtomic(tmp: string, abs: string): Promise<void> {
+export async function renameAtomic(tmp: string, abs: string): Promise<void> {
   for (let attempt = 1; ; attempt += 1) {
     try {
       await fsRename(tmp, abs);

@@ -565,14 +565,21 @@ refusal path is that this should never be a silent failure.
 
 ## Phase 7 — Knowledge base and collections
 
-**The write paths and the surfaces are checked automatically.** `e2e/knowledge.spec.ts` adds seven
-browser checks to `npm run check:ui`: the auto-apply toast and its Undo restoring `habits.md` by
-SHA-256; the transcript marker surviving a reload and its own Undo; a note card's Add writing the note
+**The write paths and the surfaces are checked automatically.** `e2e/knowledge.spec.ts` adds eight
+browser checks to `npm run check:ui`: the auto-apply toast, with no buttons, and the marker's Undo
+restoring `habits.md` by SHA-256; the transcript marker surviving a reload and its own Undo; the same
+marker under the sheet's Ask answer, with its Undo; a note card's Add writing the note
 and its map link, and the same note proposed again arriving as an append that says why; a note with no
 map refused on its card with the edited text kept; a collection card starting a collection; Distill to
-knowledge proposing the summary in the conversation's tray; and Ask mode's task proposals drawn and
-added in the sheet. The library half is `lib/agent/auto-apply.test.ts` and `lib/agent/distill.test.ts`;
-§17's other Phase 7 checks were run over HTTP and the CLI at Stage A (AGENTS.md).
+knowledge proposing the summary in the conversation's tray, with Discard asking first only for a
+distill; and Ask mode's task proposals drawn and added in the sheet. `e2e/toast.spec.ts` adds four
+more, one per window size: with a toast held on screen, it asks the page what is on top at fifteen
+points on Send, then clicks by coordinate. The library half is `lib/agent/auto-apply.test.ts` and
+`lib/agent/distill.test.ts`. §17's other Phase 7 checks were run over HTTP and the CLI at Stage A
+(AGENTS.md).
+
+**Amendment `u`'s Stop check is a known flake** (Decision 83): `check:ui` runs it after the rest,
+under its own heading, and its result never sets the exit code. A clean run reads `clean`.
 
 **Every proposal in those checks comes from a scripted-provider directive**, which is the only
 coverage the Phase 7 prompts get until a key exists. The four rows below are what the prompts are
@@ -623,14 +630,16 @@ no greetings. Add it, then distill again: the second card says Rewrite and repla
 
 ### 7.5 The toast, its Undo, and the marker in both themes — **pending**
 
+Whether a click on Send reaches Send while a toast is up is no longer on this row:
+`e2e/toast.spec.ts` checks it at four window sizes (Decision 84). What is left is what it looks like.
+
 Steps: trigger an auto-apply (`[[propose-habit]]` with `ATTUNE_FAKE_PROVIDER=1` is enough). Leave
 the pointer resting on the toast until it goes. Switch the theme with the marker on screen.
 
-Expected: the toast leaves after its seven seconds even under the pointer, and nothing is left
-blocking the Send button beneath it. It deliberately does not pause on hover: a pause that lands in
-the fade-out leaves an invisible layer over Send (found by a screenshot run, not by the checks), and
-the marker's Undo is the one with no time limit. The marker reads as a quiet note under the reply in
-both themes, and its Undo is visibly a control.
+Expected: the toast has no buttons, says "Undo is under the reply", and leaves after its seven
+seconds even under the pointer. The marker reads as a quiet note under the reply in both themes, in
+Chat and under the sheet's Ask answer, and its Undo is visibly a control. The toast still covers Send
+visually while it is up; a click there sends (Decision 84).
 
 ### 7.6 A tray full of cards does not bury the conversation — **pending**
 
@@ -639,6 +648,18 @@ adding anything.
 
 Expected: the tray scrolls inside its own 40vh rather than pushing the message list off screen, the
 composer stays where it was, and each card's Add acts on that card alone.
+
+### 7.7 The preview panel's collection Add, in Tasks mode — **blocked on an API key**
+
+A known gap, listed so it is not mistaken for coverage (the Phase 7 close). The Add is wired through
+the same `CollectionCard` the tray uses, and the tray's use of it is checked. The preview panel's use
+is not, because Tasks mode's extraction is a `parse` call and the scripted provider refuses those.
+
+Steps, once a key is set: in the sheet's Tasks mode, ask for something list-shaped ("films people
+keep recommending: Stalker, Paris Texas, Close-Up"). Press the collection card's Add.
+
+Expected: one batch and one commit, a `knowledge/collections/<slug>.md` with the items as unchecked
+lines, the preview clearing, and no rows in any Today section.
 
 ---
 

@@ -14,6 +14,7 @@ import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
 import * as chats from "../store/chats.ts";
 import * as env from "../store/env.ts";
 import * as files from "../store/files.ts";
+import * as knowledge from "../store/knowledge.ts";
 import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
@@ -49,6 +50,8 @@ export interface Store {
   /** `.env.local`, which is not under `data/` and so is not reachable through `files` (§11.5). */
   env: typeof env;
   manifest: typeof manifest;
+  /** `data/knowledge/` (§4.2–§4.6), reached by the builders in `knowledge-actions.ts`. */
+  knowledge: typeof knowledge;
   settings: typeof settingsStore;
   /** Read the current state of a file in the form `before`/`after` want it. */
   snapshotContent: (rel: string) => Promise<Snapshot>;
@@ -112,14 +115,7 @@ export async function snapshotFields(rel: string, keys: string[]): Promise<Snaps
 }
 
 export const store: Store = {
-  tasks,
-  files,
-  chats,
-  env,
-  manifest,
-  settings: settingsStore,
-  snapshotContent,
-  snapshotFields,
+  tasks, files, chats, env, manifest, knowledge, settings: settingsStore, snapshotContent, snapshotFields,
 };
 
 /**

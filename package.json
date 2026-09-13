@@ -13,6 +13,7 @@
     "check-secrets": "node scripts/check-secrets.mjs",
     "check-lib-imports": "node scripts/check-lib-imports.mjs",
     "history": "node scripts/history.mjs",
+    "kb:check": "node scripts/kb-check.mjs",
     "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {

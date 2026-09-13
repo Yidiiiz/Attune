@@ -13,6 +13,8 @@ import { z } from "zod";
 import { listTree, readText } from "../store/files.ts";
 import { listTasks } from "../store/tasks.ts";
 import { TaskDraftSchema } from "../history/actions.ts";
+import { existingNotes, filterWrites } from "./memory.ts";
+import type { ProposedWrite } from "./memory.ts";
 import { tasksInScope, tasksTable } from "./context.ts";
 import type { ToolDefinition } from "./registry.ts";
 import type { TreeNode } from "../store/files.ts";
@@ -41,7 +43,8 @@ export type KnowledgeWrite = z.infer<typeof KnowledgeWriteSchema>;
 
 export type Proposal =
   | { kind: "tasks"; items: ModelTaskDraft[] }
-  | { kind: "knowledge"; writes: KnowledgeWrite[] }
+  /** After `filterWrites`: a duplicate note arrives as the append it became, saying why (§6.3). */
+  | { kind: "knowledge"; writes: ProposedWrite[] }
   | { kind: "collection"; collection: string; items: string[] };
 
 const ReadKnowledge = z.object({ path: z.string() });
@@ -192,8 +195,12 @@ async function run(name: string, input: unknown): Promise<ToolOutcome> {
     // model reading its own proposal back as though something had happened to it.
     case "propose_tasks":
       return { result: "recorded", proposal: { kind: "tasks", ...ProposeTasks.parse(input) } };
-    case "propose_knowledge_write":
-      return { result: "recorded", proposal: { kind: "knowledge", ...ProposeKnowledge.parse(input) } };
+    case "propose_knowledge_write": {
+      // Filtered here rather than on the card, so every surface that shows a knowledge proposal shows
+      // the write that will actually be applied — never the one the model sent, if they differ.
+      const { writes } = ProposeKnowledge.parse(input);
+      return { result: "recorded", proposal: { kind: "knowledge", writes: filterWrites(writes, await existingNotes()) } };
+    }
     case "propose_collection_append":
       return { result: "recorded", proposal: { kind: "collection", ...ProposeCollection.parse(input) } };
     default:

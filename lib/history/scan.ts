@@ -1,12 +1,14 @@
 // Owns: every reason `runBatch` refuses a batch after applying it and before a byte of it is logged
-// — the secret scan (PROJECT.md Decision 50), and a write into a reply another turn is still
-// streaming (`in-flight.ts`). Predicates over a batch and its snapshots, split out of `batch.ts`
-// along the seam Decision 56 named in advance, because they share no state with the ordered
-// transaction there; this is also where each new refusal rule goes.
+// — the secret scan (PROJECT.md Decision 50), a write into a reply another turn is still
+// streaming (`in-flight.ts`), and a new note no map links to (§6.3). Predicates over a batch and its
+// snapshots, split out of `batch.ts` along the seam Decision 56 named in advance, because they share
+// no state with the ordered transaction there; this is also where each new refusal rule goes.
 //
 // Failure behavior: none of its own. It reads and returns; `runBatch` rolls back and throws.
 
 import { findSecret } from "../security/secrets.ts";
+import { splitFrontmatter } from "../store/frontmatter.ts";
+import { markdownLinks, resolveDataPath } from "../knowledge/links.ts";
 import type { StoreErrorCode } from "../store/paths.ts";
 import { contestedTargets } from "./in-flight.ts";
 import type { Snapshot } from "./log.ts";
@@ -30,6 +32,53 @@ export function refuseBatch(spec: BatchSpec, applied: Applied[], targets: string
   }
   const contested = contestedTargets(targets, spec.turn);
   if (contested) return { code: "invalid", message: contested };
+  const unlinked = unlinkedNote(applied);
+  if (unlinked) return { code: "invalid", message: unlinked };
+  return null;
+}
+
+const NOTE = /^knowledge\/notes\/.+\.md$/;
+const MAP = /^knowledge\/maps\/[^/]+\.md$/;
+
+/**
+ * §6.3: a note this batch creates must name a map in its `links`, and this same batch must write a
+ * link to the note into that map. Read from the snapshots alone — the note's `after`, the map's
+ * `after` — so it holds for any batch that creates a note, however it was built. A note whose bytes
+ * the log does not carry (`{ git: true }`) cannot be checked and is refused rather than waved through.
+ */
+function unlinkedNote(applied: Applied[]): string | null {
+  const before = new Map<string, Snapshot>();
+  const after = new Map<string, Snapshot>();
+  for (const step of applied) {
+    for (const [rel, snap] of Object.entries(step.before)) if (!before.has(rel)) before.set(rel, snap);
+    for (const [rel, snap] of Object.entries(step.after)) after.set(rel, snap);
+  }
+
+  const refuse = (rel: string, why: string): string =>
+    `${rel} is a new note that ${why}. A new note names a map in its links, and the same change adds ` +
+    "the link to that map (§6.3), so it is never an orphan. Nothing was written.";
+
+  for (const [rel, snap] of after) {
+    if (!NOTE.test(rel) || before.get(rel) !== null || snap === null) continue;
+    if (!("content" in snap)) return refuse(rel, "is too large for its links to be checked");
+
+    let links: unknown;
+    try {
+      links = splitFrontmatter(snap.content).data.links;
+    } catch {
+      return refuse(rel, "has frontmatter that does not parse");
+    }
+    const maps = (Array.isArray(links) ? links : [])
+      .map((link) => (typeof link === "string" ? resolveDataPath(link) : null))
+      .filter((link): link is string => link !== null && MAP.test(link));
+    if (maps.length === 0) return refuse(rel, "names no map in its links");
+
+    const linked = maps.some((map) => {
+      const mapSnap = after.get(map);
+      return mapSnap != null && "content" in mapSnap && markdownLinks(splitFrontmatter(mapSnap.content).body, map).includes(rel);
+    });
+    if (!linked) return refuse(rel, `is not linked from ${maps.join(" or ")} by this change`);
+  }
   return null;
 }
 

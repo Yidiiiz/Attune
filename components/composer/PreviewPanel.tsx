@@ -2,9 +2,9 @@
 // and 6). It renders one of the three answers §9.4 defines and nothing else; the sheet owns the
 // textarea, the request, and the follow-up that revises what is shown here.
 //
-// The collection card renders with its Add disabled, matching the Build segment: `knowledge.write`
-// needs `lib/store/knowledge.ts`, which Phase 7 builds, and `/api/agent/apply` refuses that kind by
-// name. A button that posts a request known to be refused is worse than one that says why it is off.
+// The collection card renders with its Add disabled. `/api/agent/apply` accepts collections since
+// Phase 7's Stage A; the button is wired in Stage B, with the rest of the proposal surfaces, and
+// until then it says why it is off rather than posting from a card nothing else has been built for.
 //
 // Failure behavior: this component reports, it does not write. Add hands the selected drafts to the
 // sheet, which owns the request and where its failure is shown — a refusal has to leave every card

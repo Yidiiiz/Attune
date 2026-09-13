@@ -17,7 +17,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
-| 7 — Knowledge base and collections | **in progress** — conditions recorded below; the three named splits, then the streaming-commit fix, then Stage A, which stops for review | — |
+| 7 — Knowledge base and collections | **in progress** — splits `309b6bf`, streaming-commit fix `5d8efb6`; next the git containment fix and the ownership change, then the rest of Stage A, which stops for review | — |
 | 8–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
@@ -900,6 +900,98 @@ unreferenced uploads as the first notice (the Stage A exit-code condition and op
 with the code it describes, because its normalization — which stop words, which punctuation — is
 decided there and a Decision that names a choice before it is made is a guess.
 
+### Approved conditions — Phase 7, the git fix and the ownership question (rule 9)
+
+Verbatim from the approval that followed the stop. The stop reported that `C:\Users\yzhao` is a git
+repository (`origin` → `Flameyzyzyz/Typeformer`) holding 232 commits the test suite made, because
+`lib/history/chat-actions.test.ts` builds its sandbox with no `git init` and its undo batches commit,
+so git's repository discovery climbed out of the temp directory into the home folder. Found by the
+staged-set comparison, whose paths came back relative to the wrong root.
+
+Received. Stopping is right. Land the git fix — details and conditions below.
+Do not run the suite again until it's in.
+
+ORDER
+1. Answer the two verification questions under HOME REPOSITORY before I decide
+   what to do with C:\Users\yzhao\.git. Don't touch that repository.
+2. Land the git fix (own code: commit) with the conditions below.
+3. Continue the rest of Stage A, stop for review at its end.
+
+HOME REPOSITORY
+Good find, and correct call not to touch it. Two things I want verified before I
+decide, both read-only:
+
+a) Confirm the 232 commits really are all test-suite. Check for anything that
+   isn't: other branches, tags, stashes, reflog entries, and dangling or
+   unreachable objects (fsck --unreachable). The origin pointing at
+   Flameyzyzyz/Typeformer means someone ran clone or remote add here at some
+   point, so I want to know whether any real Typeformer history is still
+   reachable in there before it goes.
+
+b) Grep the committed trees for anything that would need rotating rather than
+   just deleting — key-shaped strings, .env content, token patterns. The test
+   sandboxes are presumably fixtures only, and nothing was pushed, but I want
+   that confirmed rather than assumed before I decide between deleting and
+   resetting.
+
+Report both and stop; I'll decide. When I do, the move will be renaming .git
+aside rather than deleting it — reversible, and it removes the push risk
+immediately. That risk is the part that concerns me: no upstream stops flush(),
+but it doesn't stop a person running `git push origin master` from their home
+folder and putting 232 commits of temp files onto the Typeformer remote.
+
+GIT FIX — APPROVED, WITH CONDITIONS
+- GIT_CEILING_DIRECTORIES: yes. Note it's `;`-separated on Windows and
+  `:`-separated on POSIX, needs absolute paths with no trailing separator, and
+  is not applied to symlink-resolved components. Get that right per-platform.
+- Add the positive check as well, not just the ceiling: before any committing
+  operation, assert `git rev-parse --show-toplevel` equals REPO_DIR and hard-fail
+  if it doesn't. The env var is prevention; the assertion is the invariant, and
+  it holds regardless of how discovery was influenced (GIT_DIR, .git files,
+  future git behaviour changes).
+- In test and dev builds, a commit that fails because there's no repository must
+  throw, not log commit: null and continue. The existing commitFailed path is
+  right for production but in tests it reproduces exactly the class of bug we
+  just found: a missing git init becomes a silent no-op that nobody notices for
+  two months. Loud in test, handled in prod.
+- chat-actions.test.ts: yes, git init. Also factor the sandbox setup into one
+  shared helper and move the other three committing test files onto it, so the
+  fifth one can't forget.
+
+STREAMING FIX — ONE QUESTION BEFORE STAGE A CONTINUES
+"A batch leaves out every in-flight path except its own targets" — I want the
+exception keyed to ownership, not to target membership. As written, any batch
+that happens to declare an in-flight path as a target pulls the half-written
+message into its commit, which is the original defect reachable by a different
+route. Auto-apply in Stage B is a writer that runs inside a turn, so this isn't
+hypothetical. Key the exception to the owning turn, and add a test: a non-owning
+batch that declares an in-flight path is either refused or has that path
+excluded, and either way it's a warning.
+
+Also confirm the startup sweep clears the in-flight set, not just the on-disk
+streaming markers. A held path with no sweep-side release is a path excluded
+from every commit for the life of the process.
+
+ACCEPTED AS REPORTED
+- Exit 2 winning over exit 1 when both occur: correct, and for the right reason.
+  Record it in the Decision alongside the tiers.
+- git diff -M: you're right and I was wrong. An extracted third of a file never
+  pairs as a rename. --color-moved with the 72 unmarked lines enumerated is a
+  better answer than the one I asked for, and the enumeration covers what I
+  wanted to check.
+- The start/assembleContext gap: fine as reported rather than fixed. Make sure
+  the warning names the paths, and file it so it doesn't drift.
+
+Don't run npm test again before the fix lands — agreed, and thank you for
+catching that before adding another eight.
+
+**Item 1's answers, as reported before the fix was built.** (a) One ref, `master`; no tags,
+stashes, other worktrees, `packed-refs`, alternates or `shallow`; 464 reflog entries, all `commit`,
+reaching the same 232 commits; `fsck --unreachable --no-reflogs` finds no commit or tree objects — no
+Typeformer history is present. (b) The 1,086 committed blobs are Attune fixtures with no hit on
+`SECRET_PATTERNS` or a wider token set. The decision on the repository is the owner's and is not
+recorded as made.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -925,6 +1017,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | **outstanding — a spec claim the code does not support** |
 | r | **`publish-check` greps the published file set for four AI-authorship strings, and §12's skip list does not name `scripts/publish-check.mjs` — but the script has to contain all four literally in order to search for them, so it is the first thing its own grep finds.** The fix is to assemble the patterns from fragments at runtime, the way `SECRET_PATTERNS`' sample table and `lib/store/files.test.ts` do, rather than adding the script to the skip list: a skip list is a rule scoped to an address, which is the shape that let three writers drift past Decision 71 | Phase 6b close, one deferred amendment | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
 | s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | **outstanding** |
+| t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `5d8efb6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `5d8efb6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 

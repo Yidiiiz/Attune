@@ -21,7 +21,8 @@ const DATA = path.join(SANDBOX, "data");
 process.env.ATTUNE_REPO_DIR = SANDBOX;
 process.env.ATTUNE_FAKE_PROVIDER = "1";
 
-const { runChatTurn, activeStreams, titleFrom } = await import("./turn.ts");
+const { runChatTurn, activeStreams } = await import("./turn.ts");
+const { titleFrom } = await import("./finalize.ts");
 const chats = await import("../store/chats.ts");
 const { readActions, groupBatches } = await import("../history/log.ts");
 const { uuidv7 } = await import("../chat/uuid.ts");

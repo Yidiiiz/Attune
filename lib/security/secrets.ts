@@ -33,7 +33,7 @@ export const SECRET_PATTERNS: SecretPattern[] = [
  *
  * This is the write-path half of the shared-pattern invariant in AGENTS.md. It walks SECRET_PATTERNS
  * whole, with no filter and no exemptions, because anything the pre-commit hook would refuse has to
- * be refused here first — see `scanBatch` in lib/history/batch.ts.
+ * be refused here first — see `scanBatch` in lib/history/scan.ts.
  */
 export function findSecret(text: string): string | null {
   for (const { name, re } of SECRET_PATTERNS) {

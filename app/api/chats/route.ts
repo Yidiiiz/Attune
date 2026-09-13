@@ -3,7 +3,7 @@
 // A conversation is created empty, before anything is said, because §9.6 and §16.9 both need one to
 // exist before the first turn: "Ask about this" starts a conversation *about* a task, and the
 // document view starts one about a file. The title arrives with the first message (Decision 61's
-// neighbour — `titleFrom` in `lib/agent/turn.ts`), so what is created here is deliberately unnamed.
+// neighbour — `titleFrom` in `lib/agent/finalize.ts`), so what is created here is deliberately unnamed.
 //
 // Failure behavior: the list is the store's, so an unreadable `conversation.md` costs that one row
 // and is logged, never the panel. Creation goes through `runBatch` like every other write, which

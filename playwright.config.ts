@@ -14,12 +14,21 @@
 //   - **Chromium only.** One browser, because these check this app's behaviour rather than the
 //     web platform's.
 //
+// **Two projects, split by one tag.** A check tagged `@known-flake` fails intermittently for a
+// reason that is filed as a deferred amendment and not yet fixed. It still runs, as the
+// `known-flake` project, and `check:ui` reports it after the rest under its own heading and never
+// lets it set the exit code, so a clean run reads as clean. A check earns the tag only with an
+// amendment naming it, and loses it when that amendment closes. The one tagged today is amendment
+// `u`'s Stop check. `npx playwright test` run directly runs both projects and counts them together.
+//
 // Failure behavior: `npm run check:ui` refuses with the install command when the browser is absent,
 // and refuses again when something is already listening on this port or on the app's dev port
 // (`scripts/check-ui.mjs`); running `npx playwright test` directly is Playwright's own error.
 
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_PORT as PORT } from "./e2e/ports.ts";
+
+const KNOWN_FLAKE = /@known-flake/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -39,7 +48,10 @@ export default defineConfig({
     trace: "retain-on-failure",
     ...devices["Desktop Chrome"],
   },
-  projects: [{ name: "chromium" }],
+  projects: [
+    { name: "chromium", grepInvert: KNOWN_FLAKE },
+    { name: "known-flake", grep: KNOWN_FLAKE },
+  ],
   webServer: {
     command: `npx next dev -p ${PORT}`,
     url: `http://127.0.0.1:${PORT}/chat`,

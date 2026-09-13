@@ -95,6 +95,16 @@ test("a refused note shows why on its card and keeps what was typed", async ({ p
   await expect(note.getByTestId("proposal-error")).toContainText(/map/);
   await expect(box).toHaveValue("# Loose end\n\nEdited before pressing Add.");
   expect(existsSync(onDisk("knowledge/notes/loose-end.md"))).toBe(false);
+
+  // An ordinary card goes without asking; only a distill's Discard confirms.
+  let asked = false;
+  page.on("dialog", (dialog) => {
+    asked = true;
+    void dialog.accept();
+  });
+  await note.getByRole("button", { name: "Discard" }).click();
+  await expect(tray(page)).toHaveCount(0);
+  expect(asked).toBe(false);
 });
 
 test("a collection card's Add starts the collection", async ({ page }) => {
@@ -110,20 +120,40 @@ test("a collection card's Add starts the collection", async ({ page }) => {
   expect(text).toContain("- [ ] Paris, Texas");
 });
 
-test("Distill to knowledge proposes the conversation's summary in its tray", async ({ page }) => {
+test("Distill to knowledge proposes the conversation's summary in its tray, and its Discard asks first", async ({ page }) => {
   await newConversation(page);
   await exchange(page, "what did we decide about the thesis outline?");
   const id = (await page.locator("[data-ui='conversation']").getAttribute("data-conversation")) as string;
+  const distill = async () => {
+    await page.getByRole("button", { name: /^Actions for what did we decide/ }).click();
+    await page.getByTestId("chat-menu").getByTestId("distill").click();
+  };
 
-  await page.getByRole("button", { name: /^Actions for what did we decide/ }).click();
-  await page.getByTestId("chat-menu").getByTestId("distill").click();
-
+  await distill();
   const summary = card(page, "knowledge");
   await expect(summary).toHaveAttribute("data-path", `knowledge/sessions/${id}.md`);
   await expect(page).toHaveURL(new RegExp(`c=${id}$`)); // the one-shot flag is gone
+
+  // Making it again is a model call, so Discard confirms, and saying no keeps the card.
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await summary.getByRole("button", { name: "Discard" }).click();
+  await expect(summary).toBeVisible();
+
   await summary.locator("[data-action='add']").click();
   await expect(page.getByText(`Saved to knowledge/sessions/${id}.md`)).toBeVisible();
   expect(readFileSync(onDisk(`knowledge/sessions/${id}.md`), "utf8")).toContain(`id: ${id}`);
+
+  // A second distill is a rewrite of the first; saying yes to Discard removes it and writes nothing.
+  const saved = sha(`knowledge/sessions/${id}.md`);
+  await distill();
+  await expect(card(page, "knowledge")).toHaveAttribute("data-op", "replace");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("another model call");
+    void dialog.accept();
+  });
+  await card(page, "knowledge").getByRole("button", { name: "Discard" }).click();
+  await expect(tray(page)).toHaveCount(0);
+  expect(sha(`knowledge/sessions/${id}.md`)).toBe(saved);
 });
 
 test("Ask mode in the sheet renders the tasks a turn proposed, and adds them", async ({ page }) => {

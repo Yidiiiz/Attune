@@ -4,7 +4,8 @@
 //
 // **In memory only** (Phase 7 approval, open call 3): a reload clears it, as it clears the sheet's
 // preview. Losing a task draft costs a retype and losing a distill costs a model call; distill is the
-// first thing to get persistence if that proves slow or expensive.
+// first thing to get persistence if that proves slow or expensive. The same asymmetry is why a
+// distill card's Discard asks first and every other card's does not (the Phase 7 close, decision 3).
 //
 // **One card per knowledge write**, each with its own Add, because each write is its own decision: a
 // turn that proposes a note and a profile change has not asked for both or neither. A task proposal
@@ -25,6 +26,8 @@ interface CardState {
   key: string;
   busy: boolean;
   error: string | null;
+  /** Made by Distill, so throwing it away costs a model call to get back: its Discard confirms. */
+  distilled?: boolean;
 }
 
 export type TrayItem = CardState &
@@ -39,7 +42,8 @@ export interface Tray {
   /** A problem with the tray rather than with one card — a distill that did not come back. */
   error: string | null;
   setError: (message: string | null) => void;
-  receive: (proposal: Proposal) => void;
+  /** `from: "distill"` marks the cards as a distill's, whose Discard asks first. */
+  receive: (proposal: Proposal, from?: "distill") => void;
   /** Replace a card's content — an edit to a write, a draft, or a selection. */
   update: (key: string, next: TrayItem) => void;
   add: (key: string) => Promise<void>;
@@ -88,8 +92,8 @@ export function useProposals(opts: TrayOptions): Tray {
     return `p${seq.current}`;
   };
 
-  const receive = useCallback((proposal: Proposal) => {
-    const fresh = { busy: false, error: null };
+  const receive = useCallback((proposal: Proposal, from?: "distill") => {
+    const fresh = { busy: false, error: null, ...(from === "distill" ? { distilled: true } : {}) };
     const next: TrayItem[] =
       proposal.kind === "knowledge"
         ? proposal.writes.map((write) => ({ ...fresh, key: key(), kind: "knowledge" as const, write }))
@@ -123,6 +127,12 @@ export function useProposals(opts: TrayOptions): Tray {
     options.current.onAdded?.();
   }, []);
 
+  const discard = useCallback((at: string) => {
+    const item = current.current.find((one) => one.key === at);
+    if (item?.distilled === true && !window.confirm("Discard this summary? Making it again is another model call.")) return;
+    setItems((all) => all.filter((one) => one.key !== at));
+  }, []);
+
   return {
     items,
     error,
@@ -132,6 +142,6 @@ export function useProposals(opts: TrayOptions): Tray {
       setItems((all) => all.map((item) => (item.key === at ? next : item)));
     }, []),
     add,
-    discard: useCallback((at: string) => setItems((all) => all.filter((one) => one.key !== at)), []),
+    discard,
   };
 }

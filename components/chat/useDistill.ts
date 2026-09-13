@@ -18,19 +18,25 @@ import type { Tray } from "@/components/composer/useProposals";
 export function useDistill(conversationId: string, requested: boolean, tray: Tray): string | null {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
-  // Once per mount, including React's development double-run of effects: a second request is a
-  // second model call and a second card.
+  // Once per request, including React's development double-run of effects: a second request is a
+  // second model call and a second card. The guard re-arms when the flag leaves the address, because
+  // the view is keyed by conversation and so outlives it — a second Distill from the menu is the same
+  // mount, and a once-per-mount guard swallowed it.
   const asked = useRef(false);
 
   useEffect(() => {
-    if (!requested || asked.current) return;
+    if (!requested) {
+      asked.current = false;
+      return;
+    }
+    if (asked.current) return;
     asked.current = true;
     router.replace(`/chat?c=${conversationId}`);
     setStatus("Summarizing this conversation…");
     void send(`/api/chats/${conversationId}/distill`, { method: "POST" }).then((answer) => {
       setStatus(null);
       if (answer.error === null) {
-        tray.receive(answer.data.proposal as Proposal);
+        tray.receive(answer.data.proposal as Proposal, "distill");
         return;
       }
       const code = typeof answer.data.code === "string" ? answer.data.code : "";

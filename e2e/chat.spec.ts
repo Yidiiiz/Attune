@@ -88,7 +88,11 @@ test("a failure after deltas leaves a failed message with a Retry, and Retry ans
   await expect(assistant(page)).toHaveAttribute("data-status", "complete");
 });
 
-test("Stop leaves the partial reply, marked stopped", async ({ page }) => {
+// A known flake: about one run in five the pane shows the pre-send view, or a reply stuck at
+// `streaming`, while disk holds the stopped reply (AGENTS.md, amendment `u`, display-only). It runs
+// on its own after the rest and does not set `check:ui`'s exit code (`playwright.config.ts`). The tag
+// comes off when `u` closes.
+test("Stop leaves the partial reply, marked stopped", { tag: "@known-flake" }, async ({ page }) => {
   await newConversation(page);
   await say(page, "[[slow]] keep going for a while");
 

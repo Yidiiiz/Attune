@@ -17,7 +17,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
-| 7 — Knowledge base and collections | **Stage A built — stopped for review.** Splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `6e71e74`, ownership `833226b`, Stage A `0b07a13`. Stage B (the surfaces) waits on the review | — |
+| 7 — Knowledge base and collections | **Stage A accepted; Stage B in progress.** Splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `6e71e74`, ownership `833226b`, Stage A `0b07a13`. Before Stage B: the validation fix, in its own commit | — |
 | 8–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
@@ -118,8 +118,8 @@ far, which is rule 4's stage clause plus two fixes the build found before its ow
 - `6e71e74` — **git's discovery could climb out of `REPO_DIR`**, which is how `chat-actions.test.ts`
   put 232 commits into a repository in the home folder. A ceiling, a positive check on both the
   work-tree top and the git directory, a throw outside production, one sandbox helper for every
-  committing test (Decision 75). The home repository is untouched and the owner's to decide; it held
-  at 232 commits across every suite run after the fix.
+  committing test (Decision 75). The home repository was left untouched, held at 232 commits
+  across every suite run after the fix, and is the owner's to handle outside this project.
 - `833226b` — the streaming exclusion **keyed to ownership, not declaration**, per the approval's
   question: a batch declaring a held path it does not own is refused (Decision 76).
 - `0b07a13` — Stage A: `lib/store/knowledge.ts`, `lib/knowledge/{links,items,index,check}.ts`,
@@ -1037,8 +1037,89 @@ catching that before adding another eight.
 stashes, other worktrees, `packed-refs`, alternates or `shallow`; 464 reflog entries, all `commit`,
 reaching the same 232 commits; `fsck --unreachable --no-reflogs` finds no commit or tree objects — no
 Typeformer history is present. (b) The 1,086 committed blobs are Attune fixtures with no hit on
-`SECRET_PATTERNS` or a wider token set. The decision on the repository is the owner's and is not
-recorded as made.
+`SECRET_PATTERNS` or a wider token set. The rest of what that repository holds predates this project,
+is the owner's, and is handled outside it; at the owner's direction it is not described here.
+
+### Approved conditions — Phase 7 Stage B, the validation fix and amendment `u` (rule 9)
+
+Verbatim from the approval that followed the Stage A review, except where marked: part of its first
+section concerns the owner's home folder rather than this project, and the owner asked that it not
+be recorded in the repo.
+
+Stage A accepted. Proceed to Stage B under the decisions below. Two things
+outside the phase come first.
+
+HOME REPOSITORY — MY DECISION
+Do not touch it. I'll handle it manually.
+
+Recording the decision so it isn't reopened: rename .git aside rather than
+delete, which kills the push risk now and stays reversible. The 232 commits are
+temp fixtures and go with it.
+
+*[The remainder of this section is the owner's own matter and is omitted at the owner's direction.]*
+
+VALIDATION 500s — TAKE THIS NOW, BEFORE STAGE B
+Raw validation dumps on malformed input is an information-disclosure bug, not a
+tidiness one: schema internals and echoed input in a 500 body, on routes that
+are about to start accepting model-generated writes. Predating Phase 7 doesn't
+buy it another phase.
+
+Own commit before Stage B: shared handler, 400 with a stable shape and a safe
+message, dump behind dev-only, 500 reserved for actual faults. One test per
+route family. If it isn't a contained mechanical change once you're in it, stop
+and tell me rather than growing it.
+
+AMENDMENT u — DEFER, WITH CONDITIONS
+File it as amendment u. Don't chase it in Phase 7; a one-in-five heisenbug after
+router.refresh() will eat the phase.
+
+Conditions:
+- Confirm and record that it is display-only — the reply is on disk and in the
+  log, and the correct view returns on next navigation. If there's any path
+  where a user's message is actually lost, it stops being deferrable and I want
+  to know immediately.
+- Note in the amendment that Stage B raises its cost: an auto-apply marker in a
+  transcript that intermittently renders empty is worse than in one that
+  doesn't, since a missing marker is indistinguishable from no write having
+  happened. That's an argument for the log-backed design, not against
+  deferring.
+- Write down the one-in-five figure and the reproduction conditions while
+  they're fresh.
+
+STAGE B ADDITION — LOG-BACKED, AGREED
+Read the marker from the action log. Right call, and the reason is right:
+finalized messages aren't edited, and a marker written into a message would be
+a second writer touching a file the streaming ownership rule just finished
+protecting. Log-backed also means undo removes the marker for free rather than
+needing a compensating edit.
+
+Two conditions:
+- The marker must be keyed to something stable, not to log position, so it
+  still resolves after an undo or a later write.
+- If the log read fails or the entry is missing, render nothing rather than a
+  broken or half-populated marker — but warn. Silent absence is the failure
+  mode this marker exists to prevent.
+
+STAGE B — CARRY FORWARD
+- The scripted-provider directives are the only coverage the prompts get this
+  phase; the real-model rows stay blocked on a key and stay listed as blocked,
+  not quietly dropped.
+- Auto-apply is the one write that happens without being asked. Its toast,
+  its Undo, and the new marker are one story — if any of the three doesn't
+  land, say so before the end of the stage rather than at it.
+- Stop for review at the end of Stage B.
+
+Stage A conditions all met, and the two you went past them on — the GIT_DIR hole
+in the top-level assertion, and the dev-exit push running from the wrong
+directory without the ceiling — are both better catches than the conditions I
+wrote. Noted.
+
+**One thing the validation condition meets in this repo that the text does not say.** The app runs
+only under `next dev` — `scripts/dev.mjs` spawns nothing else, and nothing here runs `next start` — so
+`NODE_ENV` is `development` in the owner's daily use, and a dump gated on "not production" in the
+*response body* would be on in the only place the app is used. The dump therefore never goes in a
+response body, in any mode: outside production it is logged to the server's console, which is the
+operator's own terminal, and the body carries only the stable shape.
 
 ## Deferred amendments
 

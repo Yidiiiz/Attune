@@ -18,7 +18,7 @@ import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
 import { StoreError } from "../store/paths.ts";
-import { scanBatch } from "./scan.ts";
+import { refuseBatch } from "./scan.ts";
 import { commitExclusions } from "./in-flight.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
 import * as git from "./git.ts";
@@ -73,6 +73,8 @@ export interface BatchSpec {
   actions: ActionSpec[];
   /** Default true. False only for the streaming-message path in §8. */
   commit?: boolean;
+  /** The turn whose streaming files this batch finalizes: the only batch that may write them. */
+  turn?: string;
   /** Paths outside `data/` to include in the commit. Only `code.change` uses this. */
   repoPaths?: string[];
   meta?: Record<string, unknown>;
@@ -226,17 +228,16 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       throw err;
     }
 
+    const targets = [...new Set(applied.flatMap((step) => step.targets))];
+
     // Before anything is logged: refuse the whole batch if it would write a credential under
-    // `data/`. Rolling back first means the files are as they were, and the text the caller sent is
-    // still the caller's — a rejected save must not cost someone what they wrote (§13.5).
-    const rejected = scanBatch(spec, applied);
-    if (rejected) {
+    // `data/`, or write into a reply another turn is still streaming (`scan.ts`). Rolling back first
+    // means the files are as they were, and the text the caller sent is still the caller's — a
+    // rejected save must not cost someone what they wrote (§13.5).
+    const refused = refuseBatch(spec, applied, targets);
+    if (refused) {
       await rollback(applied);
-      throw new StoreError(
-        "secret_rejected",
-        `${rejected.where} looks like it contains a credential (${rejected.pattern}). Nothing was ` +
-          `written. Move the value to .env.local, or change the text, and save again.`,
-      );
+      throw new StoreError(refused.code, refused.message);
     }
 
     await backfillPrevious();
@@ -264,7 +265,6 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       },
     }));
 
-    const targets = [...new Set(applied.flatMap((step) => step.targets))];
     const seq = entries.map((entry) => entry.seq);
 
     const offset = await appendActions(entries);
@@ -274,7 +274,7 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     let commit: string | null = null;
     const paths = ["data", ...(spec.repoPaths ?? [])];
     // §8: a reply still arriving is never committed, whatever batch happens to land mid-turn.
-    const exclude = (await commitExclusions(targets)).map((rel) => `data/${rel}`);
+    const exclude = (await commitExclusions(targets, spec.turn)).map((rel) => `data/${rel}`);
     const declared = [...targets, LOG_PATH, MIRROR_PATH].map((rel) => `data/${rel}`);
     try {
       const expected = PRODUCTION ? undefined : [...declared, ...(spec.repoPaths ?? [])];

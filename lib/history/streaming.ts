@@ -39,7 +39,7 @@ import { CHATS_DIR, parseMessage } from "../store/chats.ts";
 import { StoreError } from "../store/paths.ts";
 import { runBatch } from "./batch.ts";
 import { repairInterrupted } from "./chat-actions.ts";
-import { markStreaming } from "./in-flight.ts";
+import { heldByLiveTurn, markStreaming } from "./in-flight.ts";
 import { readActions, readLogText } from "./log.ts";
 import type { TreeNode } from "../store/files.ts";
 import type { Message } from "../chat/types.ts";
@@ -65,7 +65,7 @@ function requireMessagePath(rel: string): void {
   }
 }
 
-export async function streamingWrite(rel: string, content: string): Promise<void> {
+export async function streamingWrite(rel: string, content: string, turn: string): Promise<void> {
   requireMessagePath(rel);
 
   const { data } = splitFrontmatter(content);
@@ -78,7 +78,7 @@ export async function streamingWrite(rel: string, content: string): Promise<void
   }
 
   // Before the write, so there is no moment when the file exists and a batch could stage it.
-  markStreaming(rel);
+  markStreaming(rel, turn);
   await writeText(rel, content);
 }
 
@@ -151,7 +151,10 @@ export async function sweepInterruptedMessages(): Promise<{ repaired: number }> 
 
   const orphans: Array<{ convId: string; message: Message }> = [];
   for (const rel of flatten(await listTree(CHATS_DIR))) {
-    if (!STREAMING_TARGET.test(rel) || logged.has(rel)) continue;
+    // A turn in this process still holds it, so it is a live stream and not an orphan. At startup
+    // there are none (the sweep runs in `scripts/dev.mjs`, before the server exists); the check is
+    // what keeps that true if the sweep is ever called from anywhere else.
+    if (!STREAMING_TARGET.test(rel) || logged.has(rel) || heldByLiveTurn(rel)) continue;
     try {
       const message = parseMessage(await readText(rel));
       if (message.status !== "streaming") continue;

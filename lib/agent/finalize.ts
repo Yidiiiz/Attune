@@ -64,6 +64,8 @@ export async function finalizeTurn(
     scope: "user",
     summary: failure === null ? `Reply in '${named}'` : `Unfinished reply in '${named}'`,
     commitPrefix: "chat",
+    // The one batch allowed to commit this turn's streaming files (lib/history/in-flight.ts).
+    turn: input.assistantMessageId,
     meta: { mode: input.mode, model: assistant.model, ...(failure === null ? {} : { failed: true }) },
     actions: [
       ...(started.user === null

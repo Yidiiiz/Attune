@@ -4,7 +4,10 @@
 // the thing it would "fix" is a reply someone is reading as it arrives.
 //
 // The orphan itself is made the way a crash makes one: written through `streamingWrite`, which is
-// the only path that puts a `streaming` file on disk without a log entry.
+// the only path that puts a `streaming` file on disk without a log entry, by a turn that then ends
+// without finalizing. A real crash takes the whole process and its in-flight registry with it; in
+// one process the nearest thing is the turn releasing its hold on a file that is still streaming,
+// which is exactly what makes the registry call it an orphan.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -15,6 +18,7 @@ const checkout = await createCheckout("sweep");
 const DATA = checkout.data;
 
 const { streamingWrite, sweepInterruptedMessages } = await import("./streaming.ts");
+const { heldByLiveTurn, releaseStreaming, streamingPaths } = await import("./in-flight.ts");
 const { INTERRUPTED } = await import("./chat-actions.ts");
 const { runBatch } = await import("./batch.ts");
 const { saveMessage } = await import("./chat-actions.ts");
@@ -45,7 +49,9 @@ const message = (id: string, over: Partial<Message> = {}): Message => ({
 
 /** Exactly what a crash leaves: written through the bypass, so nothing recorded it. */
 async function abandon(one: Message): Promise<string> {
-  await streamingWrite(chats.messagePath(CONV, one.id), chats.renderMessage(one));
+  const rel = chats.messagePath(CONV, one.id);
+  await streamingWrite(rel, chats.renderMessage(one), `crashed-${one.id}`);
+  await releaseStreaming([rel]); // the turn is over; the file is not
   return one.id;
 }
 
@@ -116,7 +122,7 @@ describe("sweepInterruptedMessages", () => {
       commitPrefix: "chat",
       actions: [saveMessage(CONV, message(id, { status: "complete" }))],
     });
-    await streamingWrite(chats.messagePath(CONV, id), chats.renderMessage(message(id)));
+    await streamingWrite(chats.messagePath(CONV, id), chats.renderMessage(message(id)), "a-live-turn");
 
     expect(await sweepInterruptedMessages()).toEqual({ repaired: 0 });
     expect((await read(id))?.status).toBe("streaming");
@@ -150,5 +156,29 @@ describe("sweepInterruptedMessages", () => {
   it("ignores a conversation with no messages directory", async () => {
     await mkdir(path.join(DATA, "chats", "c_20260907_0002"), { recursive: true });
     expect(await sweepInterruptedMessages()).toEqual({ repaired: 0 });
+  });
+
+  it("leaves alone a file a live turn in this process still holds", async () => {
+    // Nothing recorded it and it says streaming — the exact shape of an orphan — but a turn owns it,
+    // so it is a reply still arriving. The registry is what tells the two apart.
+    const id = uuidv7();
+    await streamingWrite(chats.messagePath(CONV, id), chats.renderMessage(message(id)), "a-live-turn");
+    expect(heldByLiveTurn(chats.messagePath(CONV, id))).toBe(true);
+
+    expect(await sweepInterruptedMessages()).toEqual({ repaired: 0 });
+    expect((await read(id))?.status).toBe("streaming");
+  });
+
+  it("clears the in-flight entries of the orphans it repairs, and commits them", async () => {
+    const id = await abandon(message(uuidv7()));
+    const rel = chats.messagePath(CONV, id);
+    const held = streamingPaths();
+
+    await sweepInterruptedMessages();
+
+    // A repaired orphan left in the registry would be excluded from every later commit.
+    expect(streamingPaths()).toBe(held - 1);
+    expect(checkout.git("ls-files", "--", `data/${rel}`)).toBe(`data/${rel}`);
+    expect(checkout.git("status", "--porcelain", "--", "data")).toBe("");
   });
 });

@@ -1,12 +1,37 @@
-// Owns: the secret scan `runBatch` runs over a batch before a byte of it is logged (PROJECT.md
-// Decision 50) — a pure predicate over a batch and its snapshots, split out of `batch.ts` along the
-// seam Decision 56 named in advance, because it shares no state with the ordered transaction there.
+// Owns: every reason `runBatch` refuses a batch after applying it and before a byte of it is logged
+// — the secret scan (PROJECT.md Decision 50), and a write into a reply another turn is still
+// streaming (`in-flight.ts`). Predicates over a batch and its snapshots, split out of `batch.ts`
+// along the seam Decision 56 named in advance, because they share no state with the ordered
+// transaction there; this is also where each new refusal rule goes.
 //
-// Failure behavior: none of its own. It reads and returns; `runBatch` decides what a hit means.
+// Failure behavior: none of its own. It reads and returns; `runBatch` rolls back and throws.
 
 import { findSecret } from "../security/secrets.ts";
+import type { StoreErrorCode } from "../store/paths.ts";
+import { contestedTargets } from "./in-flight.ts";
 import type { Snapshot } from "./log.ts";
 import type { Applied, BatchSpec } from "./batch.ts";
+
+export interface Refusal {
+  code: StoreErrorCode;
+  message: string;
+}
+
+/** The first reason to refuse this batch, or null. Secrets first, as they were before the others. */
+export function refuseBatch(spec: BatchSpec, applied: Applied[], targets: string[]): Refusal | null {
+  const secret = scanBatch(spec, applied);
+  if (secret) {
+    return {
+      code: "secret_rejected",
+      message:
+        `${secret.where} looks like it contains a credential (${secret.pattern}). Nothing was ` +
+        `written. Move the value to .env.local, or change the text, and save again.`,
+    };
+  }
+  const contested = contestedTargets(targets, spec.turn);
+  if (contested) return { code: "invalid", message: contested };
+  return null;
+}
 
 /** The text a snapshot puts into the log. `{ git: true }` carries none; the commit holds it. */
 function snapshotText(snap: Snapshot): string {

@@ -4,6 +4,10 @@
 // `status: streaming` file that nothing in the log describes. That is the case the first test
 // reproduces, and it stays in the suite because the only thing standing between the two is the
 // in-flight registry in `lib/history/in-flight.ts`.
+//
+// The exception to that exclusion is keyed to **ownership**: only the batch that finalizes a turn
+// may commit that turn's files. A batch that merely declares a held path is refused, which is the
+// original defect's second route closed.
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -17,34 +21,18 @@ const { streamingWrite } = await import("./streaming.ts");
 const { runBatch } = await import("./batch.ts");
 const { createTask } = await import("./actions.ts");
 const { saveMessage } = await import("./chat-actions.ts");
-const { releaseStreaming, streamingPaths } = await import("./in-flight.ts");
+const { commitExclusions, releaseStreaming, streamingPaths } = await import("./in-flight.ts");
+const { readActions } = await import("./log.ts");
 const chats = await import("../store/chats.ts");
+const { StoreError } = await import("../store/paths.ts");
 const { uuidv7 } = await import("../chat/uuid.ts");
 
 type Message = import("../chat/types.ts").Message;
 
 const CONV = "c_20260912_5e1a";
+const TURN = "the-owning-turn";
 
 const committed = (): string[] => git("show", "--name-only", "--format=", "HEAD").split("\n");
-
-/** Write a streaming reply the way a turn does, and hand back its path. */
-async function stream(text = "The change of ba"): Promise<string> {
-  const id = uuidv7();
-  const rel = chats.messagePath(CONV, id);
-  await streamingWrite(rel, chats.renderMessage(streaming(id, text)));
-  return rel;
-}
-
-const finalize = (rel: string, text: string) => {
-  const id = path.basename(rel, ".md");
-  return runBatch({
-    actor: "user",
-    scope: "user",
-    summary: "Reply in 'Streaming'",
-    commitPrefix: "chat",
-    actions: [saveMessage(CONV, { ...streaming(id, text), status: "complete" })],
-  });
-};
 
 const streaming = (id: string, text: string): Message => ({
   schema: 1,
@@ -61,13 +49,33 @@ const streaming = (id: string, text: string): Message => ({
   text,
 });
 
-const task = (title: string) => runBatch({
-  actor: "user",
-  scope: "user",
-  summary: `add ${title}`,
-  commitPrefix: "task",
-  actions: [createTask({ title })],
-});
+/** Write a streaming reply the way a turn does, owned by `turn`, and hand back its path. */
+async function stream(text = "The change of ba", turn = TURN): Promise<string> {
+  const id = uuidv7();
+  const rel = chats.messagePath(CONV, id);
+  await streamingWrite(rel, chats.renderMessage(streaming(id, text)), turn);
+  return rel;
+}
+
+/** A batch writing the finished message, as `finalizeTurn` does — naming a turn, or not. */
+const finish = (rel: string, text: string, turn: string | undefined) =>
+  runBatch({
+    actor: "user",
+    scope: "user",
+    summary: "Reply in 'Streaming'",
+    commitPrefix: "chat",
+    ...(turn === undefined ? {} : { turn }),
+    actions: [saveMessage(CONV, { ...streaming(path.basename(rel, ".md"), text), status: "complete" })],
+  });
+
+const task = (title: string) =>
+  runBatch({
+    actor: "user",
+    scope: "user",
+    summary: `add ${title}`,
+    commitPrefix: "task",
+    actions: [createTask({ title })],
+  });
 
 beforeEach(async () => {
   await checkout.reset({
@@ -103,15 +111,34 @@ describe("a batch committed while a reply is streaming", () => {
     expect(git("status", "--porcelain", "--", `data/${rel}`)).toBe(`?? data/${rel}`);
   });
 
-  it("still lets the batch that finalizes the message commit it", async () => {
+  it("still lets the owning turn's finalizing batch commit it, and that batch ends the hold", async () => {
+    const before = streamingPaths();
     const rel = await stream();
     await task("pset 4");
 
-    // The exclusion is the held paths *minus the batch's own targets*, or finalizing would leave
-    // the finished reply out of the one commit that is supposed to hold it.
-    await finalize(rel, "The change of basis matrix");
+    await finish(rel, "The change of basis matrix", TURN);
     expect(committed()).toContain(`data/${rel}`);
     expect(git("status", "--porcelain", "--", "data")).toBe("");
+    expect(streamingPaths()).toBe(before);
+  });
+
+  it("refuses a batch that declares a held path it does not own, and says so", async () => {
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const rel = await stream("The change of ba");
+    const logged = (await readActions()).length;
+    const head = git("rev-parse", "HEAD");
+
+    // Keyed to declaration, this would have been allowed — and would have committed the half-written
+    // reply. Keyed to ownership, it is refused whole, before anything is logged.
+    await expect(finish(rel, "someone else's text", undefined)).rejects.toBeInstanceOf(StoreError);
+    await expect(finish(rel, "someone else's text", "another-turn")).rejects.toThrow("still arriving");
+
+    expect(warnings.mock.calls.flat().join("\n")).toContain(`declared a streaming file it does not own — ${rel}`);
+    expect((await readActions()).length).toBe(logged);
+    expect(git("rev-parse", "HEAD")).toBe(head);
+    // Rolled back to what the turn had written, which is still the turn's to finish.
+    expect(await readFile(path.join(DATA, rel), "utf8")).toContain("The change of ba");
+    expect(await readFile(path.join(DATA, rel), "utf8")).toContain("status: streaming");
   });
 });
 
@@ -121,17 +148,19 @@ describe("the in-flight registry's lifetime", () => {
     const rel = await stream();
     expect(streamingPaths()).toBe(before + 1);
 
-    await finalize(rel, "done");
+    // Stopped streaming by some route other than the owning batch — here, rewritten as failed.
+    const failed = { ...streaming(path.basename(rel, ".md"), "x"), status: "failed" as const };
+    await writeFile(path.join(DATA, rel), chats.renderMessage(failed));
     await releaseStreaming([rel]);
     expect(streamingPaths()).toBe(before);
   });
 
-  it("keeps a file that is still streaming when its turn ends, and says so", async () => {
+  it("keeps a file still streaming when its turn ends as an orphan, and says so", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const rel = await stream();
 
-    // A turn that ended without finalizing or discarding: the file is an orphan (Decision 64), and
-    // releasing it would let the next batch commit a partial reply.
+    // A turn that ended without finalizing or discarding: releasing the path outright would let
+    // the next batch commit a partial reply.
     await releaseStreaming([rel]);
     expect(errors.mock.calls.flat().join("\n")).toContain(`${rel} still says streaming after its turn ended`);
 
@@ -139,16 +168,34 @@ describe("the in-flight registry's lifetime", () => {
     expect(committed()).not.toContain(`data/${rel}`);
   });
 
-  it("drops an entry nothing released once its file stops streaming, and says so", async () => {
+  it("lets a batch take an orphan over, commits it, and clears the entry", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const rel = await stream();
+    await releaseStreaming([rel]);
+    expect(await commitExclusions([], undefined)).toContain(rel);
+
+    // Nobody owns an orphan, so a batch that declares it — the sweep, or deleting the conversation —
+    // is repairing it rather than contesting it.
+    await finish(rel, "repaired", undefined);
+    expect(committed()).toContain(`data/${rel}`);
+    // By path rather than by count: an earlier case's orphan, whose file the reset removed, is
+    // dropped by the same batch, and that is correct too.
+    expect(await commitExclusions([], undefined)).not.toContain(rel);
+    expect(errors.mock.calls.flat().join("\n")).toContain(`${rel} was left streaming by a turn that ended`);
+  });
+
+  it("drops an entry whose file stopped streaming with nothing releasing it, and says so", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined); // the hand edit is undeclared, on purpose
     const rel = await stream();
-    await finalize(rel, "done"); // …and nobody calls releaseStreaming
     const held = streamingPaths();
 
-    // Now the path is stale. Without the check it would be excluded from every later commit, so an
-    // edit to that file would never be committed and nothing would say why.
-    await writeFile(path.join(DATA, rel), (await readFile(path.join(DATA, rel), "utf8")).replace("done", "edited"));
+    // Changed by hand, outside any batch and outside the turn. Without the check the path would be
+    // excluded from every later commit, and this edit would never be committed.
+    await writeFile(
+      path.join(DATA, rel),
+      chats.renderMessage({ ...streaming(path.basename(rel, ".md"), "edited"), status: "complete" }),
+    );
     await task("pset 4");
 
     expect(errors.mock.calls.flat().join("\n")).toContain(`${rel} was held as streaming but no longer is`);

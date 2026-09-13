@@ -148,8 +148,8 @@ async function start(input: ChatTurnInput): Promise<Started> {
     { model: input.model ?? conversation.model },
   );
 
-  if (user !== null) await write(input.conversationId, user);
-  await write(input.conversationId, assistant);
+  if (user !== null) await write(input, user);
+  await write(input, assistant);
 
   const tree = buildTree(user === null ? messages : [...messages, user]);
   const path = activePath(tree, user === null ? parentId : user.id);
@@ -166,8 +166,13 @@ async function start(input: ChatTurnInput): Promise<Started> {
   return { conversation, user, assistant, messages: prompt };
 }
 
-const write = (convId: string, message: Message): Promise<void> =>
-  streamingWrite(messagePath(convId, message.id), renderMessage(message));
+/** A streaming write owned by this turn, which is named by its assistant message (in-flight.ts). */
+const write = (input: ChatTurnInput, message: Message): Promise<void> =>
+  streamingWrite(
+    messagePath(input.conversationId, message.id),
+    renderMessage(message),
+    input.assistantMessageId,
+  );
 
 export async function* runChatTurn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
   // Known from the input before `start` writes either file, so a throw anywhere — `start` and
@@ -202,7 +207,7 @@ async function* turn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
     const text = buffers.get(input.assistantMessageId) ?? "";
     if (!force && Date.now() - flushedAt < FLUSH_MS) return;
     flushedAt = Date.now();
-    await write(input.conversationId, { ...started.assistant, text });
+    await write(input, { ...started.assistant, text });
   };
 
   try {

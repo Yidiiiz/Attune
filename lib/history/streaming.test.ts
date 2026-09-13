@@ -45,7 +45,7 @@ function message(over: Partial<Message> = {}): Message {
 
 const refuses = async (rel: string, content: string): Promise<string> => {
   try {
-    await streamingWrite(rel, content);
+    await streamingWrite(rel, content, "a-turn");
   } catch (err) {
     expect(err).toBeInstanceOf(StoreError);
     return (err as InstanceType<typeof StoreError>).message;
@@ -61,13 +61,13 @@ beforeEach(async () => {
 describe("streamingWrite", () => {
   it("writes a streaming message, and writes it whole", async () => {
     const content = renderMessage(message());
-    await streamingWrite(REL, content);
+    await streamingWrite(REL, content, "a-turn");
     expect(await readFile(path.join(DATA, REL), "utf8")).toBe(content);
   });
 
   it("keeps writing as the text grows, which is the case it exists for", async () => {
-    await streamingWrite(REL, renderMessage(message()));
-    await streamingWrite(REL, renderMessage(message({ text: "The change of basis matrix" })));
+    await streamingWrite(REL, renderMessage(message()), "a-turn");
+    await streamingWrite(REL, renderMessage(message({ text: "The change of basis matrix" })), "a-turn");
     expect(await readFile(path.join(DATA, REL), "utf8")).toContain("The change of basis matrix");
   });
 
@@ -98,6 +98,18 @@ describe("streamingWrite", () => {
       `chats/../tasks/${ID}.md`,
     ]) {
       expect(await refuses(rel, content)).toContain("streaming write path exists only for");
+    }
+  });
+
+  it("refuses a second turn writing a file another turn is streaming into", async () => {
+    const rel = `chats/c_20260907_9f1c/messages/${uuidv7()}.md`;
+    await streamingWrite(rel, renderMessage(message()), "turn-a");
+    try {
+      await streamingWrite(rel, renderMessage(message()), "turn-b");
+      throw new Error("a second turn was allowed to write a held file");
+    } catch (err) {
+      expect(err).toBeInstanceOf(StoreError);
+      expect((err as Error).message).toContain("already being streamed by turn turn-a");
     }
   });
 

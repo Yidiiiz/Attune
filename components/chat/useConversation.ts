@@ -34,12 +34,21 @@ import { useRouter } from "next/navigation";
 import { uuidv7 } from "@/lib/chat/uuid";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import { useConversationWrites } from "./useConversationWrites";
-import type { Annotation, Conversation, Message } from "@/lib/chat/types";
+import type { Annotation, AutoApplied, Conversation, Message } from "@/lib/chat/types";
+import type { Proposal } from "@/lib/agent/tools";
 
 export interface ConversationState {
   conversation: Conversation;
   messages: Message[];
   annotations: Annotation[];
+  /** §6.3's auto-applied writes still in effect, read from the log (`lib/history/auto-applied.ts`). */
+  applied: AutoApplied[];
+}
+
+/** What a turn hands back besides text: the proposals for the tray, and the write that applied itself. */
+export interface TurnListeners {
+  onProposal?: (proposal: Proposal) => void;
+  onApplied?: (applied: AutoApplied) => void;
 }
 
 /** What a send needs beyond the text: absent for an ordinary send at the current leaf. */
@@ -67,12 +76,15 @@ const draft = (id: string, parentId: string | null, role: Message["role"], text:
   text,
 });
 
-export function useConversation(initial: ConversationState) {
+export function useConversation(initial: ConversationState, listeners: TurnListeners = {}) {
   const router = useRouter();
   const [state, setState] = useState(initial);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
+  // Read at event time, so a listener that closes over fresh state never makes `send` stale.
+  const listen = useRef(listeners);
+  listen.current = listeners;
 
   // `initial` seeds this state once and is never adopted again (Decision 69). Opening another
   // conversation is a remount, not an update: `app/chat/page.tsx` keys `ChatView` by conversation
@@ -159,6 +171,7 @@ export function useConversation(initial: ConversationState) {
       abort.current = controller;
       let failure: { message: string; code: string } | null = null;
       let delivered = "";
+      let applied: AutoApplied | null = null;
 
       try {
         const response = await fetch(`/api/chats/${conversationId}/messages`, {
@@ -204,6 +217,11 @@ export function useConversation(initial: ConversationState) {
                 }));
               } else if (event.type === "error") {
                 failure = { message: event.message, code: event.code };
+              } else if (event.type === "proposal") {
+                listen.current.onProposal?.(event.proposal);
+              } else if (event.type === "applied") {
+                applied = event.applied;
+                listen.current.onApplied?.(event.applied);
               }
             }
           }
@@ -220,7 +238,15 @@ export function useConversation(initial: ConversationState) {
       }
 
       if (controller.signal.aborted) await settle(conversationId, assistantMessageId);
-      else await reload(conversationId);
+      else {
+        const next = await reload(conversationId);
+        // The marker is the record of a write nobody pressed a button for; the server was just seen
+        // making it, so a re-read without it is the silent absence the marker exists to prevent.
+        const batch = applied?.batch;
+        if (batch !== undefined && next !== null && !next.applied.some((one) => one.batch === batch)) {
+          console.warn(`chat: ${batch} applied itself during this turn and has no marker in the transcript`);
+        }
+      }
       // The panel is server-rendered, and a first send names the conversation: without this the
       // list still says "New conversation" until the next navigation.
       router.refresh();

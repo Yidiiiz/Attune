@@ -1,7 +1,8 @@
 // Owns: the Chat tab (PROJECT.md §10.2, §16). A route-level server file, so it reads the store
 // directly under §3's read exemption; everything it changes, it changes through an API route.
 //
-// `?c=<id>` is the whole of its navigation state. Opening a conversation is a link, which means the
+// `?c=<id>` is the whole of its navigation state, plus a one-shot `&distill=1` from the Chats menu
+// that `ChatView` consumes and removes (Decision 18). Opening a conversation is a link, which means the
 // browser's Back button works, a conversation is shareable as a URL, and the client never has to
 // keep a list in sync with a selection — the server re-reads both on every navigation.
 //
@@ -13,6 +14,7 @@
 // message costs that message and the rest of the conversation still opens (§5).
 
 import { listConversations, readConversation } from "@/lib/store/chats";
+import { autoAppliedIn } from "@/lib/history/auto-applied";
 import { readSettings } from "@/lib/store/settings";
 import { addDays, todayIn } from "@/lib/schedule/dates";
 import { isScripted } from "@/lib/agent/scripted";
@@ -28,7 +30,8 @@ export const dynamic = "force-dynamic";
 type Search = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function Page({ searchParams }: Search) {
-  const asked = (await searchParams).c;
+  const query = await searchParams;
+  const asked = query.c;
   const settings = await readSettings();
   const today = todayIn(settings.timezone);
   const conversations = await listConversations();
@@ -36,7 +39,7 @@ export default async function Page({ searchParams }: Search) {
   let open: ConversationState | null = null;
   if (typeof asked === "string") {
     try {
-      open = await readConversation(asked);
+      open = { ...(await readConversation(asked)), applied: await autoAppliedIn(asked) };
     } catch {
       open = null; // a link to a conversation that has been deleted lands on the empty state
     }
@@ -70,6 +73,8 @@ export default async function Page({ searchParams }: Search) {
             initial={open}
             models={MODELS.map((entry) => ({ id: entry.id, label: entry.label }))}
             scripted={isScripted()}
+            categories={settings.categories}
+            distill={query.distill === "1"}
           />
         )}
       </main>

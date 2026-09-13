@@ -105,3 +105,18 @@ export interface Annotation extends AnnotationFields {
   /** The annotation's own text. */
   text: string;
 }
+
+/**
+ * §6.3's record of a knowledge write that applied itself during a turn, as the transcript shows it
+ * under the reply that made it. Not a file: it is read from the action log by
+ * `lib/history/auto-applied.ts`, and lives here so a component can know its shape without importing
+ * `lib/history/` (§3).
+ */
+export interface AutoApplied {
+  batch: string;
+  /** The assistant message the write belongs to. */
+  message: string;
+  path: string;
+  lines: number;
+  summary: string;
+}

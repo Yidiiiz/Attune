@@ -34,6 +34,10 @@ import { groupAnnotations } from "@/lib/chat/annotations";
 import { paneLayout } from "@/lib/chat/pane-layout";
 import { parseQuoteReply } from "@/lib/chat/quotes";
 import { reportFailure, send as post } from "@/components/tasks/writes";
+import { announceApplied } from "@/components/composer/autoApplied";
+import ProposalPanel from "@/components/composer/ProposalPanel";
+import { useProposals } from "@/components/composer/useProposals";
+import AppliedMarker from "./AppliedMarker";
 import MessageRow from "./MessageRow";
 import ChatComposer from "./ChatComposer";
 import ConversationHeader from "./ConversationHeader";
@@ -45,6 +49,7 @@ import QuoteReply from "./QuoteReply";
 import { useAnnotationDraft } from "./useAnnotationDraft";
 import { scrollMessageIntoView, useSidebar } from "./useSidebar";
 import { useConversation } from "./useConversation";
+import { useDistill } from "./useDistill";
 import type { ModelChoice } from "./ConversationHeader";
 import type { ConversationState } from "./useConversation";
 import type { Message } from "@/lib/chat/types";
@@ -56,12 +61,24 @@ export interface ChatViewProps {
   models: ModelChoice[];
   /** True while `ATTUNE_FAKE_PROVIDER` is answering, so the page says so rather than looking odd. */
   scripted: boolean;
+  /** From settings, for the category select on a proposed task's card. */
+  categories: string[];
+  /** Opened by the Chats menu's "Distill to knowledge" (`?distill=1`). */
+  distill: boolean;
 }
 
-export default function ChatView({ initial, models, scripted }: ChatViewProps) {
+export default function ChatView({ initial, models, scripted, categories, distill }: ChatViewProps) {
   const router = useRouter();
+  const id = initial.conversation.id;
+  // §9.5's tray and §6.3's toast: where a turn's proposals and its auto-applied write go. The toast's
+  // Undo re-reads, and the marker leaves with the batch because the log says it is undone.
+  const tray = useProposals({ source: `chat:${id}` });
   const { state, streamingId, error, setError, send, stop, reload, switchTo, setModel } =
-    useConversation(initial);
+    useConversation(initial, {
+      onProposal: tray.receive,
+      onApplied: (applied) => announceApplied(applied, () => void reload(id)),
+    });
+  const distilling = useDistill(id, distill, tray);
   const bottom = useRef<HTMLDivElement | null>(null);
 
   // Callback refs rather than `useRef`: the sidebar hook needs to *re-run* when an element arrives,
@@ -209,6 +226,11 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
                 {...(message.role === "assistant" && message.status === "complete"
                   ? { onBranch: branch }
                   : {})}
+                applied={state.applied
+                  .filter((one) => one.message === message.id)
+                  .map((one) => (
+                    <AppliedMarker key={one.batch} applied={one} onUndone={() => void reload(id)} />
+                  ))}
               />
             ))
           )}
@@ -222,6 +244,7 @@ export default function ChatView({ initial, models, scripted }: ChatViewProps) {
           error={error}
           onDismissError={() => setError(null)}
           onError={setError}
+          tray={<ProposalPanel tray={tray} categories={categories} status={distilling} />}
         />
       </section>
 

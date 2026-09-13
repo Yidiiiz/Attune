@@ -18,9 +18,12 @@ import type { Attachment } from "./Attachments";
 import { DRAFT_KEY } from "./draft";
 import type { Mode } from "./draft";
 import AskPanel from "./AskPanel";
+import { announceApplied } from "./autoApplied";
 import { useAskTurn } from "./useAskTurn";
 import ModeSelector from "./ModeSelector";
 import PreviewPanel from "./PreviewPanel";
+import ProposalPanel from "./ProposalPanel";
+import { useProposals } from "./useProposals";
 import { useComposerTurn } from "./useComposerTurn";
 import VoiceButton from "./VoiceButton";
 import styles from "./Composer.module.css";
@@ -57,7 +60,17 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     onClose();
   }, [router, onClose]);
 
-  const askTurn = useAskTurn();
+  // §9.6: what an Ask turn proposes lands in this sheet's tray, and the write that applied itself
+  // gets the same toast and Undo it gets in the Chat tab. `tray` is read when an event arrives,
+  // after this render has declared it.
+  const askTurn = useAskTurn({
+    onProposal: (proposal) => tray.receive(proposal),
+    onApplied: (applied) => announceApplied(applied, () => router.refresh()),
+  });
+  const tray = useProposals({
+    source: askTurn.conversationId === null ? null : `chat:${askTurn.conversationId}`,
+    onAdded: () => router.refresh(),
+  });
 
   const turn = useComposerTurn({
     ...(viewDate === undefined ? {} : { viewDate }),
@@ -172,6 +185,8 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           onStop={askTurn.stop}
         />
 
+        <ProposalPanel tray={tray} categories={categories} />
+
         {turn.result === null ? null : (
           <PreviewPanel
             result={turn.result}
@@ -182,6 +197,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             onChangeDraft={turn.editDraft}
             onSelect={turn.pick}
             onAdd={() => void turn.add()}
+            onAddCollection={() => void turn.addCollection()}
             onDiscard={turn.discard}
           />
         )}

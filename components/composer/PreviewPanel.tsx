@@ -2,9 +2,8 @@
 // and 6). It renders one of the three answers §9.4 defines and nothing else; the sheet owns the
 // textarea, the request, and the follow-up that revises what is shown here.
 //
-// The collection card renders with its Add disabled. `/api/agent/apply` accepts collections since
-// Phase 7's Stage A; the button is wired in Stage B, with the rest of the proposal surfaces, and
-// until then it says why it is off rather than posting from a card nothing else has been built for.
+// The collection card is `CollectionCard`, shared with the proposal tray (`ProposalPanel`), so a
+// collection proposal looks and adds the same whether an extraction or a chat turn produced it.
 //
 // Failure behavior: this component reports, it does not write. Add hands the selected drafts to the
 // sheet, which owns the request and where its failure is shown — a refusal has to leave every card
@@ -14,6 +13,7 @@
 
 import type { ExtractResult } from "@/lib/agent/chat";
 import type { ModelTaskDraft } from "@/lib/agent/tools";
+import CollectionCard from "./CollectionCard";
 import TaskCard from "./TaskCard";
 import styles from "./Composer.module.css";
 
@@ -27,6 +27,7 @@ export interface PreviewPanelProps {
   onChangeDraft: (index: number, next: ModelTaskDraft) => void;
   onSelect: (index: number, selected: boolean) => void;
   onAdd: () => void;
+  onAddCollection: () => void;
   onDiscard: () => void;
 }
 
@@ -39,6 +40,7 @@ export default function PreviewPanel({
   onChangeDraft,
   onSelect,
   onAdd,
+  onAddCollection,
   onDiscard,
 }: PreviewPanelProps) {
   // §9.5 step 2: a question is shown as a message, and the textarea below becomes the answer box.
@@ -53,34 +55,19 @@ export default function PreviewPanel({
     );
   }
 
-  // §9.5 step 6, as far as Phase 5 goes: the target and the items, with Add off until Phase 7.
+  // §9.5 step 6: the target and the items. A refusal is the sheet's to show, like the tasks' Add.
   if (result.kind === "collection") {
     return (
       <div className={styles.preview}>
-        <div className={styles.collection} data-preview="collection">
-          <span className={styles.collectionName}>
-            {result.collection.startsWith("new:")
-              ? `New collection: ${result.collection.slice(4)}`
-              : result.collection}
-          </span>
-          <ul className={styles.items}>
-            {result.items.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        {result.note === undefined ? null : <p className={styles.note}>{result.note}</p>}
-        <div className={styles.actions}>
-          <span className={styles.count}>
-            {result.items.length} item{result.items.length === 1 ? "" : "s"}
-          </span>
-          <button type="button" className={styles.primary} disabled title="Collections arrive in Phase 7.">
-            Add
-          </button>
-          <button type="button" className={styles.secondary} onClick={onDiscard} disabled={busy}>
-            Discard
-          </button>
-        </div>
+        <CollectionCard
+          collection={result.collection}
+          items={result.items}
+          {...(result.note === undefined ? {} : { note: result.note })}
+          busy={busy}
+          error={null}
+          onAdd={onAddCollection}
+          onDiscard={onDiscard}
+        />
       </div>
     );
   }

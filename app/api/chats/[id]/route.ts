@@ -13,6 +13,7 @@
 import { z } from "zod";
 import { runBatch } from "@/lib/history/batch";
 import { removeConversation, updateConversation } from "@/lib/history/chat-actions";
+import { autoAppliedIn } from "@/lib/history/auto-applied";
 import { readConversation } from "@/lib/store/chats";
 import { modelEntry } from "@/lib/agent/registry";
 import { StoreError } from "@/lib/store/paths";
@@ -33,7 +34,11 @@ const Changes = z.object({
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params): Promise<Response> {
-  return handle(async () => ok(await readConversation((await params).id)));
+  return handle(async () => {
+    const { id } = await params;
+    // The transcript's auto-applied markers come from the log, not the message files (§6.3).
+    return ok({ ...(await readConversation(id)), applied: await autoAppliedIn(id) });
+  });
 }
 
 /** What a change is called in the log, so `chat.update` rows say which of the five it was. */

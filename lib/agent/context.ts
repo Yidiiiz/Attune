@@ -21,6 +21,7 @@ import { listTasks } from "../store/tasks.ts";
 import { readSettings } from "../store/settings.ts";
 import { datePart, nowIso, todayIn } from "../schedule/dates.ts";
 import { modeInstructions } from "./prompts.ts";
+import { overCap } from "./memory.ts";
 import type { Mode } from "./prompts.ts";
 import type { Settings } from "../store/settings.ts";
 import type { Task } from "../store/tasks.ts";
@@ -194,12 +195,16 @@ export async function assembleContext(
     block("Knowledge index", "knowledge/index.md", await readOrEmpty("knowledge/index.md"), true),
   ];
 
+  // §6.3's cap is counted on what the model is sent — the seed's comment header is not the user's.
+  const overCapFiles: string[] = [];
   for (const file of PROFILE_FILES) {
-    system.push(block(file.label, file.rel, await readOrEmpty(file.rel), true));
+    const text = await readOrEmpty(file.rel);
+    if (overCap(text)) overCapFiles.push(file.rel);
+    system.push(block(file.label, file.rel, text, true));
   }
 
   // The cached prefix ends here. Everything below differs between requests.
-  system.push(block("Instructions", "lib/agent/prompts.ts", modeInstructions(input.mode)));
+  system.push(block("Instructions", "lib/agent/prompts.ts", modeInstructions(input.mode, overCapFiles)));
   system.push(block("Current time", "settings/settings.json", currentTime(settings, at)));
 
   const referencedIds = input.taskIds ?? [];

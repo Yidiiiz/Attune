@@ -511,6 +511,47 @@
   line-height: 1.6;
 }
 
+.collectionProposal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---- the proposal tray (§9.5, §9.6, §6.3): the chat tab's, above its composer, and Ask mode's ---- */
+
+.tray {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.trayItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.knowledgeHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.op {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.path {
+  font-size: 12px;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
 /* ---- Ask mode (§9.6): the reply streams here, in the sheet, before it is opened in Chat. ---- */
 
 .askPanel {

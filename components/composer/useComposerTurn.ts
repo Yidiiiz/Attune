@@ -42,6 +42,7 @@ export interface Turn {
   /** Send a prompt, or a follow-up when a preview is already open. True when it landed. */
   send: (text: string) => Promise<boolean>;
   add: () => Promise<void>;
+  addCollection: () => Promise<void>;
   discard: () => void;
   editDraft: (index: number, next: ModelTaskDraft) => void;
   pick: (index: number, selected: boolean) => void;
@@ -139,6 +140,31 @@ export function useComposerTurn({ viewDate, askingAbout, links, onAdded }: TurnI
     onAdded();
   }
 
+  /** §9.5 step 6: the collection as the preview shows it, one batch through the apply route. */
+  async function addCollection(): Promise<void> {
+    if (result?.kind !== "collection" || busy !== "idle") return;
+    setError(null);
+    setBusy("adding");
+
+    const answer = await send("/api/agent/apply", {
+      method: "POST",
+      body: JSON.stringify({
+        proposal: { kind: "collection", collection: result.collection, items: result.items },
+        prompt: asked,
+        actor: "agent",
+      }),
+    });
+    setBusy("idle");
+
+    if (answer.error !== null) {
+      route(answer, "Could not add to that collection");
+      return;
+    }
+
+    clear();
+    onAdded();
+  }
+
   function discard(): void {
     // §9.5 step 5: nothing reached disk, so there is nothing to undo and nothing is logged. A log
     // type that exists for one button is clutter; this is the deliberate deviation recorded there.
@@ -156,6 +182,7 @@ export function useComposerTurn({ viewDate, askingAbout, links, onAdded }: TurnI
     setError,
     send: sendPrompt,
     add,
+    addCollection,
     discard,
     editDraft: (index, next) =>
       setDrafts((current) => current.map((item, at) => (at === index ? next : item))),

@@ -397,6 +397,33 @@
   cursor: pointer;
 }
 
+/* §6.3's record of a write that applied itself: quiet, but on the reply that made it. */
+.applied {
+  margin: 6px 0 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--fg-muted);
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.appliedError {
+  color: var(--danger);
+}
+
+/* The chat tab's proposal tray sits in the composer's bar, above the box it came from. */
+.tray {
+  margin-bottom: 10px;
+}
+
+.tray:empty {
+  display: none;
+}
+
 /* ---- branching: the bar, the row menu's anchor, and the inline editor (§16.2) ---- */
 
 /* The controls sit above the body and take no height of their own when there is nothing to show,

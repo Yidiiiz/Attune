@@ -74,6 +74,86 @@ const DIRECTIVES = {
   tool: "[[tool]]",
 } as const;
 
+/**
+ * The proposal directives (Phase 7). Each makes the first pass one tool round calling a collector
+ * with a fixed input, then answers as usual — so the whole proposal path, `filterWrites` and §6.3's
+ * auto-apply included, runs on the real route with no model. Several in one prompt are one round
+ * with several calls, which is how a check gets an auto-applied write and a card from one turn.
+ * They are the only coverage the Phase 7 prompts get until a key exists (docs/CHECKLIST.md).
+ */
+const PROPOSALS: Array<{ directive: string; name: string; input: unknown }> = [
+  {
+    // Two lines to habits.md: §6.3's auto-apply case.
+    directive: "[[propose-habit]]",
+    name: "propose_knowledge_write",
+    input: {
+      writes: [{
+        path: "knowledge/profile/habits.md",
+        op: "append",
+        content: "- Works in 50-minute blocks with a 10-minute break\n- Plans the next day the evening before",
+        reason: "said twice this week",
+        mapLink: null,
+      }],
+    },
+  },
+  {
+    directive: "[[propose-note]]",
+    name: "propose_knowledge_write",
+    input: {
+      writes: [{
+        path: "knowledge/notes/zotero-setup.md",
+        op: "create",
+        content: "# Zotero setup\n\nBetter BibTeX exports the library to the thesis folder on every change.",
+        reason: "how the reference manager is wired",
+        mapLink: "knowledge/maps/tools.md",
+      }],
+    },
+  },
+  {
+    // §6.3's refusal: a new note no map links to. `runBatch` refuses it when Add is pressed.
+    directive: "[[propose-note-nomap]]",
+    name: "propose_knowledge_write",
+    input: {
+      writes: [{
+        path: "knowledge/notes/loose-end.md",
+        op: "create",
+        content: "# Loose end\n\nA note that belongs to no map.",
+        reason: "testing the map rule",
+        mapLink: null,
+      }],
+    },
+  },
+  {
+    directive: "[[propose-collection]]",
+    name: "propose_collection_append",
+    input: { collection: "new:Films to watch", items: ["Stalker", "Paris, Texas"] },
+  },
+  {
+    // Not in the Stage A plan's four: §9.6's Ask-mode task proposals needed one to be checkable.
+    directive: "[[propose-tasks]]",
+    name: "propose_tasks",
+    input: {
+      items: [{
+        title: "Return the library books",
+        body: "",
+        status: "todo",
+        priority: 3,
+        estimateMin: 15,
+        due: null,
+        scheduled: null,
+        category: null,
+        context: null,
+        tags: [],
+        links: [],
+        repeat: null,
+        repeatUntil: null,
+        collection: null,
+        inferred: ["estimateMin"],
+      }],
+    },
+  },
+];
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Prompts `[[fail-once]]` has already failed for, so the retry after one succeeds. */
@@ -126,6 +206,16 @@ export async function* streamChat(req: ChatRequest, signal: AbortSignal): AsyncI
   if (has(DIRECTIVES.tool) && !answeredTool && req.tools.some((tool) => tool.name === "list_tasks")) {
     yield { type: "text", text: "Let me look at your tasks first.\n\n" };
     yield { type: "tool_use", id: "toolu_scripted_1", name: "list_tasks", input: { from: "", to: "" } };
+    yield { type: "stop", stopReason: "tool_use" };
+    return;
+  }
+
+  const proposing = PROPOSALS.filter((one) => has(one.directive) && req.tools.some((tool) => tool.name === one.name));
+  if (proposing.length > 0 && !answeredTool) {
+    yield { type: "text", text: "Noting that.\n\n" };
+    for (const [n, one] of proposing.entries()) {
+      yield { type: "tool_use", id: `toolu_scripted_p${n + 1}`, name: one.name, input: one.input };
+    }
     yield { type: "stop", stopReason: "tool_use" };
     return;
   }

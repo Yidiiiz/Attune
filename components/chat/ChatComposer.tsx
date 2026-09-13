@@ -22,6 +22,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import Attachments, { AttachButton } from "@/components/composer/Attachments";
 import type { Attachment } from "@/components/composer/Attachments";
 import styles from "./Chat.module.css";
@@ -36,6 +37,8 @@ export interface ChatComposerProps {
   /** An upload that did not stick. It has an on-screen origin, so it shows inline (§13.5). */
   onError: (message: string) => void;
   placeholder?: string;
+  /** The conversation's proposal tray (§9.5), drawn in this bar above the box its turns came from. */
+  tray?: ReactNode;
 }
 
 const MAX_ROWS = 10;
@@ -48,6 +51,7 @@ export default function ChatComposer({
   onDismissError,
   onError,
   placeholder,
+  tray,
 }: ChatComposerProps) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,6 +89,8 @@ export default function ChatComposer({
 
   return (
     <div className={styles.composer} data-ui="composer">
+      <div className={styles.tray}>{tray}</div>
+
       {error === null ? null : (
         <p className={styles.composerError} data-ui="error" role="status">
           {error}

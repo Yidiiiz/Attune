@@ -24,6 +24,7 @@ process.env.ATTUNE_REPO_DIR = SANDBOX;
 const { assembleContext, currentTime, estimateTokens, stableSettings } = await import("./context.ts");
 const { defaultSettings } = await import("../store/settings.ts");
 const { invalidateTaskCache } = await import("../store/tasks.ts");
+const { HEURISTIC } = await import("./memory.ts");
 
 const AT = new Date("2026-09-06T18:30:00Z");
 
@@ -229,6 +230,37 @@ describe("the blocks that depend on what the caller is looking at", () => {
 
     expect(instructions(asked.system)).not.toBe(instructions(tasks.system));
     expect(instructions(tasks.system)).toContain("read Dune");
+  });
+});
+
+describe("what Ask is told about remembering (§6.3, §6.4)", () => {
+  const instructions = async (mode: "ask" | "tasks") =>
+    (await assembleContext({ mode }, AT)).system.find((block) => block.label === "Instructions");
+  const habits = (lines: number) =>
+    writeFile(path.join(DATA, "knowledge/profile/habits.md"), Array.from({ length: lines }, (_, n) => `- habit ${n}`).join("\n"));
+
+  it("carries §6.4's heuristic word for word, and the search before a new note", async () => {
+    await seedData();
+    const text = (await instructions("ask"))?.text ?? "";
+    expect(text).toContain(HEURISTIC);
+    expect(text).toMatch(/Before proposing a new note, call search_knowledge/);
+  });
+
+  it("asks for a distillation of a profile file over 150 lines, behind the cache breakpoint", async () => {
+    await seedData();
+    await habits(151);
+    const block = await instructions("ask");
+    expect(block?.text).toMatch(/over 150 lines: knowledge\/profile\/habits\.md/);
+    // Decision 59: a line that comes and goes with a file's length stays out of the cached prefix.
+    expect(block?.cache).toBeUndefined();
+    // Tasks mode has no tools to propose with, so it is not asked.
+    expect((await instructions("tasks"))?.text).not.toMatch(/over 150 lines/);
+  });
+
+  it("says nothing about distilling at the cap", async () => {
+    await seedData();
+    await habits(150);
+    expect((await instructions("ask"))?.text).not.toMatch(/over 150 lines/);
   });
 });
 

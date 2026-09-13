@@ -5,6 +5,11 @@
 // Failure behavior: nothing here can fail — these are constants. The risk they carry is different
 // in kind: a prompt that drifts from the spec changes what the app does without changing any code
 // path, so each block below cites the section it implements and says nothing the spec does not.
+//
+// §6.4's heuristic is the one block not written here: it is `memory.ts`'s, word for word, because
+// that file is where what happens to a proposal is decided and the two must not drift apart.
+
+import { HEURISTIC } from "./memory.ts";
 
 /** §6.2 step 2, verbatim in intent: how the model should use the two knowledge-reading tools. */
 const RETRIEVAL = `Reading the knowledge base:
@@ -47,6 +52,15 @@ Answer with exactly one of three kinds:
 When a follow-up revises a previous draft, return the whole revised list, not only what changed.
 Leave every field the follow-up did not mention exactly as it was.`;
 
+/** §6.3 and §6.4: what is worth a knowledge proposal, and the search that comes before a new note. */
+const MEMORY = `Proposing knowledge writes:
+${HEURISTIC}
+- Before proposing a new note, call search_knowledge for its topic. If a note already covers it,
+  propose an append to that note instead of a second one.
+- A new note names the map that will link to it in mapLink, a path under knowledge/maps/.
+- A short append to knowledge/profile/habits.md or preferences.md — three lines or fewer — is
+  applied without a card and the user is told; everything else waits for the user to approve it.`;
+
 const ASK = `You answer the user's question about their own tasks, notes and schedule.
 
 ${RETRIEVAL}
@@ -55,7 +69,32 @@ Prefer answering to proposing. You have tools that collect proposals — tasks, 
 collection appends — and they are for things the user would otherwise have to write down again
 themselves. A proposal the user did not ask for is work you have handed back to them.
 
+${MEMORY}
+
 ${SCOPE}`;
+
+/**
+ * §6.3's last rule: a profile file over its cap makes this turn propose distilling it. Per request,
+ * so it sits in the Instructions block behind the cache breakpoint, never in the cached prefix
+ * (Decision 59): a line that comes and goes with a file's length would invalidate the cache.
+ */
+const distill = (files: string[]): string =>
+  `These profile files are over 150 lines: ${files.join(", ")}. In this turn, propose one ` +
+  "knowledge write per file that replaces it with a shorter version, and propose notes for the " +
+  "detail that moves out of it. Answer the user's question as well; this is in addition to it.";
+
+/** §4.6 and Decision 18: a session summary, made only when the user asks for one. */
+export const DISTILL = `You write a session summary of the conversation you are given, for the user's
+knowledge base. It is read later, by the user and by you, to recall what was worked out without
+re-reading the whole conversation.
+
+- Lead with what was decided or learned, then what is still open.
+- Keep names, numbers, paths and dates exactly as they were said.
+- Leave out greetings, false starts, and anything only the moment needed.
+- Plain markdown, no frontmatter, no title line: the app adds both. Under 200 words.`;
+
+/** The last user turn of a distill request, after the conversation itself. */
+export const DISTILL_REQUEST = "Write the session summary of the conversation above.";
 
 const BUILD = `Build mode runs through the Agent SDK and is not assembled here (§13.4, Phase 9).`;
 const SCHEDULE = `Schedule mode proposes times for a day's tasks (§10.1). Not built yet.`;
@@ -71,7 +110,10 @@ const BY_MODE: Record<Mode, string> = {
   theme: THEME,
 };
 
-/** The mode instructions block §13.1 puts fourth, after the profile and before the view. */
-export function modeInstructions(mode: Mode): string {
-  return BY_MODE[mode];
+/**
+ * The mode instructions block §13.1 puts fourth, after the profile and before the view. `overCap`
+ * names the profile files past §6.3's cap; only Ask can act on it, since only Ask has the tools.
+ */
+export function modeInstructions(mode: Mode, overCap: string[] = []): string {
+  return mode === "ask" && overCap.length > 0 ? `${BY_MODE[mode]}\n\n${distill(overCap)}` : BY_MODE[mode];
 }

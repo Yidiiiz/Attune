@@ -147,13 +147,16 @@ export function filterWrites(writes: KnowledgeWrite[], notes: ExistingNote[]): P
 
 const lines = (text: string): string[] => text.split("\n").filter((line) => line.trim().length > 0);
 
+/** The non-empty lines a write adds — what the three-line limit counts, and what a marker says. */
+export const addedLines = (write: KnowledgeWrite): number => lines(write.content).length;
+
 /**
  * Whether a write may skip the card (§6.3): unchanged by `filterWrites`, an append, to habits or
  * preferences, of one to three non-empty lines. The one-per-turn cap is `pickAutoApply`'s.
  */
 export function autoApplicable(write: ProposedWrite): boolean {
   if (write.rewritten !== undefined || write.op !== "append" || !AUTO_APPLY_FILES.has(write.path)) return false;
-  const added = lines(write.content).length;
+  const added = addedLines(write);
   return added > 0 && added <= AUTO_APPLY_LINES;
 }
 

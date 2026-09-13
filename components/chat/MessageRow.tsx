@@ -46,6 +46,8 @@ export interface MessageRowProps {
   quoteBar?: ReactNode;
   /** The gutter's "annotate this selection" hook, absent when no gutter is drawn. */
   onAnnotate?: (message: Message) => void;
+  /** §6.3's markers for writes this reply's turn applied by itself, rendered by the caller. */
+  applied?: ReactNode;
 }
 
 /** §16.3's reason, in the words a person would use. */
@@ -66,6 +68,7 @@ export default function MessageRow({
   onDelete,
   quoteBar,
   onAnnotate,
+  applied,
 }: MessageRowProps) {
   const [editing, setEditing] = useState<"edit" | "branch" | null>(null);
   const unfinished = message.status === "failed" || (message.status === "streaming" && !streaming);
@@ -154,6 +157,8 @@ export default function MessageRow({
           {message.model}
         </p>
       ) : null}
+
+      {applied}
 
       {editing === "branch" && onBranch !== undefined ? (
         <MessageEditor

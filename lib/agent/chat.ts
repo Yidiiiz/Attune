@@ -26,6 +26,7 @@ import { executeTool, ModelTaskDraft, toolsFor } from "./tools.ts";
 import type { ContentPart, Effort, Provider, ProviderMessage } from "./registry.ts";
 import type { ContextBlock } from "./context.ts";
 import type { Proposal, ToolOutcome } from "./tools.ts";
+import type { AutoApplied } from "../history/auto-applied.ts";
 
 /** §13.2. `max_tokens` for a turn; the same number for both shapes. */
 const MAX_TOKENS = 64000;
@@ -37,6 +38,8 @@ export type TurnEvent =
   | { type: "delta"; text: string }
   | { type: "tool"; name: string; input: unknown }
   | { type: "proposal"; proposal: Proposal }
+  // Sent by `runChatTurn` only, after the turn is finalized: the one write §6.3 lets apply itself.
+  | { type: "applied"; applied: AutoApplied }
   | { type: "done"; stopReason: string }
   // §13.2 spells this `{ type: "error"; message: string }`. The code is added, not substituted:
   // §13.5 decides between a toast and an inline message from *what kind* of error it was, and a

@@ -6,9 +6,9 @@
 // server. Doing the arithmetic on the server's clock rather than the browser's keeps the headings
 // honest for someone whose machine is in a different timezone from their settings (§4.9).
 //
-// **Distill to knowledge is present and disabled**, naming Phase 7. §10.2 lists it in this menu and
-// it writes a session summary, which needs `lib/store/knowledge.ts`; a menu that quietly omits it
-// would leave the next phase to rediscover that it belongs here.
+// **Distill to knowledge opens the conversation and asks for its summary there** (`?distill=1`),
+// rather than requesting it from this menu: the summary is a proposal, and the conversation's own
+// tray is where a proposal is shown, edited and added. Nothing is written until that Add (Decision 18).
 //
 // Failure behavior: every action goes through an API route and reports through §13.5's rule — a
 // rename is an edit with an on-screen origin, so a refusal lands in the field; pin and delete come
@@ -196,7 +196,14 @@ export default function ChatsPanel(props: ChatsPanelProps) {
                         <button type="button" onClick={() => void remove(conversation.id, title)}>
                           Delete
                         </button>
-                        <button type="button" disabled title="Distilling to knowledge arrives in Phase 7.">
+                        <button
+                          type="button"
+                          data-ui="distill"
+                          onClick={() => {
+                            setMenuFor(null);
+                            router.push(`/chat?c=${conversation.id}&distill=1`);
+                          }}
+                        >
                           Distill to knowledge
                         </button>
                       </div>

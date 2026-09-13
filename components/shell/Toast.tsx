@@ -19,6 +19,11 @@ export interface ToastSpec {
   id: string;
   text: string;
   tone?: "info" | "error";
+  /**
+   * One button beside the text — §6.3's Undo on an auto-applied write is the first. Pressing it
+   * dismisses the toast; whatever it reports afterwards is the caller's to show.
+   */
+  action?: { label: string; run: () => void };
 }
 
 type Listener = (toast: ToastSpec) => void;
@@ -59,6 +64,19 @@ export default function ToastHost() {
           onAnimationEnd={() => dismiss(toast.id)}
         >
           <span className={styles.text}>{toast.text}</span>
+          {toast.action === undefined ? null : (
+            <button
+              type="button"
+              className={styles.action}
+              data-ui="toast-action"
+              onClick={() => {
+                dismiss(toast.id);
+                toast.action?.run();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
           <button type="button" className={styles.close} onClick={() => dismiss(toast.id)} aria-label="Dismiss">
             ×
           </button>

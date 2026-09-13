@@ -23,7 +23,7 @@
 import { useCallback, useRef, useState } from "react";
 import { uuidv7 } from "@/lib/chat/uuid";
 import { reportFailure, send as post } from "@/components/tasks/writes";
-import type { ModelTaskDraft } from "@/lib/agent/tools";
+import type { TurnListeners } from "@/components/chat/useConversation";
 
 /** taskId → conversation, for this page's lifetime only. */
 const started = new Map<string, string>();
@@ -32,23 +32,25 @@ export interface AskTurn {
   conversationId: string | null;
   reply: string;
   streaming: boolean;
-  /** Task drafts the model proposed during the turn, for the preview panel (§9.6). */
-  proposed: ModelTaskDraft[];
   ask: (text: string, taskIds: string[]) => Promise<string | null>;
   stop: () => void;
   reset: () => void;
 }
 
-export function useAskTurn(): AskTurn {
+/**
+ * Proposals and the auto-applied write go to `listeners` as they arrive — the sheet hands them to
+ * its tray and its toast (§9.6), the same two places the chat tab sends its own.
+ */
+export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [proposed, setProposed] = useState<ModelTaskDraft[]>([]);
   const abort = useRef<AbortController | null>(null);
+  const listen = useRef(listeners);
+  listen.current = listeners;
 
   const reset = useCallback(() => {
     setReply("");
-    setProposed([]);
   }, []);
 
   const ask = useCallback(
@@ -70,7 +72,6 @@ export function useAskTurn(): AskTurn {
       }
       setConversationId(id);
       setReply("");
-      setProposed([]);
       setStreaming(true);
 
       const controller = new AbortController();
@@ -110,8 +111,10 @@ export function useAskTurn(): AskTurn {
               if (event.type === "delta") {
                 delivered += event.text;
                 setReply(delivered);
-              } else if (event.type === "proposal" && event.proposal?.kind === "tasks") {
-                setProposed(event.proposal.items as ModelTaskDraft[]);
+              } else if (event.type === "proposal") {
+                listen.current.onProposal?.(event.proposal);
+              } else if (event.type === "applied") {
+                listen.current.onApplied?.(event.applied);
               } else if (event.type === "error") {
                 failure = { message: event.message, code: event.code };
               }
@@ -137,5 +140,5 @@ export function useAskTurn(): AskTurn {
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
-  return { conversationId, reply, streaming, proposed, ask, stop, reset };
+  return { conversationId, reply, streaming, ask, stop, reset };
 }

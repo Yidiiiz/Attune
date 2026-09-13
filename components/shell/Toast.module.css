@@ -24,6 +24,12 @@
   animation: life 7s ease-in-out forwards;
 }
 
+/* A toast with a button in it has to hold still while someone reaches for the button. */
+.toast:hover,
+.toast:focus-within {
+  animation-play-state: paused;
+}
+
 .error {
   border-color: var(--danger);
   background: var(--danger-soft);
@@ -33,6 +39,22 @@
   flex: 1;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.action {
+  flex: none;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.action:hover {
+  text-decoration: underline;
 }
 
 .close {

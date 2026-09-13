@@ -10,6 +10,8 @@
 //   3. End in exactly one place. `finalizeTurn` decides `complete` or `failed` from how the loop
 //      exited and writes both messages, the leaf move and the title as **one** `chat.message`
 //      batch — so one undo removes a whole exchange and one commit covers it (§16.3, §15).
+//   4. Only then, and only for a turn that completed, §6.3's one auto-applied knowledge write, as a
+//      batch of its own (`auto-apply.ts`), so undoing the memory never undoes the reply.
 //
 // **A message on disk that is not in the log is always `status: streaming`.** That is the invariant
 // the `streamingWrite` guard enforces, and it is why the user's message is written `streaming` too
@@ -38,6 +40,8 @@ import type { TurnEvent } from "./chat.ts";
 import { attachmentsFor } from "./attachments.ts";
 import { discard, finalizeTurn } from "./finalize.ts";
 import type { Started } from "./finalize.ts";
+import { autoApply } from "./auto-apply.ts";
+import type { ProposedWrite } from "./memory.ts";
 import type { Effort, ProviderMessage } from "./registry.ts";
 import type { Annotation, Message } from "../chat/types.ts";
 
@@ -202,6 +206,10 @@ async function* turn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
   buffers.set(input.assistantMessageId, "");
   let flushedAt = Date.now();
   let failure: { message: string; code: string } | null = null;
+  // Knowledge proposals wait for the end: which one may apply itself is decided only once the turn
+  // is known to have been kept (§6.3), and a card for a write that then applied itself would be a
+  // card for something already done.
+  const writes: ProposedWrite[] = [];
 
   const flush = async (force: boolean): Promise<void> => {
     const text = buffers.get(input.assistantMessageId) ?? "";
@@ -226,6 +234,9 @@ async function* turn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
         await flush(true); // §8: a tool round is always a flush point
       } else if (event.type === "error") {
         failure = { message: event.message, code: event.code };
+      } else if (event.type === "proposal" && event.proposal.kind === "knowledge") {
+        writes.push(...event.proposal.writes);
+        continue;
       }
       yield event;
     }
@@ -246,6 +257,15 @@ async function* turn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
       text,
       failure === null ? null : { message: failure.code === "aborted" ? "stopped" : failure.message },
     );
+
+    // §6.3, after the turn's own batch and only for a turn that completed. Never throws: a refused
+    // auto-apply comes back as a card among the rest.
+    const { applied, rest } =
+      failure === null
+        ? await autoApply(input.conversationId, input.assistantMessageId, writes)
+        : { applied: null, rest: writes };
+    if (applied !== null) yield { type: "applied", applied };
+    if (rest.length > 0) yield { type: "proposal", proposal: { kind: "knowledge", writes: rest } };
   } catch (err) {
     // A throw from the store or from `runBatch` — a refused credential is the one that happens
     // (§7.1 step 3). The files are already rolled back by `runBatch`; anything still on disk here

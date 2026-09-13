@@ -20,7 +20,7 @@ import { runBatch } from "@/lib/history/batch";
 import { saveAnnotation } from "@/lib/history/chat-actions";
 import { readConversation } from "@/lib/store/chats";
 import { StoreError } from "@/lib/store/paths";
-import { body, handle, ok } from "../../../../respond";
+import { body, handle, ok, parseInput } from "../../../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ function describe(changes: z.infer<typeof Changes>, title: string): string {
 export async function PUT(request: Request, { params }: Params): Promise<Response> {
   return handle(async () => {
     const { id, aid } = await params;
-    const changes = Changes.parse(await body(request));
+    const changes = parseInput(Changes, await body(request));
     const { conversation, annotations } = await readConversation(id);
 
     const existing = annotations.find((annotation) => annotation.id === aid);

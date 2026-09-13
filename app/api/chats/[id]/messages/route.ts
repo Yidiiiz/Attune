@@ -26,7 +26,7 @@ import { z } from "zod";
 import { runChatTurn } from "@/lib/agent/turn";
 import { readConversation } from "@/lib/store/chats";
 import { readSettings } from "@/lib/store/settings";
-import { handle, body as readBody } from "../../../respond";
+import { handle, body as readBody, parseInput } from "../../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function POST(request: Request, { params }: Params): Promise<Response> {
   return handle(async () => {
     const { id } = await params;
-    const input = Send.parse(await readBody(request));
+    const input = parseInput(Send, await readBody(request));
     const settings = await readSettings();
 
     // Read once before streaming so a missing conversation is a 404 with a body, not a stream that

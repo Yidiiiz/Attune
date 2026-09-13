@@ -6,7 +6,7 @@ import { z } from "zod";
 import { runBatch } from "@/lib/history/batch";
 import { deleteTask, updateTask } from "@/lib/history/actions";
 import { readTask } from "@/lib/store/tasks";
-import { body, handle, ok } from "../../respond";
+import { body, handle, ok, parseInput } from "../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export async function GET(_request: Request, { params }: Params): Promise<Respon
 export async function PATCH(request: Request, { params }: Params): Promise<Response> {
   return handle(async () => {
     const { id } = await params;
-    const changes = Changes.parse(await body(request));
+    const changes = parseInput(Changes, await body(request));
     const task = await readTask(id);
     const summary = `update '${task.title}'`;
 

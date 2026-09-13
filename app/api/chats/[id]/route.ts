@@ -16,7 +16,7 @@ import { removeConversation, updateConversation } from "@/lib/history/chat-actio
 import { readConversation } from "@/lib/store/chats";
 import { modelEntry } from "@/lib/agent/registry";
 import { StoreError } from "@/lib/store/paths";
-import { body, handle, ok } from "../../respond";
+import { body, handle, ok, parseInput } from "../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +48,7 @@ function describe(changes: z.infer<typeof Changes>, title: string): string {
 export async function PATCH(request: Request, { params }: Params): Promise<Response> {
   return handle(async () => {
     const { id } = await params;
-    const changes = Changes.parse(await body(request));
+    const changes = parseInput(Changes, await body(request));
     const { conversation, messages } = await readConversation(id);
 
     // A model the registry does not know would be written into the file and then refused on every

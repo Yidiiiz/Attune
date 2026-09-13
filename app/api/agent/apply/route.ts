@@ -20,7 +20,7 @@ import { runBatch } from "@/lib/history/batch";
 import { TaskDraftSchema } from "@/lib/history/actions";
 import { addToCollection, writeKnowledge } from "@/lib/history/knowledge-actions";
 import { createTasks } from "../../tasks/create";
-import { body, handle, ok } from "../../respond";
+import { body, handle, ok, parseInput } from "../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +59,7 @@ const Input = z.object({
 
 export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
-    const { proposal, prompt, actor, source } = Input.parse(await body(request));
+    const { proposal, prompt, actor, source } = parseInput(Input, await body(request));
     const meta = { source, ...(prompt === undefined ? {} : { prompt }) };
 
     if (proposal.kind === "tasks") {

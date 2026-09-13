@@ -13,7 +13,7 @@ import { rankDay } from "@/lib/schedule/rank";
 import { todayIn } from "@/lib/schedule/dates";
 import { StoreError } from "@/lib/store/paths";
 import { createTasks } from "./create";
-import { body, handle, ok } from "../respond";
+import { body, handle, ok, parseInput } from "../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,7 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
-    const { items, source, actor, prompt } = CreateBody.parse(await body(request));
+    const { items, source, actor, prompt } = parseInput(CreateBody, await body(request));
     // A send from the composer says where it came from even when the caller did not: §4.1's
     // `source` records where the work came from, and "manual" would be false for these.
     const from = prompt !== undefined && source === "manual" ? "prompt" : source;

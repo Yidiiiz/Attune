@@ -15,7 +15,7 @@ import { createConversation } from "@/lib/history/chat-actions";
 import { listConversations, newConversationId } from "@/lib/store/chats";
 import { readSettings } from "@/lib/store/settings";
 import { nowIso } from "@/lib/schedule/dates";
-import { body, handle, ok } from "../respond";
+import { body, handle, ok, parseInput } from "../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export async function GET(): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
-    const input = New.parse(await body(request));
+    const input = parseInput(New, await body(request));
     const settings = await readSettings();
     const id = await newConversationId();
     const now = nowIso(settings.timezone);

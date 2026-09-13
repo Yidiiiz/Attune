@@ -20,7 +20,7 @@ import { saveAnnotation } from "@/lib/history/chat-actions";
 import { readConversation } from "@/lib/store/chats";
 import { uuidv7 } from "@/lib/chat/uuid";
 import { StoreError } from "@/lib/store/paths";
-import { body, handle, ok } from "../../../respond";
+import { body, handle, ok, parseInput } from "../../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function POST(request: Request, { params }: Params): Promise<Response> {
   return handle(async () => {
     const { id } = await params;
-    const input = New.parse(await body(request));
+    const input = parseInput(New, await body(request));
     const { conversation, messages } = await readConversation(id);
 
     if (!messages.some((message) => message.id === input.targetMessageId)) {

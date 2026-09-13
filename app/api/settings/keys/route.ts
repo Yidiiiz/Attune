@@ -18,7 +18,7 @@ import { runBatch } from "@/lib/history/batch";
 import { setKey } from "@/lib/history/actions";
 import { KNOWN_KEYS, maskKey, readKeys } from "@/lib/store/env";
 import { StoreError } from "@/lib/store/paths";
-import { body, handle, ok } from "../../respond";
+import { body, handle, ok, parseInput } from "../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export async function GET(): Promise<Response> {
 
 export async function PUT(request: Request): Promise<Response> {
   return handle(async () => {
-    const { name, value } = Input.parse(await body(request));
+    const { name, value } = parseInput(Input, await body(request));
     known(name);
     if (value === undefined) throw new StoreError("invalid", "a value is required; use DELETE to clear one");
 
@@ -62,7 +62,7 @@ export async function PUT(request: Request): Promise<Response> {
 export async function DELETE(request: Request): Promise<Response> {
   return handle(async () => {
     const asked = new URL(request.url).searchParams.get("name");
-    const name = asked ?? (Input.parse(await body(request)).name);
+    const name = asked ?? (parseInput(Input, await body(request)).name);
     known(name);
     return ok({ ...(await write(name, null)), name });
   });

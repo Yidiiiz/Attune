@@ -12,7 +12,7 @@
 import { z } from "zod";
 import { runBatch } from "@/lib/history/batch";
 import { promoteItem } from "@/lib/history/knowledge-actions";
-import { body as readBody, handle, ok } from "../../../respond";
+import { body as readBody, handle, ok, parseInput } from "../../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +23,8 @@ const Input = z.object({ item: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "an item
 
 export async function POST(request: Request, { params }: Params): Promise<Response> {
   return handle(async () => {
-    const slug = Slug.parse((await params).slug);
-    const { item } = Input.parse(await readBody(request));
+    const slug = parseInput(Slug, (await params).slug);
+    const { item } = parseInput(Input, await readBody(request));
     const rel = `knowledge/collections/${slug}.md`;
 
     const result = await runBatch({

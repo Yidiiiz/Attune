@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { redoBatch } from "@/lib/history/undo";
-import { body, handle } from "../../respond";
+import { body, handle, parseInput } from "../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ const Input = z.object({ batch: z.string().min(1) });
 
 export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
-    const { batch } = Input.parse(await body(request));
+    const { batch } = parseInput(Input, await body(request));
     return Response.json(await redoBatch(batch));
   });
 }

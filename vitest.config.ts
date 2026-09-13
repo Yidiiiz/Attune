@@ -16,6 +16,9 @@ export default defineConfig({
     // `components/` is included for the pure helpers that live beside the components using them —
     // `components/today/format.ts` is the first — which are split by feature rather than moved
     // under `lib/` to be testable (PROJECT.md §1 rule 5).
-    include: ["lib/**/*.test.ts", "scripts/**/*.test.ts", "components/**/*.test.ts"],
+    //
+    // `app/` is included for the route tests, which call a route's handler directly with a `Request`
+    // — the only way to observe the whole response body a caller would get.
+    include: ["lib/**/*.test.ts", "scripts/**/*.test.ts", "components/**/*.test.ts", "app/**/*.test.ts"],
   },
 });

@@ -15,7 +15,7 @@ import { runExtract } from "@/lib/agent/chat";
 import { assembleContext } from "@/lib/agent/context";
 import { ModelTaskDraft } from "@/lib/agent/tools";
 import { readSettings } from "@/lib/store/settings";
-import { body, handle, ok } from "../../respond";
+import { body, handle, ok, parseInput } from "../../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ const Input = z.object({
 
 export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
-    const input = Input.parse(await body(request));
+    const input = parseInput(Input, await body(request));
     const settings = await readSettings();
     const { model, effort } = settings.models.extract;
 

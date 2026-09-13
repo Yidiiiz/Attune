@@ -5,7 +5,7 @@
 import { runBatch } from "@/lib/history/batch";
 import { updateSettings } from "@/lib/history/actions";
 import { SettingsSchema, readSettings, readSettingsResult } from "@/lib/store/settings";
-import { body, handle, ok } from "../respond";
+import { body, handle, ok, parseInput } from "../respond";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function GET(): Promise<Response> {
 
 export async function PUT(request: Request): Promise<Response> {
   return handle(async () => {
-    const next = SettingsSchema.parse(await body(request));
+    const next = parseInput(SettingsSchema, await body(request));
     const current = await readSettings();
 
     // The log records which keys moved, never their values: §11.5 keeps anything key-shaped out of

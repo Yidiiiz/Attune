@@ -152,6 +152,12 @@ maps `StoreError` and `AgentError` only. Predates Phase 7; the promote route inh
 are swept into the next committing batch as "staged but not declared". That is the evidence the
 condition asked for, and it says staging only declared targets would leave those writes uncommitted.
 
+**The review's answers.** (1) Amendment `u` deferred with conditions, below. (2) Taken before Stage B
+and closed in `5682ec7`: a request failing its schema is a 400 with a fixed message, the dump goes to
+the server's console and never the body, and a `ZodError` from the store is a 500 (Decision 78).
+`npm test` 510/510, `tsc` clean; `check:ui` could not start, because the owner's own `npm run dev`
+held port 3000, and runs with the next change. (3) Accepted as reported.
+
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
 Written before the build, verbatim from the approval, so they survive compaction.

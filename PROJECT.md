@@ -158,6 +158,8 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 77. **Files added to the §3 layout in Phase 7.** `lib/history/scan.ts` (every reason `runBatch` refuses a batch before logging it — Decision 56's named seam), `lib/history/in-flight.ts` (Decision 76), `lib/history/repository.ts` (Decision 75), `lib/history/knowledge-actions.ts` (the knowledge builders, split by domain as Decision 56 names), `lib/agent/finalize.ts` (§16.3's finality contract, split from `turn.ts`), `lib/knowledge/items.ts` (§4.5's item format, pure), `lib/testing/checkout.ts` (the one sandbox a committing test may use), `components/chat/useConversationWrites.ts` (the conversation's one-field writes, split from `useConversation.ts`), and `app/api/collections/[slug]/promote/route.ts`. `lib/knowledge/search.ts` stays unbuilt until Phase 8's `/api/search`, its only caller. `repository.ts` reads `REPO_DIR/.git` directly, following `git.ts`'s index-lock precedent: hard rule 7 is about `data/`, and the repository's own metadata is not data.
 
+78. **A request that fails its schema is a 400 with a fixed message, and the zod dump never leaves the server.** Until Phase 7 every route answered a zod failure with 500 and zod's own message — every field path and bound, and whatever the client sent — which is disclosure, not tidiness, on routes that take model-generated writes. Routes parse input through `parseInput` in `app/api/respond.ts`: a mismatch is `{ ok: false, error: "The request was not in the expected shape.", code: "invalid" }` at 400, the same for every route, and the issues are logged to the server's console outside production. **Never in the body, in any mode**, because the app only runs under `next dev`: a body gated on `NODE_ENV` would carry the dump in the only place the app is used. A `ZodError` that reaches `handle` without passing through `parseInput` is the store refusing a record, which is a fault, so it is a 500 with a fixed message of its own; the one residual is a request that passes its route's schema and fails the store's, which answers 500 — safely, but it is a gap between two schemas and is fixed per route by tightening the route's. `app/api/validation.test.ts` covers one route per family that parses a body; calendar, files, sync and weather parse none with zod.
+
 ---
 
 ## 1. Hard rules
@@ -1029,7 +1031,7 @@ A `secret_rejected` refusal from any write (§11.5, Decision 50) is the case tha
 
 ## 14. API routes
 
-Every route lives in `app/api/**/route.ts`, validates its input with zod, calls one `lib/` function, and returns JSON (`{ ok: true, ... }` or `{ ok: false, error, code }`) or a streaming body. No route imports the filesystem.
+Every route lives in `app/api/**/route.ts`, validates its input with zod through `parseInput` (a mismatch is 400 `code: "invalid"` with a fixed message; the details stay on the server — Decision 78), calls one `lib/` function, and returns JSON (`{ ok: true, ... }` or `{ ok: false, error, code }`) or a streaming body. No route imports the filesystem.
 
 | Route | Method | Calls |
 |---|---|---|

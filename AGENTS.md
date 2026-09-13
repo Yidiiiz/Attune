@@ -17,7 +17,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
-| 7 — Knowledge base and collections | **next** — its first task is the three named splits, below | — |
+| 7 — Knowledge base and collections | **in progress** — conditions recorded below; the three named splits, then the streaming-commit fix, then Stage A, which stops for review | — |
 | 8–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
@@ -796,6 +796,110 @@ phase reads §12, writes the four literals, and meets the wall the amendment exi
 Nothing outside the written spec changed here, so `npm test`, `tsc` and `check:ui` answer questions
 this commit does not raise. `check-secrets` runs on the commit regardless, via the hook.
 
+### Approved conditions — Phase 7 (rule 9)
+
+Verbatim from the approval. The plan proposed the three named splits in their own `code:` commit
+with no review stop, then Stage A — the pure layer, the store, the builders, the §6.3 rule in
+`runBatch`, `memory.ts`, the apply and promote routes and `kb:check`, with nothing rendering — stopping
+for review, then Stage B, the surfaces. It named five findings (a batch committed mid-stream sweeps the
+streaming message file into its commit; Ask-mode proposals have no surface; `index.md`'s links are
+knowledge-relative while the tools take `data/`-relative paths; `/api/tasks/[id]/promote` has no
+referent for `[id]`; `KnowledgeWrite` carries no title or type) and eight open calls.
+
+Phase 7 plan reviewed. Approved to start, with conditions below. Keep the review
+stop at the end of Stage A as you proposed.
+
+ORDER
+1. Conditions into the status block (docs: commit)
+2. The three splits
+3. Streaming-commit fix
+4. Rest of Stage A
+5. Stop for review
+
+STEP 0 — SPLITS
+No review stop. Condition: the split commit must be reviewable as motion only.
+If `git diff -M` doesn't show the moved blocks at near-total similarity, the
+edited part goes in a separate commit. The two comment updates (secrets.ts:36,
+chats/route.ts:6) and the turn.test.ts import may ride along, but should be the
+only non-motion lines in the diff.
+
+STREAMING-COMMIT DEFECT
+Own commit, after the splits so it lands in the post-split layout. Reproduce
+first: the repro is a failing test that stays in the suite, not a manual
+demonstration.
+- Keep the :(exclude) pathspec approach. Do not switch to staging declared
+  targets explicitly: over-staging is visible and recoverable, under-staging is
+  silent and desyncs the tree from history, which breaks undo's SHA checks
+  against bytes history never had.
+- In test/dev builds, assert the staged set matches the batch's declared
+  targets and warn on mismatch. Cheap, and tells us later whether explicit
+  staging is viable.
+- Give the in-flight path set a lifetime. Clear on abort and error, not just
+  normal completion. A stale entry must be loud, not silent — otherwise a path
+  is excluded from every later commit and nothing notices.
+
+STAGE A CONDITIONS
+- kb-check exit codes: three explicit tiers. Violations exit 1;
+  could-not-evaluate (broken map frontmatter, listTasks.errors non-empty)
+  exits 2; notices don't affect the exit code. CI currently can't tell a real
+  violation from an evaluation failure, and the second is the one needing a
+  human.
+- regenerateIndex: confirm "skips the write when nothing changed" compares
+  generated content, not a dirty flag or mtime. Content-based means existing
+  checkouts self-heal on first regeneration. Update the seed fixture in the
+  same commit as the link extractor, or the exit-0 clean-seed check tests the
+  old world.
+- Link normalization: keep the extractor pure and deterministic — no filesystem
+  probing for which candidate resolves. Document the precedence. Add a test for
+  a directory under notes/ sharing a name with a top-level data/ directory.
+- Dice/0.8: one Decision covering measure, threshold, and normalization (case,
+  punctuation, stop words). State that 0.8 came from the spec but is meaningless
+  detached from the measure. Test a single-word title and two cases just either
+  side of the line.
+- Auto-apply: cap at one auto-applied write per turn, in addition to the
+  three-line per-write limit.
+- filterWrites: a rewritten write (duplicate note → append) must render on the
+  card as the rewritten operation, with the reason. The approved op and the
+  applied op must be the same. Also: only writes that passed through
+  filterWrites unchanged are auto-apply eligible. Near-vacuous today; write it
+  down before the eligible set grows.
+- Note title: persist the derived title into frontmatter at write time, so it
+  isn't recomputed on every read and silently changed when the model edits the
+  opening line.
+
+OPEN CALLS
+1. Streaming fix in Stage A, own commit, repro first — yes, as above.
+2. Auto-apply after finalize, only if the turn was kept — yes as proposed.
+3. In-memory tray — yes. Note: losing a task draft costs a retype, losing a
+   distill proposal costs a model call. Acceptable for Phase 7; distill is the
+   first thing to get persistence if it proves slow or expensive.
+4. Promote route — amendment approved, but use
+   POST /api/collections/[slug]/promote {item}. Puts a real referent back in the
+   path and files the route with the resource that exists. Button to Phase 8 as
+   amendment s, agreed.
+5. Drop §9.5 step 6's map link for collections — agreed; §6.3 is a rule about
+   notes.
+6. Unreferenced uploads as a notice, §6.5 amended — agreed; notices don't touch
+   the exit code.
+7. Title and type derivation — agreed, plus the frontmatter persistence above.
+8. Defer search.ts to Phase 8 — agreed.
+
+ADDITION TO STAGE B
+An auto-applied write is the only filesystem change here that happens without
+the user asking, and its whole visible trace is a toast. Add a persistent marker
+in the transcript for an auto-applied write, carrying the same Undo affordance,
+so the toast is the notification and not the record. Not asking for a full
+activity view. If this is more than a small addition to Stage B, say so and
+we'll scope it separately rather than stretch the stage.
+
+**The spec calls this settles, made in the same commit as the conditions.** §14's promote row is
+`/api/collections/[slug]/promote` (open call 4); §9.5 step 6 no longer asks for a map link when a
+collection is created (open call 5); §6.5 names its three exit tiers and its notice section, with
+unreferenced uploads as the first notice (the Stage A exit-code condition and open call 6). Amendment
+`s` carries the promote button to Phase 8. The Decision for the title-similarity measure is written
+with the code it describes, because its normalization — which stop words, which punctuation — is
+decided there and a Decision that names a choice before it is made is a guess.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -820,6 +924,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
 | q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | **outstanding — a spec claim the code does not support** |
 | r | **`publish-check` greps the published file set for four AI-authorship strings, and §12's skip list does not name `scripts/publish-check.mjs` — but the script has to contain all four literally in order to search for them, so it is the first thing its own grep finds.** The fix is to assemble the patterns from fragments at runtime, the way `SECRET_PATTERNS`' sample table and `lib/store/files.test.ts` do, rather than adding the script to the skip list: a skip list is a rule scoped to an address, which is the shape that let three writers drift past Decision 71 | Phase 6b close, one deferred amendment | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
+| s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | **outstanding** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 

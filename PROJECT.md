@@ -593,7 +593,15 @@ The heuristic, verbatim in the prompt (`memory.ts`):
 
 ### 6.5 `npm run kb:check`
 
-Reports: notes linked from no map (orphans); links to paths that do not exist; notes over 200 words; profile files over 150 lines; collections with `tasks` ids that do not exist. Exit code 1 if anything is reported. Uses the same `LinkIndex` as backlinks and the graph.
+Reports: notes linked from no map (orphans); links to paths that do not exist; notes over 200 words; profile files over 150 lines; collections with `tasks` ids that do not exist. Uses the same `LinkIndex` as backlinks and the graph.
+
+**Three tiers, three exit codes**, because a CI run has to tell a violation from a check that could not be made, and the second is the one that needs a person:
+
+- **Violations** — any of the five above. Exit 1.
+- **Could not evaluate** — a rule's input did not read cleanly, so its conclusion would be a guess (Conventions: a lenient reader is not an authority). A map whose frontmatter does not parse suspends the orphan rule, since the broken map may be the one linking the note; a non-empty `listTasks.errors` suspends the missing-task rule, since the unreadable file may be the task. Any file under `knowledge/` that does not parse is named here too. Exit 2, and it outranks exit 1: a run that could not look at everything cannot say "only these".
+- **Notices** — reported, never counted. The first is uploads under `data/files/` that nothing in the link index points at — what the manifest shows as an empty `used-by` (Decision 65): removing an attachment chip leaves one behind in ordinary use, and nothing collects them. Notices never change the exit code.
+
+Links inside chat messages are not checked: a message is immutable, so a broken link there is a report nobody can act on.
 
 ---
 
@@ -723,7 +731,7 @@ The prompt instructs: default to tasks; if the content is plainly list or refere
 3. `tasks` → one `TaskCard` per item with every field editable inline (title text, priority select, estimate number, due and scheduled date inputs, category select from settings, context text, tags chips, body textarea). Inferred fields carry a dotted underline and a tooltip "Inferred from: <source>".
 4. A follow-up typed into the textarea sends `{ prompt, followUp, draft: items }` to the same endpoint; the model returns a revised `items` array and the panel **replaces** its cards in place, preserving any inline edits the model did not touch (matched by index).
 5. **Add all** / **Add selected** (checkbox per card) → `POST /api/tasks` → one `task.create` batch, summary `add N tasks from prompt`, `meta.prompt`. **Discard** → confirm dialog → the preview is dropped. Discards are not written to the action log: nothing reached disk, so there is nothing to undo, and a log type that exists for one button is clutter. This is a deliberate deviation from the brief; if discards should be audited, say so and they become a `note` entry carrying the prompt in `meta`.
-6. `collection` → the panel shows the target collection name and the items as a checklist; **Add** appends to the collection (`knowledge.write`) or creates it (`knowledge.write` for the file plus the map link).
+6. `collection` → the panel shows the target collection name and the items as a checklist; **Add** appends to the collection (`knowledge.write`) or creates it (`knowledge.write` for the file). No map link is written: `index.md` lists every collection (§4.4) and the Knowledge panel has its own Collections node (§10.2), and §6.3's map rule is about notes.
 
 Ask mode and Build mode reuse the same panel for proposals they produce.
 
@@ -1009,7 +1017,7 @@ Every route lives in `app/api/**/route.ts`, validates its input with zod, calls 
 | `/api/tasks` | POST | `runBatch` with `task.create` × N (`{ items: TaskDraft[], source }`) |
 | `/api/tasks/[id]` | GET · PATCH · DELETE | read · `task.update` · `task.delete` |
 | `/api/tasks/[id]/complete` | POST | `task.complete` (+ `task.create` for repeats) |
-| `/api/tasks/[id]/promote` | POST | from a collection item |
+| `/api/collections/[slug]/promote` | POST | `{ item }` — one batch: `task.create` with `collection: <path>#<item-slug>`, the id appended to the collection's `tasks`, and ` → [[t_…]]` appended to the item line (§4.5). Filed under the collection because the task does not exist until this creates it |
 | `/api/calendar?from&to` | GET | grouped tasks |
 | `/api/history?scope&type&before` | GET | `readActions` grouped by batch |
 | `/api/history/undo` · `/redo` | POST | `undoBatch` · `redoBatch` |

@@ -22,6 +22,11 @@ export interface ToastSpec {
   /**
    * One button beside the text — §6.3's Undo on an auto-applied write is the first. Pressing it
    * dismisses the toast; whatever it reports afterwards is the caller's to show.
+   *
+   * The toast does not pause on hover. A pause can land in the fade-out, and a toast held at zero
+   * opacity under a resting pointer is an invisible layer over the chat's Send button that never
+   * leaves. An action offered here must therefore also exist somewhere durable — for Undo, that is
+   * the transcript marker — so seven seconds is a notification's life, not the only chance to act.
    */
   action?: { label: string; run: () => void };
 }

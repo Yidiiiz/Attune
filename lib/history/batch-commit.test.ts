@@ -5,18 +5,13 @@
 // reproduces, and it stays in the suite because the only thing standing between the two is the
 // in-flight registry in `lib/history/in-flight.ts`.
 
-import { execFileSync } from "node:child_process";
-import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createCheckout } from "../testing/checkout.ts";
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-batch-commit-"));
-const DATA = path.join(SANDBOX, "data");
-
-process.env.ATTUNE_REPO_DIR = SANDBOX;
+const checkout = await createCheckout("batch-commit");
+const { git, data: DATA } = checkout;
 
 const { streamingWrite } = await import("./streaming.ts");
 const { runBatch } = await import("./batch.ts");
@@ -29,9 +24,6 @@ const { uuidv7 } = await import("../chat/uuid.ts");
 type Message = import("../chat/types.ts").Message;
 
 const CONV = "c_20260912_5e1a";
-
-const git = (...args: string[]): string =>
-  execFileSync("git", args, { cwd: SANDBOX, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 
 const committed = (): string[] => git("show", "--name-only", "--format=", "HEAD").split("\n");
 
@@ -78,29 +70,20 @@ const task = (title: string) => runBatch({
 });
 
 beforeEach(async () => {
-  await rm(DATA, { recursive: true, force: true });
-  await mkdir(SANDBOX, { recursive: true });
-  await cp(path.join(REPO, "seed"), DATA, { recursive: true });
-  try {
-    git("init", "-q");
-    git("config", "user.email", "check@example.invalid");
-    git("config", "user.name", "check");
-  } catch {
-    /* already initialized */
-  }
-  await chats.writeConversation({
-    schema: 1,
-    id: CONV,
-    title: "Streaming",
-    activeLeafId: null,
-    pinned: false,
-    model: "claude-opus-5",
-    context: { file: null, taskIds: [] },
-    createdAt: "2026-09-12T16:00:00-04:00",
-    updatedAt: "2026-09-12T16:00:00-04:00",
+  await checkout.reset({
+    setup: () =>
+      chats.writeConversation({
+        schema: 1,
+        id: CONV,
+        title: "Streaming",
+        activeLeafId: null,
+        pinned: false,
+        model: "claude-opus-5",
+        context: { file: null, taskIds: [] },
+        createdAt: "2026-09-12T16:00:00-04:00",
+        updatedAt: "2026-09-12T16:00:00-04:00",
+      }),
   });
-  git("add", "-A");
-  git("commit", "-q", "-m", "seed", "--allow-empty");
 });
 
 afterEach(() => {

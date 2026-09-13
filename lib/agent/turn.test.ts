@@ -8,18 +8,12 @@
 // the one item on that list with no visible symptom. `streamingPaths()` beside it is the same check
 // for the in-flight registry, whose leak would be just as quiet: a path excluded from every commit.
 
-import { execFileSync } from "node:child_process";
-import { cp, mkdtemp, mkdir, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createCheckout } from "../testing/checkout.ts";
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-turn-"));
-const DATA = path.join(SANDBOX, "data");
+const checkout = await createCheckout("turn");
+const { git } = checkout;
 
-process.env.ATTUNE_REPO_DIR = SANDBOX;
 process.env.ATTUNE_FAKE_PROVIDER = "1";
 
 const { runChatTurn, activeStreams } = await import("./turn.ts");
@@ -33,10 +27,6 @@ const { buildTree, activePath } = await import("../chat/tree.ts");
 type TurnEvent = import("./chat.ts").TurnEvent;
 
 const CONV = "c_20260907_9f1c";
-
-const git = (...args: string[]): void => {
-  execFileSync("git", args, { cwd: SANDBOX, stdio: "ignore" });
-};
 
 /** Drain a turn, collecting what it emitted. */
 async function drain(
@@ -70,28 +60,19 @@ const send = async (text: string, over: Partial<Parameters<typeof runChatTurn>[0
 const batches = async () => groupBatches(await readActions());
 
 beforeEach(async () => {
-  await rm(DATA, { recursive: true, force: true });
-  await cp(path.join(REPO, "seed"), DATA, { recursive: true });
-  try {
-    git("init", "-q");
-    git("config", "user.email", "check@example.invalid");
-    git("config", "user.name", "check");
-  } catch {
-    /* already initialized */
-  }
-  git("add", "-A");
-  git("commit", "-q", "-m", "seed", "--allow-empty");
-
-  await chats.writeConversation({
-    schema: 1,
-    id: CONV,
-    title: "",
-    activeLeafId: null,
-    pinned: false,
-    model: "claude-opus-5",
-    context: { file: null, taskIds: [] },
-    createdAt: "2026-09-07T16:00:00-04:00",
-    updatedAt: "2026-09-07T16:00:00-04:00",
+  await checkout.reset({
+    setup: () =>
+      chats.writeConversation({
+        schema: 1,
+        id: CONV,
+        title: "",
+        activeLeafId: null,
+        pinned: false,
+        model: "claude-opus-5",
+        context: { file: null, taskIds: [] },
+        createdAt: "2026-09-07T16:00:00-04:00",
+        updatedAt: "2026-09-07T16:00:00-04:00",
+      }),
   });
 });
 
@@ -126,17 +107,12 @@ describe("a send that succeeds", () => {
 
   it("produces one commit per finalized exchange across three branches", async () => {
     // Counted from where this case started: the sandbox's history carries the other cases' commits.
-    const from = execFileSync("git", ["rev-parse", "HEAD"], { cwd: SANDBOX, encoding: "utf8" }).trim();
+    const from = git("rev-parse", "HEAD");
     const first = await send("branch one");
     const second = await send("branch two", { parentId: null });
     const third = await send("branch three", { parentId: null });
 
-    const log = execFileSync("git", ["log", "--oneline", `${from}..HEAD`, "--", `data/chats/${CONV}`], {
-      cwd: SANDBOX,
-      encoding: "utf8",
-    })
-      .trim()
-      .split("\n");
+    const log = git("log", "--oneline", `${from}..HEAD`, "--", `data/chats/${CONV}`).split("\n");
     expect(log.filter((line) => line.includes("chat:"))).toHaveLength(3);
 
     const { messages } = await chats.readConversation(CONV);

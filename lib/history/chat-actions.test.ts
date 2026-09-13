@@ -2,19 +2,20 @@
 // that they write a file but that their snapshots describe the write well enough to undo it. Every
 // case here ends by undoing and asserting the tree is back where it started.
 //
-// `commit: false` throughout: git is exercised by the Phase 2 checks and by Stage B's routes, and a
-// temp directory with no repository would only add noise to what these are about. That is also why
-// the log is read directly rather than through the history UI.
+// The builders' own batches are `commit: false`: git is exercised by the Phase 2 checks and by
+// Stage B's routes, and is not what these are about. That is also why the log is read directly
+// rather than through the history UI. **Undo is not `commit: false`**, and that is why this file
+// has a repository of its own: it once ran without one, git's discovery climbed out of the temp
+// directory, and every undo here committed into a repository in the home folder. The shared
+// checkout (`lib/testing/checkout.ts`) is what makes that impossible to repeat by omission.
 
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createCheckout } from "../testing/checkout.ts";
 
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-chat-actions-"));
-const DATA = path.join(SANDBOX, "data");
-
-process.env.ATTUNE_REPO_DIR = SANDBOX;
+const checkout = await createCheckout("chat-actions");
+const DATA = checkout.data;
 
 const actions = await import("./chat-actions.ts");
 const { runBatch } = await import("./batch.ts");
@@ -76,8 +77,7 @@ async function seeded(): Promise<{ user: string; assistant: string }> {
 }
 
 beforeEach(async () => {
-  await rm(DATA, { recursive: true, force: true });
-  await mkdir(DATA, { recursive: true });
+  await checkout.reset({ from: "empty" });
 });
 
 describe("createConversation", () => {

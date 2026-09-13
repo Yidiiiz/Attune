@@ -6,7 +6,8 @@
 // `before` snapshots newest first, nothing is logged, and the error reaches the caller — a half-
 // applied batch is the one outcome undo could not describe. If git fails the batch stays logged with
 // `commit: null` and `meta.commitFailed`, still undoable from its inline snapshots, and the sync
-// indicator says so.
+// indicator says so — except that outside production a missing or foreign repository throws, before
+// anything is applied (`repository.ts`).
 
 import { randomBytes } from "node:crypto";
 import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
@@ -37,6 +38,8 @@ import { enqueue } from "./queue.ts";
 
 /** Whole-text snapshots stop here; anything larger is reconstructed from the commit instead. */
 const INLINE_LIMIT = 64 * 1024;
+
+const PRODUCTION = process.env.NODE_ENV === "production";
 
 export interface Store {
   tasks: typeof tasks;
@@ -209,6 +212,10 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     const subject = `${spec.commitPrefix}: ${spec.summary}`;
     const willCommit = spec.commit !== false;
 
+    // Outside production, a missing or foreign repository is a bug in whatever set this checkout up,
+    // so it is refused before a byte lands rather than logged as `commit: null` (`repository.ts`).
+    if (willCommit && !PRODUCTION) await git.assertOwnRepository();
+
     const applied: Applied[] = [];
     try {
       for (const action of spec.actions) {
@@ -270,12 +277,8 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     const exclude = (await commitExclusions(targets)).map((rel) => `data/${rel}`);
     const declared = [...targets, LOG_PATH, MIRROR_PATH].map((rel) => `data/${rel}`);
     try {
-      commit = await git.commitPaths(
-        subject,
-        paths,
-        exclude,
-        process.env.NODE_ENV === "production" ? undefined : [...declared, ...(spec.repoPaths ?? [])],
-      );
+      const expected = PRODUCTION ? undefined : [...declared, ...(spec.repoPaths ?? [])];
+      commit = await git.commitPaths(subject, paths, exclude, expected);
       if (commit === null) {
         // `data/` is tracked and a log line was just written, so this should be unreachable. If it
         // ever happens the entry says so rather than sitting on an unexplained null.
@@ -287,6 +290,7 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       const message = `${(err as Error).message}`.split("\n")[0].trim();
       console.error(`history: commit failed (${message}); the batch is logged and undoable`);
       await markCommitFailed(offset, batch, message);
+      if (err instanceof git.RepositoryError && !PRODUCTION) throw err;
     }
 
     return { batch, commit, seq, targets };

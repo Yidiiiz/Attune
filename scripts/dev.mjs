@@ -20,6 +20,11 @@ const PUSH_TIMEOUT_MS = 20_000;
 const { clearStaleIndexLock } = await import("../lib/history/git.ts");
 await clearStaleIndexLock();
 
+// The shutdown push below runs git itself, because Node's exit path cannot await git.ts. It runs it
+// the way git.ts does: from REPO_DIR (so ATTUNE_REPO_DIR pushes that checkout and not this one),
+// never climbing above it, and only after checking the repository is REPO_DIR's own.
+const { assertOwnRepositorySync, gitOptions } = await import("../lib/history/repository.ts");
+
 // And the same idea for chat: a run that died mid-turn leaves a message file saying `streaming`
 // that nothing recorded, and Decision 63's invariant makes it look exactly like a live stream. At
 // startup there are no live streams, so anything in that state is an orphan and is repaired to what
@@ -55,7 +60,7 @@ function killChildTree() {
 }
 
 function gitOut(args) {
-  return execFileSync("git", args, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  return execFileSync("git", args, { ...gitOptions(), stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
 }
 
 function flushPush() {
@@ -73,9 +78,16 @@ function flushPush() {
   }
   if (!Number.isFinite(ahead) || ahead === 0) return;
 
+  try {
+    assertOwnRepositorySync();
+  } catch (err) {
+    console.error(`dev: not pushing (${err.message})`);
+    return;
+  }
+
   console.log(`\ndev: pushing ${ahead} commit${ahead === 1 ? "" : "s"} before exit`);
   try {
-    execFileSync("git", ["push"], { stdio: "inherit", timeout: PUSH_TIMEOUT_MS });
+    execFileSync("git", ["push"], { ...gitOptions(), stdio: "inherit", timeout: PUSH_TIMEOUT_MS });
   } catch (err) {
     console.error(`dev: push failed (${err.message}). Your commits are safe locally; run 'git push' when you can.`);
   }

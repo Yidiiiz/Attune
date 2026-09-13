@@ -5,7 +5,9 @@
 // before git is asked to do anything, so an offline machine, a missing remote, or a rejected push
 // downgrades the sync state and nothing else. A non-fast-forward stops pushing entirely and asks for
 // `git pull --rebase` by hand; automatic conflict resolution on a repository of personal data is a
-// worse outcome than a stalled indicator.
+// worse outcome than a stalled indicator. Every command runs contained to `REPO_DIR`'s own
+// repository, and commit, push and checkout assert it first (`repository.ts`); a `RepositoryError`
+// from that check is the one failure `runBatch` does not always downgrade.
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -13,6 +15,9 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { REPO_DIR } from "../store/paths.ts";
+import { assertOwnRepository, gitOptions } from "./repository.ts";
+
+export { RepositoryError, assertOwnRepository } from "./repository.ts";
 
 const run = promisify(execFile);
 
@@ -29,7 +34,7 @@ let lastErrorState: SyncState | null = null;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function git(args: string[]): Promise<string> {
-  const { stdout } = await run("git", args, { cwd: REPO_DIR, maxBuffer: 64 * 1024 * 1024 });
+  const { stdout } = await run("git", args, { ...gitOptions(), maxBuffer: 64 * 1024 * 1024 });
   return stdout.trim();
 }
 
@@ -123,6 +128,7 @@ export async function commitPaths(
   exclude: string[] = [],
   declared?: string[],
 ): Promise<string | null> {
+  await assertOwnRepository();
   // `literal`, so a path is only ever itself and never a pattern.
   const spec = [...paths, ...exclude.map((rel) => `:(exclude,literal)${rel}`)];
   await gitOk(["add", "-A", "--", ...spec]);
@@ -213,6 +219,7 @@ export async function flush(): Promise<SyncStatus> {
   }
 
   try {
+    await assertOwnRepository();
     await git(["push"]);
     lastError = null;
     lastErrorState = null;
@@ -250,6 +257,7 @@ export async function show(commit: string, path: string): Promise<string | null>
 
 /** Undo a commit's effect on `paths` only, leaving the result in the working tree uncommitted. */
 export async function revertPaths(commit: string, paths: string[]): Promise<void> {
+  await assertOwnRepository();
   await git(["checkout", `${commit}^`, "--", ...paths]);
 }
 

@@ -6,18 +6,13 @@
 // The orphan itself is made the way a crash makes one: written through `streamingWrite`, which is
 // the only path that puts a `streaming` file on disk without a log entry.
 
-import { execFileSync } from "node:child_process";
-import { cp, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createCheckout } from "../testing/checkout.ts";
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-sweep-"));
-const DATA = path.join(SANDBOX, "data");
-
-process.env.ATTUNE_REPO_DIR = SANDBOX;
+const checkout = await createCheckout("sweep");
+const DATA = checkout.data;
 
 const { streamingWrite, sweepInterruptedMessages } = await import("./streaming.ts");
 const { INTERRUPTED } = await import("./chat-actions.ts");
@@ -31,10 +26,6 @@ const { uuidv7 } = await import("../chat/uuid.ts");
 type Message = import("../chat/types.ts").Message;
 
 const CONV = "c_20260907_9f1c";
-
-const git = (...args: string[]): void => {
-  execFileSync("git", args, { cwd: SANDBOX, stdio: "ignore" });
-};
 
 const message = (id: string, over: Partial<Message> = {}): Message => ({
   schema: 1,
@@ -62,28 +53,19 @@ const read = async (id: string): Promise<Message | undefined> =>
   (await chats.readConversation(CONV)).messages.find((one) => one.id === id);
 
 beforeEach(async () => {
-  await rm(DATA, { recursive: true, force: true });
-  await cp(path.join(REPO, "seed"), DATA, { recursive: true });
-  try {
-    git("init", "-q");
-    git("config", "user.email", "check@example.invalid");
-    git("config", "user.name", "check");
-  } catch {
-    /* already initialized */
-  }
-  git("add", "-A");
-  git("commit", "-q", "-m", "seed", "--allow-empty");
-
-  await chats.writeConversation({
-    schema: 1,
-    id: CONV,
-    title: "Change of basis",
-    activeLeafId: null,
-    pinned: false,
-    model: "claude-opus-5",
-    context: { file: null, taskIds: [] },
-    createdAt: "2026-09-07T16:00:00-04:00",
-    updatedAt: "2026-09-07T16:00:00-04:00",
+  await checkout.reset({
+    setup: () =>
+      chats.writeConversation({
+        schema: 1,
+        id: CONV,
+        title: "Change of basis",
+        activeLeafId: null,
+        pinned: false,
+        model: "claude-opus-5",
+        context: { file: null, taskIds: [] },
+        createdAt: "2026-09-07T16:00:00-04:00",
+        updatedAt: "2026-09-07T16:00:00-04:00",
+      }),
   });
 });
 
@@ -110,7 +92,7 @@ describe("sweepInterruptedMessages", () => {
     const batch = (await groupBatches(await readActions())).at(-1);
     expect(batch?.type).toBe("chat.update");
     expect(batch?.summary).toContain("interrupted run");
-    expect(execFileSync("git", ["status", "--porcelain", "--", "data"], { cwd: SANDBOX, encoding: "utf8" })).toBe("");
+    expect(checkout.git("status", "--porcelain", "--", "data")).toBe("");
   });
 
   it("is undoable, like any other batch", async () => {

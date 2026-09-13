@@ -17,7 +17,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
-| 7 — Knowledge base and collections | **in progress** — splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `6e71e74`, ownership `833226b`; next the rest of Stage A, which stops for review | — |
+| 7 — Knowledge base and collections | **Stage A built — stopped for review.** Splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `6e71e74`, ownership `833226b`, Stage A `0b07a13`. Stage B (the surfaces) waits on the review | — |
 | 8–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
@@ -103,6 +103,54 @@ named, so this is not a design session:
 and is the fourth if it moves: by domain — task builders, file builders, settings builders — never by
 layer, because it is a flat list of independent closures that never call one another (Decision 56).
 Do these first, in their own `code:` commit, before Phase 7 writes a line of its own.
+
+**Done in `309b6bf`**, as motion: `--color-moved` marks every line of every moved body, and the 72
+lines it does not mark are the three the approval allowed, three new-file headers, imports, `export`
+on five moved declarations, and the two-line hook wrapper. `git diff -M` cannot show an extraction —
+a third of a file never pairs as a rename — which the owner accepted.
+
+**Phase 7 Stage A — built, checked, stopped for review.** Five `code:` commits and three `docs:` so
+far, which is rule 4's stage clause plus two fixes the build found before its own work began:
+
+- `5d8efb6` — **a batch committed mid-turn swept the streaming reply into its commit.** Reproduced as a
+  failing test first (`lib/history/batch-commit.test.ts`); fixed by excluding held paths from every
+  commit (Decision 76).
+- `6e71e74` — **git's discovery could climb out of `REPO_DIR`**, which is how `chat-actions.test.ts`
+  put 232 commits into a repository in the home folder. A ceiling, a positive check on both the
+  work-tree top and the git directory, a throw outside production, one sandbox helper for every
+  committing test (Decision 75). The home repository is untouched and the owner's to decide; it held
+  at 232 commits across every suite run after the fix.
+- `833226b` — the streaming exclusion **keyed to ownership, not declaration**, per the approval's
+  question: a batch declaring a held path it does not own is refused (Decision 76).
+- `0b07a13` — Stage A: `lib/store/knowledge.ts`, `lib/knowledge/{links,items,index,check}.ts`,
+  `scripts/kb-check.mjs` and `npm run kb:check`, `lib/history/knowledge-actions.ts`, §6.3's rule in
+  `scan.ts`, `lib/agent/memory.ts`, the filter in `tools.ts`, `/api/agent/apply` for all three kinds,
+  and `POST /api/collections/[slug]/promote`. Nothing renders yet.
+
+**Checked, and how.** `npm test` 500/500 across 39 files; `tsc` clean; `check:ui` 32/32 in 2.5 min on
+the Stage A tree. Over HTTP and the CLI against a throwaway checkout, every §17 check and every one
+the approval added: a note without a map link refused with no file, no log line and no commit; a
+note with one landing as one batch and one commit, and one undo restoring note, map and index by
+SHA-256; a three-line habits append logged `knowledge.write` with `actor: agent`; a 200-item
+collection giving zero rows in all four Today sections; promote linking task and item both ways in
+one batch and one commit, a second promote 409, an unknown item 404, and undo restoring both halves
+by SHA-256; `kb:check` exit 0 on the clean seed, exit 1 naming a hand-written orphan, exit 2 with no
+orphan named when `courses.md`'s frontmatter is broken. `npm run kb:check` on the owner's own `data/`,
+read-only: clean.
+
+**Not verified, and why.** Whether a real model searches before proposing, follows §6.4's heuristic,
+or proposes a distillation past 150 lines — Stage B puts those in the prompt, and no key is set in
+this checkout (row `5.5`'s gap). Auto-apply is classified here (`autoApplicable`, `pickAutoApply`) and
+not yet wired into a turn; that and its toast, transcript marker and Undo are Stage B.
+
+**Three things for the review.** (1) **Amendment `u`**: the Stop check fails about one run in five,
+before the git work as well as after; instrumented, the client adopts the finalized reply and the
+screen still shows the pre-send empty conversation. User-facing, unexplained, not fixed. (2) **Every
+route answers a zod parse failure with 500** and the raw zod message — `handle` in `app/api/respond.ts`
+maps `StoreError` and `AgentError` only. Predates Phase 7; the promote route inherits it; not changed.
+(3) The **staged-set comparison has one standing source of reports**: a `commit: false` batch's writes
+are swept into the next committing batch as "staged but not declared". That is the evidence the
+condition asked for, and it says staging only declared targets would leave those writes uncommitted.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -1054,7 +1102,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 - Secrets live only in `.env.local`. Nothing resembling a key is ever written under `data/` or committed.
 - **The write path and the pre-commit hook share one pattern set — `SECRET_PATTERNS` in `lib/security/secrets.ts` — and anything the hook would refuse, `runBatch` refuses first.** Neither list may be narrowed independently of the other. The tempting fix for a false positive is to relax the write path and leave the hook strict; that puts the text into `actions.jsonl`, which is append-only and committed, and the hook then refuses every later commit until someone edits history by hand. That is the deadlock this rule exists to keep closed, so a false positive is fixed by changing the shared patterns or by changing the text — never by letting the two sides disagree.
 - Every write goes through `runBatch()` in `lib/history/batch.ts`. `lib/store/` is the only module that touches the filesystem; `lib/agent/` is the only module that talks to a model provider.
-- Source files stay under ~300 lines; split by feature, not by layer. **The cap is about coupling, so it applies to modules containing logic.** A CSS module is a flat list of selectors with no control flow and a test file is a flat list of independent cases; neither has the seam the rule guards against, and both are bounded by their subject instead (`PROJECT.md` Decision 56). `lib/history/batch.ts` at 317 is over and stays watched — it is logic, and it is not split only because the `runBatch` sequence is one ordered transaction.
+- Source files stay under ~300 lines; split by feature, not by layer. **The cap is about coupling, so it applies to modules containing logic.** A CSS module is a flat list of selectors with no control flow and a test file is a flat list of independent cases; neither has the seam the rule guards against, and both are bounded by their subject instead (`PROJECT.md` Decision 56). `lib/history/batch.ts` came back under it in Phase 7 by the seam Decision 56 named — `scanBatch` and every other pre-log refusal moved to `lib/history/scan.ts` — and stays watched: the `runBatch` sequence is one ordered transaction and is not split.
 
 ## Stack and commands
 
@@ -1084,7 +1132,7 @@ npm run init           # seed/ → data/ (refuses if data/ is non-empty)
 npm test               # check-lib-imports, then vitest
 npm run check:ui       # Playwright, chromium, dev server + throwaway checkout — not part of `npm test`
 npm run history -- list [--n 20] | undo <batch> [--force] | redo <batch>
-npm run kb:check       # orphans, broken links, size caps
+npm run kb:check       # orphans, broken links, size caps — exit 1 violations, 2 could not evaluate (Decision 73)
 npm run check-secrets  # also runs from .githooks/pre-commit
 npm run check-lib-imports   # every lib/**/*.ts must load in plain Node (PROJECT.md Decision 44)
 npm run publish-check  # readiness for the public remote
@@ -1100,7 +1148,7 @@ npm run publish-check  # readiness for the public remote
 - **Timers are never correctness.** Wait on the observable consequence; a timeout is a failure guard.
 - **A browser check waits on a state transition only the action under test can produce, never on a condition that may already hold.** Two of Phase 6b's branching checks passed before their action had rendered: they waited on "the newest assistant message is complete", which was already true of the *previous* turn, and then read message ids that were still the old ones. What they wait on now is the composer emptying (`toHaveValue("")`) or the editor unmounting (`toHaveCount(0)`) — states that exist only once `send` has resolved without a failure, which is after `finalizeTurn` wrote and the conversation was re-read. The question to ask of every wait is "could this have been true one moment before I acted?"; if it could, the check is measuring the run's history rather than its own action. **This is the failure that makes a suite pass while testing nothing, and it does not announce itself** — one of the two passed on the first run and was found only because its neighbour failed the same way. It is the sharper form of the timer rule above: waiting on the observable consequence is not enough when the consequence was already there.
 - **`npm run check:ui` runs everything until it passes five minutes** (`PROJECT.md` Decision 67). Below that, a partial run is a claim about what was checked and is not worth the minutes it saves. Past it, shard across workers — which needs a sandbox per worker first, since `fullyParallel: false` is there because one data directory and one git repository are shared — or run by spec file. Splitting a spec file along §17's step letters is the split rule above, not this threshold.
-- **A reader that tolerates malformed input is safe for display and unsafe as an authority.** Skipping what will not parse and carrying on is right for a view — one broken file must not blank a page — but a function that makes a **destructive or repairing** decision from what it read has to verify it read *everything* first: count the records it parsed against the raw records present, and refuse on a mismatch rather than trusting a lenient reader's silence. **`sweepInterruptedMessages` in `lib/history/streaming.ts` is the first case**, and it shows the trap: it decides which messages nothing recorded, so a torn line `readActions` skipped could be the very entry naming a message it is about to "repair" — and **a log that fails to parse entirely reads as an empty one, which makes every message look orphaned.** Both failures run the same direction, which is the dangerous one: the less it manages to read, the more it does. `listTasks` has the same shape today — it skips a file and leaves the path in `listTasks.errors` — and is safe only because nothing destructive reads it; the first caller that acts on its output owes this check. **Phase 7's `kb:check` and Phase 8's link index are the next two places it applies**: both decide what is orphaned or broken from a scan, which is the sweep's shape exactly.
+- **A reader that tolerates malformed input is safe for display and unsafe as an authority.** Skipping what will not parse and carrying on is right for a view — one broken file must not blank a page — but a function that makes a **destructive or repairing** decision from what it read has to verify it read *everything* first: count the records it parsed against the raw records present, and refuse on a mismatch rather than trusting a lenient reader's silence. **`sweepInterruptedMessages` in `lib/history/streaming.ts` is the first case**, and it shows the trap: it decides which messages nothing recorded, so a torn line `readActions` skipped could be the very entry naming a message it is about to "repair" — and **a log that fails to parse entirely reads as an empty one, which makes every message look orphaned.** Both failures run the same direction, which is the dangerous one: the less it manages to read, the more it does. `listTasks` has the same shape today — it skips a file and leaves the path in `listTasks.errors` — and is safe only because nothing destructive reads it; the first caller that acts on its output owes this check. **Phase 7's `kb:check` is the second case and the first acting caller of `listTasks`**: an unreadable map suspends its orphan rule and a non-empty `listTasks.errors` suspends its collection rule, each as exit 2 rather than a guess (Decision 73). Phase 8's link-index readers — backlinks, the graph — are next, and `LinkIndex.errors` is there so they can tell "nothing links here" from "I could not read what might".
 - **Dirty-check writes.** Never write a value that is already set.
 - **Atomic file writes** (tmp + rename) in the store; whole-file writes, never read-modify-write of shared arrays.
 - **LF everywhere.** `.gitattributes` forces `eol=lf`; the store normalizes CRLF to LF before writing. Byte-for-byte checks compare hashes, not `git diff`.

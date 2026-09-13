@@ -24,6 +24,7 @@ import { useCallback, useRef, useState } from "react";
 import { uuidv7 } from "@/lib/chat/uuid";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import type { TurnListeners } from "@/components/chat/useConversation";
+import type { AutoApplied } from "@/lib/chat/types";
 
 /** taskId → conversation, for this page's lifetime only. */
 const started = new Map<string, string>();
@@ -32,6 +33,14 @@ export interface AskTurn {
   conversationId: string | null;
   reply: string;
   streaming: boolean;
+  /**
+   * The write this answer's turn applied itself, drawn under the answer with its Undo — the sheet's
+   * copy of the transcript marker, since a toast carries no buttons (Decision 84). It belongs to the
+   * answer on screen, so the next question clears it.
+   */
+  applied: AutoApplied[];
+  /** Forget one after its Undo landed; the log already says it is undone. */
+  dropApplied: (batch: string) => void;
   ask: (text: string, taskIds: string[]) => Promise<string | null>;
   stop: () => void;
   reset: () => void;
@@ -45,12 +54,18 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [applied, setApplied] = useState<AutoApplied[]>([]);
   const abort = useRef<AbortController | null>(null);
   const listen = useRef(listeners);
   listen.current = listeners;
 
   const reset = useCallback(() => {
     setReply("");
+    setApplied([]);
+  }, []);
+
+  const dropApplied = useCallback((batch: string) => {
+    setApplied((all) => all.filter((one) => one.batch !== batch));
   }, []);
 
   const ask = useCallback(
@@ -72,6 +87,7 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
       }
       setConversationId(id);
       setReply("");
+      setApplied([]);
       setStreaming(true);
 
       const controller = new AbortController();
@@ -114,6 +130,7 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
               } else if (event.type === "proposal") {
                 listen.current.onProposal?.(event.proposal);
               } else if (event.type === "applied") {
+                setApplied((all) => [...all, event.applied]);
                 listen.current.onApplied?.(event.applied);
               } else if (event.type === "error") {
                 failure = { message: event.message, code: event.code };
@@ -140,5 +157,5 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
 
   const stop = useCallback(() => abort.current?.abort(), []);
 
-  return { conversationId, reply, streaming, ask, stop, reset };
+  return { conversationId, reply, streaming, applied, dropApplied, ask, stop, reset };
 }

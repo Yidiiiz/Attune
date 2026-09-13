@@ -1,7 +1,8 @@
-// Owns: what the client says about §6.3's auto-applied write, and its Undo — once, for both places
-// it is said. The toast is the notification; the transcript marker (`components/chat/AppliedMarker`)
-// is the record. They share these words and this Undo so they cannot come to disagree about what
-// happened or what undoing it means.
+// Owns: what the client says about §6.3's auto-applied write, and its Undo. The toast is the
+// notification; the marker under the reply (`components/chat/AppliedMarker`) is the record and the
+// one place with Undo, in the chat transcript and under the sheet's Ask answer alike. Toasts carry no
+// buttons (Decision 84): at some window widths any button in one lands on the chat's Send, and an
+// Undo there turned a Send click into an undo. Both say the same sentence, from here.
 //
 // Failure behavior: an undo the log refuses — a later change touched the same file — is reported,
 // never forced. Forcing it would put the whole file back as it was before this write, taking every
@@ -10,7 +11,7 @@
 "use client";
 
 import { showToast } from "@/components/shell/Toast";
-import { reportFailure, reportNotice, send } from "@/components/tasks/writes";
+import { send } from "@/components/tasks/writes";
 import type { AutoApplied } from "@/lib/chat/types";
 
 const fileOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
@@ -30,24 +31,7 @@ export async function undoApplied(applied: AutoApplied): Promise<string | null> 
   return typeof answer.data.reason === "string" ? answer.data.reason : answer.error ?? "the undo did not happen";
 }
 
-/** The toast with its Undo. `onUndone` re-reads whatever shows the marker, so the marker goes too. */
-export function announceApplied(applied: AutoApplied, onUndone: () => void): void {
-  showToast({
-    id: `applied:${applied.batch}`,
-    text: describeApplied(applied),
-    action: {
-      label: "Undo",
-      run: () => {
-        void undoApplied(applied).then((problem) => {
-          // The toast is gone by now, so a refusal has no on-screen origin left (§13.5).
-          if (problem !== null) {
-            reportFailure("Not undone", problem);
-            return;
-          }
-          reportNotice(`Undone — ${fileOf(applied.path)} is as it was`);
-          onUndone();
-        });
-      },
-    },
-  });
+/** The toast: the sentence, and where Undo is. */
+export function announceApplied(applied: AutoApplied): void {
+  showToast({ id: `applied:${applied.batch}`, text: `${describeApplied(applied)}. Undo is under the reply.` });
 }

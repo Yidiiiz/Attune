@@ -18,6 +18,7 @@ import type { Attachment } from "./Attachments";
 import { DRAFT_KEY } from "./draft";
 import type { Mode } from "./draft";
 import AskPanel from "./AskPanel";
+import AppliedMarker from "@/components/chat/AppliedMarker";
 import { announceApplied } from "./autoApplied";
 import { useAskTurn } from "./useAskTurn";
 import ModeSelector from "./ModeSelector";
@@ -61,11 +62,11 @@ export default function ComposerSheet(props: ComposerSheetProps) {
   }, [router, onClose]);
 
   // §9.6: what an Ask turn proposes lands in this sheet's tray, and the write that applied itself
-  // gets the same toast and Undo it gets in the Chat tab. `tray` is read when an event arrives,
-  // after this render has declared it.
+  // gets the same toast and marker it gets in the Chat tab, the marker under the answer. `tray` is
+  // read when an event arrives, after this render has declared it.
   const askTurn = useAskTurn({
     onProposal: (proposal) => tray.receive(proposal),
-    onApplied: (applied) => announceApplied(applied, () => router.refresh()),
+    onApplied: announceApplied,
   });
   const tray = useProposals({
     source: askTurn.conversationId === null ? null : `chat:${askTurn.conversationId}`,
@@ -182,6 +183,16 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           streaming={askTurn.streaming}
           conversationId={askTurn.conversationId}
           {...(askingAbout === undefined ? {} : { about: askingAbout.title })}
+          applied={askTurn.applied.map((applied) => (
+            <AppliedMarker
+              key={applied.batch}
+              applied={applied}
+              onUndone={() => {
+                askTurn.dropApplied(applied.batch);
+                router.refresh();
+              }}
+            />
+          ))}
           onStop={askTurn.stop}
         />
 

@@ -9,6 +9,7 @@
 
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Markdown from "@/components/markdown/Markdown";
 import styles from "./Composer.module.css";
@@ -19,10 +20,12 @@ export interface AskPanelProps {
   conversationId: string | null;
   /** What the question was about, so the panel says so (§9.6). */
   about?: string;
+  /** The auto-applied write's marker, under the finished answer as it is under a reply in Chat. */
+  applied?: ReactNode;
   onStop: () => void;
 }
 
-export default function AskPanel({ reply, streaming, conversationId, about, onStop }: AskPanelProps) {
+export default function AskPanel({ reply, streaming, conversationId, about, applied, onStop }: AskPanelProps) {
   if (reply.length === 0 && !streaming) return null;
 
   return (
@@ -46,7 +49,10 @@ export default function AskPanel({ reply, streaming, conversationId, about, onSt
           <span className={styles.askCaret} aria-hidden="true" />
         </div>
       ) : (
-        <Markdown text={reply} />
+        <>
+          <Markdown text={reply} />
+          {applied}
+        </>
       )}
     </section>
   );

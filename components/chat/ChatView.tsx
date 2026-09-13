@@ -76,7 +76,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
   const { state, streamingId, error, setError, send, stop, reload, switchTo, setModel } =
     useConversation(initial, {
       onProposal: tray.receive,
-      onApplied: (applied) => announceApplied(applied, () => void reload(id)),
+      onApplied: announceApplied,
     });
   const distilling = useDistill(id, distill, tray);
   const bottom = useRef<HTMLDivElement | null>(null);

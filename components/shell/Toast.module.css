@@ -1,4 +1,9 @@
-/* Toasts sit in z-tier 40, the top tier (AGENTS.md conventions). */
+/* Toasts sit in z-tier 40, the top tier (AGENTS.md conventions).
+ *
+ * A toast is transparent to the pointer, all of it: it has no buttons (Decision 84), and its corner
+ * is where the chat composer's Send button is. A toast that swallowed a click there cost seven
+ * seconds of dead Send after every one, or, paused under a resting pointer, for as long as the
+ * pointer stayed (`e2e/toast.spec.ts` asks the page what is under Send while a toast is up). */
 
 .host {
   position: fixed;
@@ -9,6 +14,7 @@
   flex-direction: column;
   gap: 8px;
   max-width: min(420px, calc(100vw - 40px));
+  pointer-events: none;
 }
 
 .toast {
@@ -33,37 +39,6 @@
   flex: 1;
   font-size: 13px;
   line-height: 1.45;
-}
-
-.action {
-  flex: none;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.45;
-  cursor: pointer;
-}
-
-.action:hover {
-  text-decoration: underline;
-}
-
-.close {
-  flex: none;
-  padding: 0 2px;
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.close:hover {
-  color: var(--fg);
 }
 
 @keyframes life {

@@ -6,6 +6,13 @@
 // cost every caller a hook. At most one toast per `id` per page load, which is what stops a failing
 // poll from stacking forty copies of the same sentence.
 //
+// **A toast is text and nothing else — no buttons, not even a close** (Decision 84). Its corner is
+// where the chat composer's Send is, and at some window widths every spot a button could sit in a
+// toast lands on Send; the one Undo toasts carried turned a Send click into an undo. So the host is
+// transparent to the pointer, a toast leaves when its animation ends, and anything a person can do
+// about what it says lives on the surface that owns it: Undo for an auto-applied write is the marker
+// under the reply. `e2e/toast.spec.ts` checks that a click on Send reaches Send while one is up.
+//
 // Failure behavior: this component is the thing that reports failures, so it has none of its own —
 // a toast that cannot render is dropped silently rather than throwing inside whatever raised it.
 
@@ -19,16 +26,6 @@ export interface ToastSpec {
   id: string;
   text: string;
   tone?: "info" | "error";
-  /**
-   * One button beside the text — §6.3's Undo on an auto-applied write is the first. Pressing it
-   * dismisses the toast; whatever it reports afterwards is the caller's to show.
-   *
-   * The toast does not pause on hover. A pause can land in the fade-out, and a toast held at zero
-   * opacity under a resting pointer is an invisible layer over the chat's Send button that never
-   * leaves. An action offered here must therefore also exist somewhere durable — for Undo, that is
-   * the transcript marker — so seven seconds is a notification's life, not the only chance to act.
-   */
-  action?: { label: string; run: () => void };
 }
 
 type Listener = (toast: ToastSpec) => void;
@@ -69,22 +66,6 @@ export default function ToastHost() {
           onAnimationEnd={() => dismiss(toast.id)}
         >
           <span className={styles.text}>{toast.text}</span>
-          {toast.action === undefined ? null : (
-            <button
-              type="button"
-              className={styles.action}
-              data-ui="toast-action"
-              onClick={() => {
-                dismiss(toast.id);
-                toast.action?.run();
-              }}
-            >
-              {toast.action.label}
-            </button>
-          )}
-          <button type="button" className={styles.close} onClick={() => dismiss(toast.id)} aria-label="Dismiss">
-            ×
-          </button>
         </div>
       ))}
     </div>

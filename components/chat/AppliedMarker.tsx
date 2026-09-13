@@ -1,7 +1,8 @@
-// Owns: the transcript's marker for §6.3's auto-applied write — the record, where the toast is only
-// the notification (Phase 7 approval, addition to Stage B). It is drawn under the reply whose turn
-// made the write, from the log (`lib/history/auto-applied.ts`), and carries the same Undo as the
-// toast (`components/composer/autoApplied.ts`).
+// Owns: the marker for §6.3's auto-applied write — the record, where the toast is only the
+// notification (Phase 7 approval, addition to Stage B) — and the write's one Undo, since toasts carry
+// no buttons (Decision 84). In Chat it is drawn under the reply whose turn made the write, from the
+// log (`lib/history/auto-applied.ts`); the sheet draws it under its Ask answer from the turn's own
+// `applied` event. The words and the undo are `components/composer/autoApplied.ts`'s.
 //
 // Failure behavior: an Undo the log refuses is shown here, beside the button, because this is where
 // it was pressed (§13.5). A successful one re-reads the conversation, and the marker is gone because

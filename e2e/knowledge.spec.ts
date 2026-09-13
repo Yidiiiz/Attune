@@ -26,23 +26,26 @@ const HABITS = "knowledge/profile/habits.md";
 const tray = (page: Page) => page.locator("[data-ui='proposals']");
 const card = (page: Page, kind: string) => tray(page).locator(`[data-proposal='${kind}']`).last();
 
-test("a short habits append applies itself, with a toast whose Undo restores habits.md", async ({ page }) => {
+test("a short habits append applies itself, with a buttonless toast and a marker whose Undo restores habits.md", async ({ page }) => {
   const before = sha(HABITS);
   await newConversation(page);
   await exchange(page, "[[propose-habit]] how do I usually work?");
 
+  // The toast says what happened and where Undo is, and offers nothing to press (Decision 84).
   const toast = page.getByRole("status").filter({ hasText: "Remembered in habits.md" });
   await expect(toast).toContainText("2 lines added");
-  await expect(assistant(page).getByTestId("auto-applied")).toContainText("Remembered in habits.md");
+  await expect(toast).toContainText("Undo is under the reply");
+  await expect(toast.locator("button, a, input")).toHaveCount(0);
   expect(readFileSync(onDisk(HABITS), "utf8")).toContain("Works in 50-minute blocks");
   // It applied itself, so there is no card asking for it.
   await expect(tray(page)).toHaveCount(0);
 
-  await toast.getByTestId("toast-action").click();
-  await expect(page.getByText(/Undone — habits\.md is as it was/)).toBeVisible();
+  const marker = assistant(page).getByTestId("auto-applied");
+  await expect(marker).toContainText("Remembered in habits.md — 2 lines added");
+  await marker.getByTestId("auto-applied-undo").click();
   await expect.poll(() => sha(HABITS)).toBe(before);
   // The marker goes with the batch, because the log now says it is undone.
-  await expect(assistant(page).getByTestId("auto-applied")).toHaveCount(0);
+  await expect(marker).toHaveCount(0);
 });
 
 test("the marker is read from the log, survives a reload, and carries the same Undo", async ({ page }) => {
@@ -168,4 +171,21 @@ test("Ask mode in the sheet renders the tasks a turn proposed, and adds them", a
   await drafts.locator("[data-action='add']").click();
   await expect(page.getByText("Tasks added")).toBeVisible();
   await expect(drafts).toHaveCount(0);
+});
+
+test("an Ask answer in the sheet carries the auto-applied write's marker, and its Undo restores habits.md", async ({ page }) => {
+  const before = sha(HABITS);
+  await page.goto("/");
+  await page.locator("[data-composer='button']").click();
+  await page.locator("[data-composer='sheet'] [data-mode='ask']").click();
+  await page.locator("[data-composer='input']").fill("[[propose-habit]] how do I usually work?");
+  await page.locator("[data-composer='send']").click();
+
+  // A toast has no Undo, so the sheet's answer is where it has to be (Decision 84).
+  const marker = page.locator("[data-composer='ask-panel']").getByTestId("auto-applied");
+  await expect(marker).toContainText("Remembered in habits.md — 2 lines added");
+  expect(readFileSync(onDisk(HABITS), "utf8")).toContain("Works in 50-minute blocks");
+  await marker.getByTestId("auto-applied-undo").click();
+  await expect(marker).toHaveCount(0);
+  await expect.poll(() => sha(HABITS)).toBe(before);
 });

@@ -26,6 +26,7 @@
 // means by one finality contract.
 
 import { streamingWrite } from "../history/streaming.ts";
+import { releaseStreaming } from "../history/in-flight.ts";
 import { activePath, buildTree } from "../chat/tree.ts";
 import { messagePath, readConversation, renderMessage } from "../store/chats.ts";
 import { readSettings } from "../store/settings.ts";
@@ -169,6 +170,21 @@ const write = (convId: string, message: Message): Promise<void> =>
   streamingWrite(messagePath(convId, message.id), renderMessage(message));
 
 export async function* runChatTurn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
+  // Known from the input before `start` writes either file, so a throw anywhere — `start` and
+  // `assembleContext` included, which run before the loop's own `try` — still releases them.
+  const held = [input.userMessage?.id, input.assistantMessageId]
+    .filter((id): id is string => id !== undefined)
+    .map((id) => messagePath(input.conversationId, id));
+  try {
+    yield* turn(input);
+  } finally {
+    // Every exit, including an abort and a throw: a path left held is excluded from every later
+    // commit (lib/history/in-flight.ts).
+    await releaseStreaming(held);
+  }
+}
+
+async function* turn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
   const started = await start(input);
   const { system } = await assembleContext({
     mode: input.mode,

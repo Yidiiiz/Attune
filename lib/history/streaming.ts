@@ -13,7 +13,8 @@
 // exactly the thing hard rule 6 exists to prevent, so it is worth one file whose whole content is
 // the guard that keeps it narrow. Two conditions, both checked on every call — the path must name a
 // message file inside a conversation, and the bytes must say `status: streaming`. Anything else is
-// a programming error and is refused rather than written.
+// a programming error and is refused rather than written. Every path it writes is registered in
+// `in-flight.ts` first, which is what keeps a batch committing in the meantime from sweeping it up.
 //
 // `streamingDiscard` is the same exception in the other direction — §16.3's "delete both files"
 // when a send is rejected before any delta. It is here rather than in the caller so that *every*
@@ -38,6 +39,7 @@ import { CHATS_DIR, parseMessage } from "../store/chats.ts";
 import { StoreError } from "../store/paths.ts";
 import { runBatch } from "./batch.ts";
 import { repairInterrupted } from "./chat-actions.ts";
+import { markStreaming } from "./in-flight.ts";
 import { readActions, readLogText } from "./log.ts";
 import type { TreeNode } from "../store/files.ts";
 import type { Message } from "../chat/types.ts";
@@ -75,6 +77,8 @@ export async function streamingWrite(rel: string, content: string): Promise<void
     );
   }
 
+  // Before the write, so there is no moment when the file exists and a batch could stage it.
+  markStreaming(rel);
   await writeText(rel, content);
 }
 

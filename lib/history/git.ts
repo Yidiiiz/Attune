@@ -112,18 +112,52 @@ export async function ahead(): Promise<number | null> {
 /**
  * Stage and commit exactly `paths` — nothing else in the tree. Unrelated edits sitting in the index
  * (a source file being worked on while the dev server runs) must never ride along with a task.
- * Returns the short hash, or null when there was nothing to commit.
+ * `exclude` carves files back out of `paths`; it exists for the message files a turn is still
+ * streaming into (`lib/history/in-flight.ts`). When `declared` is given, the staged set is compared
+ * against it before the commit and any difference is reported. Returns the short hash, or null when
+ * there was nothing to commit.
  */
-export async function commitPaths(message: string, paths: string[]): Promise<string | null> {
-  await gitOk(["add", "-A", "--", ...paths]);
+export async function commitPaths(
+  message: string,
+  paths: string[],
+  exclude: string[] = [],
+  declared?: string[],
+): Promise<string | null> {
+  // `literal`, so a path is only ever itself and never a pattern.
+  const spec = [...paths, ...exclude.map((rel) => `:(exclude,literal)${rel}`)];
+  await gitOk(["add", "-A", "--", ...spec]);
+  if (declared !== undefined) await compareStaged(spec, declared);
   try {
-    await git(["commit", "-m", message, "--", ...paths]);
+    await git(["commit", "-m", message, "--", ...spec]);
   } catch (err) {
     const text = `${(err as Error).message}`;
     if (/nothing to commit|no changes added|nothing added/i.test(text)) return null;
     throw err;
   }
   return await git(["rev-parse", "--short", "HEAD"]);
+}
+
+/**
+ * Report where what is about to be committed and what the batch said it wrote disagree. Never
+ * blocks: this is a measurement, collected so a later decision about staging only declared targets
+ * rests on evidence (`lib/history/in-flight.ts` says why that is not done now). *Staged but not
+ * declared* is a write nothing owns up to, or an edit made by hand — exactly what staging only the
+ * declared set would leave behind. *Declared but not staged* is a target written with the bytes it
+ * already had, which the dirty-check convention says should not happen.
+ */
+async function compareStaged(spec: string[], declared: string[]): Promise<void> {
+  const out = await gitOk(["diff", "--cached", "--name-only", "--no-renames", "-z", "--", ...spec]);
+  if (out === null) return;
+  const staged = new Set(out.split("\0").filter((one) => one.length > 0));
+  const expected = new Set(declared);
+  const extra = [...staged].filter((one) => !expected.has(one));
+  const missing = [...expected].filter((one) => !staged.has(one));
+  if (extra.length === 0 && missing.length === 0) return;
+  console.warn(
+    "history: the commit and the batch's declared targets differ —" +
+      (extra.length > 0 ? ` staged but not declared: ${extra.join(", ")};` : "") +
+      (missing.length > 0 ? ` declared but unchanged: ${missing.join(", ")}` : ""),
+  );
 }
 
 export interface HeadCommit {

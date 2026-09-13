@@ -5,7 +5,8 @@
 //
 // Each case ends by asserting `activeStreams()` is zero. That is the Phase 6a condition 8 check on
 // the server side: §16.8 lists leaking stream buffers among the things not to reproduce, and it is
-// the one item on that list with no visible symptom.
+// the one item on that list with no visible symptom. `streamingPaths()` beside it is the same check
+// for the in-flight registry, whose leak would be just as quiet: a path excluded from every commit.
 
 import { execFileSync } from "node:child_process";
 import { cp, mkdtemp, mkdir, rm } from "node:fs/promises";
@@ -23,6 +24,7 @@ process.env.ATTUNE_FAKE_PROVIDER = "1";
 
 const { runChatTurn, activeStreams } = await import("./turn.ts");
 const { titleFrom } = await import("./finalize.ts");
+const { streamingPaths } = await import("../history/in-flight.ts");
 const chats = await import("../store/chats.ts");
 const { readActions, groupBatches } = await import("../history/log.ts");
 const { uuidv7 } = await import("../chat/uuid.ts");
@@ -112,6 +114,7 @@ describe("a send that succeeds", () => {
     expect(conversation.activeLeafId).toBe(assistantId);
     expect(conversation.title).toBe("why is the matrix transposed?");
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 
   it("commits the exchange as one batch, which one undo would remove whole", async () => {
@@ -163,6 +166,7 @@ describe("a send the provider rejects before any delta", () => {
     expect((await chats.readConversation(CONV)).messages).toEqual([]);
     expect((await batches()).length).toBe(before);
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 
   it("does the same for an unreachable provider", async () => {
@@ -170,6 +174,7 @@ describe("a send the provider rejects before any delta", () => {
     expect(events.at(-1)).toMatchObject({ type: "error", code: "provider" });
     expect((await chats.readConversation(CONV)).messages).toEqual([]);
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 });
 
@@ -184,6 +189,7 @@ describe("a failure after deltas", () => {
     expect(assistant?.text.length).toBeGreaterThan(0);
     expect((await batches()).some((batch) => batch.type === "chat.message")).toBe(true);
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 
   it("is never recorded as complete, which is the §15 item", async () => {
@@ -214,6 +220,7 @@ describe("stopping", () => {
     expect(assistant?.error).toBe("stopped");
     expect(assistant?.text.length).toBeGreaterThan(0);
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 });
 
@@ -234,6 +241,7 @@ describe("regenerating", () => {
     expect(tree.children.get(userId)).toEqual([assistantId, second]);
     expect(conversation.activeLeafId).toBe(second);
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 });
 
@@ -249,6 +257,7 @@ describe("a credential in the prompt", () => {
     expect((await chats.readConversation(CONV)).messages).toEqual([]);
     expect((await batches()).length).toBe(before);
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 });
 
@@ -258,6 +267,7 @@ describe("tool rounds", () => {
     expect(events.some((e) => e.type === "tool" && e.name === "list_tasks")).toBe(true);
     expect(events.at(-1)).toMatchObject({ type: "done" });
     expect(activeStreams()).toBe(0);
+    expect(streamingPaths()).toBe(0);
   });
 });
 

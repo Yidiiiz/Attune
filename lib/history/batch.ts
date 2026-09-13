@@ -18,9 +18,12 @@ import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
 import { StoreError } from "../store/paths.ts";
 import { scanBatch } from "./scan.ts";
+import { commitExclusions } from "./in-flight.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
 import * as git from "./git.ts";
 import {
+  LOG_PATH,
+  MIRROR_PATH,
   appendActions,
   markCommitFailed,
   nextSeq,
@@ -263,8 +266,16 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
 
     let commit: string | null = null;
     const paths = ["data", ...(spec.repoPaths ?? [])];
+    // §8: a reply still arriving is never committed, whatever batch happens to land mid-turn.
+    const exclude = (await commitExclusions(targets)).map((rel) => `data/${rel}`);
+    const declared = [...targets, LOG_PATH, MIRROR_PATH].map((rel) => `data/${rel}`);
     try {
-      commit = await git.commitPaths(subject, paths);
+      commit = await git.commitPaths(
+        subject,
+        paths,
+        exclude,
+        process.env.NODE_ENV === "production" ? undefined : [...declared, ...(spec.repoPaths ?? [])],
+      );
       if (commit === null) {
         // `data/` is tracked and a log line was just written, so this should be unreachable. If it
         // ever happens the entry says so rather than sitting on an unexplained null.

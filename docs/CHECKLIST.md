@@ -262,8 +262,9 @@ and send. Then, with the cards up, type `make them all Friday` and send again.
 Expected: six cards, each field editable. Fields the model filled in from context carry a dotted
 underline and a tooltip reading `Inferred from: <field>`. The follow-up **replaces the cards in
 place** — the same cards, revised — rather than starting a second list. Then the two shapes that are
-not tasks: `add these three movies to my watchlist` shows a collection card with its Add disabled
-and a Phase 7 tooltip, and `read Dune` comes back as a question with the textarea inviting an answer.
+not tasks: `add these three movies to my watchlist` shows a collection card whose Add writes the
+collection (enabled in Phase 7; the same card is checked in the chat tray by `e2e/knowledge.spec.ts`),
+and `read Dune` comes back as a question with the textarea inviting an answer.
 
 **The case worth doing deliberately** (§9.5 step 4, `mergeDraft`): after sending the follow-up, edit
 a card's title *while the spinner is still showing*. When the answer lands, that edit must survive —
@@ -559,6 +560,85 @@ a PDF and ask for its first heading.
 Expected: the answer quotes something only visible in the file. If it does not, the attachment is
 being dropped somewhere between `loadAttachments` and the provider — and the whole point of the
 refusal path is that this should never be a silent failure.
+
+---
+
+## Phase 7 — Knowledge base and collections
+
+**The write paths and the surfaces are checked automatically.** `e2e/knowledge.spec.ts` adds seven
+browser checks to `npm run check:ui`: the auto-apply toast and its Undo restoring `habits.md` by
+SHA-256; the transcript marker surviving a reload and its own Undo; a note card's Add writing the note
+and its map link, and the same note proposed again arriving as an append that says why; a note with no
+map refused on its card with the edited text kept; a collection card starting a collection; Distill to
+knowledge proposing the summary in the conversation's tray; and Ask mode's task proposals drawn and
+added in the sheet. The library half is `lib/agent/auto-apply.test.ts` and `lib/agent/distill.test.ts`;
+§17's other Phase 7 checks were run over HTTP and the CLI at Stage A (AGENTS.md).
+
+**Every proposal in those checks comes from a scripted-provider directive**, which is the only
+coverage the Phase 7 prompts get until a key exists. The four rows below are what the prompts are
+*for*, and none of them can be run offline. They are listed as blocked rather than left out, the same
+way `5.5` is.
+
+### 7.1 A real model searches before it proposes a note — **blocked on an API key**
+
+§6.3's second rule, which is prompt text in `lib/agent/prompts.ts` and nothing a check can enforce.
+
+Steps, once a key is set: in a fresh conversation, tell it something note-shaped that the seed does
+not hold ("my thesis uses Zotero with Better BibTeX exporting to the thesis folder"). Then, in another
+conversation, say it again in different words.
+
+Expected: the first turn calls `search_knowledge` (the debug view, or the server log) before any
+`propose_knowledge_write`, and the card names a map. The second either proposes nothing or proposes an
+append to the note the first created — never a second note. If it proposes a second note anyway,
+`filterWrites` should still turn it into an append when the titles are close; the card says so.
+
+### 7.2 A real model follows §6.4's heuristic — **blocked on an API key**
+
+Steps: across a few turns, say one stable fact ("I'm taking MATH 221 this term"), one transient state
+("I'm exhausted today"), and one thing to forget ("forget that I mentioned my landlord").
+
+Expected: at most the first becomes a proposal. The transient state and the forgotten item produce
+none. A stated habit ("I always plan tomorrow the evening before") of three lines or fewer applies
+itself to `habits.md` with a toast and a marker; anything longer is a card.
+
+### 7.3 A profile file over 150 lines makes the next turn propose a distillation — **blocked on an API key**
+
+The instruction is checked (`lib/agent/context.test.ts`: it appears past 150 lines, not at 150, and sits
+behind the cache breakpoint). Whether a model acts on it is not.
+
+Steps: give `knowledge/profile/habits.md` 160 lines by hand, then ask anything in Chat.
+
+Expected: the reply answers the question *and* the tray holds a `Rewrite` card for `habits.md`, shorter,
+with notes proposed for the detail it moves out. Nothing applies itself: a replace is never auto-applied.
+
+### 7.4 Distill gives a summary worth keeping — **blocked on an API key**
+
+The menu item, the route and the tray are checked with the scripted provider, which answers the
+request by echoing it. This row is whether the summary is any good.
+
+Steps: distill a real conversation of a dozen turns that settled something.
+
+Expected: under 200 words, what was decided first and what is open second, names and numbers exact,
+no greetings. Add it, then distill again: the second card says Rewrite and replaces the first.
+
+### 7.5 The toast, its Undo, and the marker in both themes — **pending**
+
+Steps: trigger an auto-apply (`[[propose-habit]]` with `ATTUNE_FAKE_PROVIDER=1` is enough). Leave
+the pointer resting on the toast until it goes. Switch the theme with the marker on screen.
+
+Expected: the toast leaves after its seven seconds even under the pointer, and nothing is left
+blocking the Send button beneath it. It deliberately does not pause on hover: a pause that lands in
+the fade-out leaves an invisible layer over Send (found by a screenshot run, not by the checks), and
+the marker's Undo is the one with no time limit. The marker reads as a quiet note under the reply in
+both themes, and its Undo is visibly a control.
+
+### 7.6 A tray full of cards does not bury the conversation — **pending**
+
+Steps: send `[[propose-habit]] [[propose-note]] [[propose-collection]] [[propose-tasks]]` twice without
+adding anything.
+
+Expected: the tray scrolls inside its own 40vh rather than pushing the message list off screen, the
+composer stays where it was, and each card's Add acts on that card alone.
 
 ---
 

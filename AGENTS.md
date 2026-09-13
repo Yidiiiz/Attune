@@ -17,7 +17,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
-| 7 — Knowledge base and collections | **Stage A accepted; Stage B in progress.** Splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `6e71e74`, ownership `833226b`, Stage A `0b07a13`. Before Stage B: the validation fix, in its own commit | — |
+| 7 — Knowledge base and collections | **Stage B built, checked, stopped for review.** Splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `6e71e74`, ownership `833226b`, Stage A `0b07a13`, validation fix `5682ec7`, Stage B `d3929b9`, toast fix `0f9479c` | — |
 | 8–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
@@ -156,7 +156,65 @@ condition asked for, and it says staging only declared targets would leave those
 and closed in `5682ec7`: a request failing its schema is a 400 with a fixed message, the dump goes to
 the server's console and never the body, and a `ZodError` from the store is a 500 (Decision 78).
 `npm test` 510/510, `tsc` clean; `check:ui` could not start, because the owner's own `npm run dev`
-held port 3000, and runs with the next change. (3) Accepted as reported.
+held port 3000. Once the port was free it ran on that tree: 31/32, the one failure amendment `u`'s own
+Stop check, whose disk state was checked and is recorded in the amendment. (3) Accepted as reported.
+
+**Phase 7 Stage B — built, checked, stopped for review.** Two `code:` commits — the stage, `d3929b9`,
+and a toast fix it found, `0f9479c` — and the `docs:` commit after them (Decisions 79–81,
+`docs/CHECKLIST.md`'s Phase 7 rows, amendment `u`).
+
+- **Auto-apply, its toast, its Undo and the marker all landed**, which is the one story the approval
+  asked to hear about early if any part did not. A turn's knowledge proposals are held until it is
+  finalized; only for a completed turn is the one write `pickAutoApply` allows applied, as its own
+  `actor: agent` batch after the reply's. The toast's Undo and the marker's Undo are one function. The
+  marker is read from the log by `meta.autoApplied` and batch id, never by position, and resolves
+  through a later write, an undo and a redo. An undone batch is not drawn. An unreadable log, a torn
+  line or an entry missing a field renders nothing and warns (Decision 79).
+- **The tray**, above the chat composer and in the sheet's Ask mode: one card per knowledge write, a
+  rewritten write shown as the append it became, with why; refusals on the card with the edits kept.
+  `PreviewPanel`'s collection Add is enabled through the shared `CollectionCard` (Decision 80).
+- **Distill** from the Chats menu lands a session-summary card in that conversation's tray; nothing is
+  written until Add. **The prompts** carry §6.4's heuristic, the search before a new note, and a
+  distillation request past 150 lines in the uncached Instructions block.
+
+**Checked, and how.** `npm test` 526/526 across 42 files; `tsc` clean; `check:ui` 39/39 in 2.5 minutes,
+twice on `d3929b9`, and 38/39 on `0f9479c`, where the one failure was amendment `u`'s Stop check with its
+disk state verified again. Seven of the 39 are new in `e2e/knowledge.spec.ts` — the toast's Undo restoring `habits.md` by SHA-256, the
+marker surviving a reload with its own Undo, a note's Add writing note and map link and the same note
+again arriving as an append, the map refusal on the card with the text kept, a collection's Add,
+distill, and Ask-mode task proposals added from the sheet. `lib/agent/auto-apply.test.ts` covers the
+library half. A mutation that auto-applies on a stopped turn fails one of its ten tests. A marker reader
+that ignores undo fails two.
+
+**What a look at the screen found that the checks did not.** A screenshot pass left the pointer
+resting on the toast, and the next Send click never landed. Stage B had made toasts pause on hover.
+A pause that lands in the fade-out holds the toast at zero opacity, an invisible layer over the chat
+composer's Send button that never leaves while the pointer stays. `0f9479c` removes the pause. The
+toast keeps its seven seconds, and the transcript marker is where Undo has no time limit. The
+screenshots show the marker, the rewritten card and the inline refusal reading cleanly in both themes.
+
+**Not verified, and why.** Rows 7.1–7.4 need a real model and no key is set: the scripted directives
+are the only coverage the prompts get, as the approval said, and the rows stay listed as blocked.
+`PreviewPanel`'s collection Add is wired but not browser-checked, because Tasks mode's extraction
+is a `parse` call and the scripted provider refuses those; the same card is checked in the tray.
+Rows 7.5 and 7.6 are visual.
+
+**Six things for the review.**
+1. **A fifth directive, `[[propose-tasks]]`**, beyond the plan's four. The Ask-mode task check could
+   not be made without it.
+2. **Knowledge proposals now arrive at the end of a turn** instead of as the tool returns. Task and
+   collection proposals still arrive mid-turn.
+3. **`applied` and the held `proposal` follow the model's `done` in the stream.** No client treats
+   `done` as the end, and one must not start to.
+4. **A tray card's Discard does not confirm**, unlike the preview panel's. A discarded distill costs a
+   model call; say if it should ask.
+5. **The marker's type moved to `lib/chat/types.ts`** so no component imports `lib/history/` (§3).
+   Thirteen components already `import type` from `lib/store/` (`Task`, `Settings`), which the same §3
+   sentence forbids. That was not changed here.
+6. **The toast host sits over the chat composer's Send button.** It is §10.0's bottom-right corner,
+   unchanged. For seven seconds after any toast, a click on Send lands on the toast; Enter still
+   sends. That predates this phase, but an auto-apply now puts a toast there after an ordinary reply.
+   Not changed.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -1153,7 +1211,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | r | **`publish-check` greps the published file set for four AI-authorship strings, and §12's skip list does not name `scripts/publish-check.mjs` — but the script has to contain all four literally in order to search for them, so it is the first thing its own grep finds.** The fix is to assemble the patterns from fragments at runtime, the way `SECRET_PATTERNS`' sample table and `lib/store/files.test.ts` do, rather than adding the script to the skip list: a skip list is a rule scoped to an address, which is the shape that let three writers drift past Decision 71 | Phase 6b close, one deferred amendment | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
 | s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | **outstanding** |
 | t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `5d8efb6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `5d8efb6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
-| u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `3f32635` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload | Phase 7, verifying the git fix | unscheduled — the owner's call | **outstanding — reproduced, instrumented, not explained** |
+| u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `3f32635` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `e125eca` and on `0f9479c`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `3f32635`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met | **deferred — display-only, reproduced, not explained** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 

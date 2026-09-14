@@ -9,7 +9,7 @@
 //
 // Failure behavior: names every offending file and statement, not just the first.
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -90,6 +90,67 @@ describe("§3: what a component may import from lib/", () => {
     // The scan has to be reading real statements for an empty list to mean anything: the type-only
     // imports of `Task` and `Settings` are there to be found.
     expect(seen.some((one) => one.typeOnly && GUARDED.test(one.specifier))).toBe(true);
+    expect(broken).toEqual([]);
+  });
+});
+
+// **And through lib/.** The rule is about what a component can reach, not what it names: a pure-looking
+// module that itself imports a value from `lib/store/` hands a component `node:fs` all the same.
+// `lib/knowledge/items.ts` was exactly that until Phase 8 — its header said pure, and it imported
+// `slugify` from `lib/store/knowledge.ts` — and the direct check above could not have seen it.
+
+const REPO = path.resolve(ROOT, "..");
+const repoRel = (abs: string): string => path.relative(REPO, abs).split(path.sep).join("/");
+
+/** The file under `lib/` a specifier names, or null for a package or anything outside `lib/`. */
+function libFile(specifier: string, from: string): string | null {
+  let abs: string;
+  if (specifier.startsWith("@/")) abs = path.join(REPO, specifier.slice(2));
+  else if (specifier.startsWith(".")) abs = path.resolve(path.dirname(from), specifier);
+  else return null;
+  if (!repoRel(abs).startsWith("lib/")) return null;
+  for (const candidate of [abs, `${abs}.ts`, `${abs}.tsx`, path.join(abs, "index.ts")]) {
+    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
+
+/** The chain of value imports from `file` that ends in `lib/store/` or `lib/history/`, or null. */
+function reaches(file: string, seen: Set<string> = new Set()): string[] | null {
+  if (seen.has(file)) return null;
+  seen.add(file);
+  for (const one of importsIn(readFileSync(file, "utf8"))) {
+    if (one.typeOnly) continue;
+    const next = libFile(one.specifier, file);
+    if (next === null) continue;
+    if (GUARDED.test(repoRel(next))) return [repoRel(next)];
+    const chain = reaches(next, seen);
+    if (chain !== null) return [repoRel(next), ...chain];
+  }
+  return null;
+}
+
+describe("§3, followed through lib/", () => {
+  it("finds that items.ts reaches no store module, which is what lets the document view import it", () => {
+    expect(reaches(path.join(REPO, "lib/knowledge/items.ts"))).toBeNull();
+    // And the check can see a chain when there is one: the knowledge store reaches `node:fs` code.
+    expect(reaches(path.join(REPO, "lib/history/knowledge-actions.ts"))).not.toBeNull();
+  });
+
+  it("holds for every value import a component makes into lib/", () => {
+    const broken: string[] = [];
+    let followed = 0;
+    for (const file of sources(ROOT)) {
+      for (const one of importsIn(readFileSync(file, "utf8"))) {
+        if (one.typeOnly || breach(one) !== null) continue; // direct breaches are the check above's
+        const target = libFile(one.specifier, file);
+        if (target === null) continue;
+        followed += 1;
+        const chain = reaches(target);
+        if (chain !== null) broken.push(`${path.relative(ROOT, file)} → ${[repoRel(target), ...chain].join(" → ")}`);
+      }
+    }
+    expect(followed).toBeGreaterThan(0);
     expect(broken).toEqual([]);
   });
 });

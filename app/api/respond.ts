@@ -30,6 +30,8 @@ export const INVALID_RECORD = "A record failed validation on the server.";
 const STATUS: Record<string, number> = {
   not_found: 404,
   exists: 409,
+  // The file changed on disk since the client read it (Phase 8's document view); nothing was written.
+  conflict: 409,
   invalid: 400,
   forbidden_path: 403,
   // Well-formed, understood, and refused on its content (§11.5).

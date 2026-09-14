@@ -1,6 +1,6 @@
 // Owns: the ActionSpec builders for the knowledge base — a proposed knowledge write applied (a
 // session summary is one of those), a collection appended to or created, an item promoted to a task
-// (PROJECT.md §6.3, §4.5, §4.6). The fifth builder file, split by domain the way `chat-actions.ts`
+// (PROJECT.md §6.3, §4.5, §4.6). A builder file of its own, split by domain the way `chat-actions.ts`
 // was, because `actions.ts` is at the cap and its seam is by domain (Decision 56).
 //
 // Every write here snapshots whole files as `{ content }`: a note or a map is small, its body is the
@@ -50,7 +50,7 @@ const nameOf = (rel: string): string => rel.split("/").pop()?.replace(/\.md$/, "
  * Run `write` against the store, snapshotting every file it may touch — `paths` and the index —
  * before and after. The index is kept as a target only if it actually changed.
  */
-async function recorded(
+export async function recorded(
   store: Store,
   paths: string[],
   write: () => Promise<void>,

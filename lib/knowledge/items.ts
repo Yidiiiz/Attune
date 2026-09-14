@@ -1,10 +1,12 @@
 // Owns: the body format of a collection (PROJECT.md §4.5) — which lines are items, what each
-// item's slug is, and whether it has already been promoted to a task. Pure, so the promote builder,
-// `kb:check` and a future document view all read an item the same way.
+// item's slug is, and whether it has already been promoted to a task. Pure, and importing only
+// `slug.ts`, which is pure too — so the promote builder, `kb:check` and the document view all read an
+// item the same way. Until Phase 8 this said "pure" while importing `slugify` from
+// `lib/store/knowledge.ts`, which reaches `node:fs`; a component could not have imported it.
 //
 // Failure behavior: none. A line that is not a checkbox item is not an item; nothing here throws.
 
-import { slugify } from "../store/knowledge.ts";
+import { slugify } from "./slug.ts";
 
 export interface CollectionItem {
   /** Zero-based line index in the body. */

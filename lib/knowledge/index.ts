@@ -6,17 +6,22 @@
 // links would give every file an incoming edge and make an orphan impossible to see. `settings/` is
 // JSON and has no links.
 //
-// The built index is cached and dropped on any store write (`events.onWrite`) or by
-// `invalidateLinkIndex()`, for writes that bypass the store's events — an undo's `git checkout`, or a
-// file edited by hand while the app runs, which the index does not see until something invalidates it.
+// **The built index is cached, and the cache is checked against the disk on every read.** A store
+// write drops it at once (`events.onWrite`); a write that bypasses the store — undo's `git checkout`,
+// a note edited in another program while the app runs, which is Phase 8's document view's ordinary
+// case — changes `treeSignature`, which every `linkIndex()` call compares before answering. Until
+// Phase 8 only the first was true, and `invalidateLinkIndex()`, which said it covered the second,
+// had no caller. The signature is a stat walk, not a content hash; its one blind spot is written down
+// where it is computed, in `lib/store/files.ts`.
 //
 // Failure behavior: a file whose frontmatter will not parse contributes no edges and is named in
 // `errors`, so a reader acting on the index — `kb:check`'s orphan rule — can tell "nothing links
 // here" from "I could not read what might". A reader that ignores `errors` is guessing.
 
 import { onWrite } from "../store/events.ts";
-import { listTree, readText } from "../store/files.ts";
+import { listTree, readText, treeSignature } from "../store/files.ts";
 import { splitFrontmatter } from "../store/frontmatter.ts";
+import { headingOf } from "../store/knowledge.ts";
 import { extractLinks } from "./links.ts";
 import type { TreeNode } from "../store/files.ts";
 
@@ -29,6 +34,10 @@ export interface LinkIndex {
   incoming: Map<string, Set<string>>;
   /** Markdown files whose frontmatter did not parse; their edges are unknown, not absent. */
   errors: string[];
+  /** Path → the title a reader shows for it: its frontmatter `title`, else its first heading. */
+  titles: Map<string, string>;
+  /** Task id → the path of the task file whose frontmatter names that id. */
+  taskIds: Map<string, string>;
 }
 
 const SKIPPED = ["history/", "settings/"];
@@ -43,7 +52,9 @@ function flatten(nodes: TreeNode[], into: string[] = []): string[] {
 
 export async function buildLinkIndex(): Promise<LinkIndex> {
   const all = flatten(await listTree("")).filter((rel) => !SKIPPED.some((prefix) => rel.startsWith(prefix)));
-  const index: LinkIndex = { files: new Set(all), outgoing: new Map(), incoming: new Map(), errors: [] };
+  const index: LinkIndex = {
+    files: new Set(all), outgoing: new Map(), incoming: new Map(), errors: [], titles: new Map(), taskIds: new Map(),
+  };
 
   for (const rel of all.filter((one) => one.endsWith(".md")).sort()) {
     let parsed: { data: Record<string, unknown>; body: string };
@@ -53,6 +64,10 @@ export async function buildLinkIndex(): Promise<LinkIndex> {
       index.errors.push(rel);
       continue;
     }
+    const named = typeof parsed.data.title === "string" ? parsed.data.title.trim() : "";
+    const title = named || headingOf(parsed.body);
+    if (title) index.titles.set(rel, title);
+    if (rel.startsWith("tasks/") && typeof parsed.data.id === "string") index.taskIds.set(parsed.data.id, rel);
     const edges = extractLinks(rel, parsed.data, parsed.body);
     index.outgoing.set(rel, edges);
     for (const edge of edges) {
@@ -64,15 +79,23 @@ export async function buildLinkIndex(): Promise<LinkIndex> {
   return index;
 }
 
-let cached: Promise<LinkIndex> | null = null;
+let cached: { signature: string; index: Promise<LinkIndex> } | null = null;
 
-/** The index, built on first use and rebuilt after anything writes. */
-export function linkIndex(): Promise<LinkIndex> {
-  cached ??= buildLinkIndex().catch((err) => {
-    cached = null;
-    throw err;
-  });
-  return cached;
+/**
+ * The index, built on first use and rebuilt whenever the files under it have changed since. The
+ * signature is taken before the build, so a write that lands while it runs makes the next call
+ * rebuild rather than trust an index that may have missed it.
+ */
+export async function linkIndex(): Promise<LinkIndex> {
+  const signature = await treeSignature(SKIPPED);
+  if (cached === null || cached.signature !== signature) {
+    const entry = { signature, index: buildLinkIndex() };
+    cached = entry;
+    entry.index.catch(() => {
+      if (cached === entry) cached = null;
+    });
+  }
+  return cached.index;
 }
 
 export function invalidateLinkIndex(): void {

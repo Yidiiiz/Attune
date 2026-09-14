@@ -14,12 +14,12 @@ import {
   appendFile, mkdir as fsMkdir, open, readFile, readdir, rename as fsRename, rm, stat, writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { DATA_DIR, REPO_DIR, StoreError, resolveData } from "./paths.ts";
+import { DATA_DIR, StoreError, resolveData } from "./paths.ts";
 import { emitWrite } from "./events.ts";
 
 export interface TreeNode {
   name: string;
-  /** Relative to DATA_DIR, or to REPO_DIR when listed with `wholeRepo`. Always forward slashes. */
+  /** Relative to DATA_DIR, or to REPO_DIR in the Files panel's "Whole repo" tree. Always forward slashes. */
   path: string;
   type: "file" | "dir";
   size?: number;
@@ -27,12 +27,9 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
-/** Directories never worth walking into when listing the whole repository. */
-const REPO_SKIP = new Set(["node_modules", ".next", ".git", "data"]);
-
 const toPosix = (rel: string): string => rel.split(path.sep).join("/");
 
-async function walk(abs: string, rel: string, skip: Set<string>): Promise<TreeNode[]> {
+async function walk(abs: string, rel: string): Promise<TreeNode[]> {
   let entries;
   try {
     entries = await readdir(abs, { withFileTypes: true });
@@ -42,7 +39,7 @@ async function walk(abs: string, rel: string, skip: Set<string>): Promise<TreeNo
 
   const nodes: TreeNode[] = [];
   for (const entry of entries) {
-    if (entry.name === ".gitkeep" || skip.has(entry.name)) continue;
+    if (entry.name === ".gitkeep") continue;
     const childRel = rel ? `${rel}/${entry.name}` : entry.name;
     const childAbs = path.join(abs, entry.name);
     if (entry.isDirectory()) {
@@ -50,7 +47,7 @@ async function walk(abs: string, rel: string, skip: Set<string>): Promise<TreeNo
         name: entry.name,
         path: childRel,
         type: "dir",
-        children: await walk(childAbs, childRel, skip),
+        children: await walk(childAbs, childRel),
       });
     } else if (entry.isFile()) {
       const info = await stat(childAbs).catch(() => null);
@@ -68,8 +65,8 @@ async function walk(abs: string, rel: string, skip: Set<string>): Promise<TreeNo
   return nodes;
 }
 
-/** The `resolveData` guard, against an arbitrary root. Used only for the whole-repo listing. */
-function resolveWithin(root: string, rel: string): string {
+/** The `resolveData` guard, against an arbitrary root. Used for reads of the checkout's tracked files. */
+export function resolveWithin(root: string, rel: string): string {
   if (typeof rel !== "string") throw new StoreError("forbidden_path", "path must be a string");
   if (path.isAbsolute(rel) || /^[a-zA-Z]:/.test(rel)) {
     throw new StoreError("forbidden_path", `path must be relative: ${rel}`);
@@ -81,11 +78,54 @@ function resolveWithin(root: string, rel: string): string {
   return abs;
 }
 
-/** List a directory tree. `wholeRepo` roots the walk at the checkout instead of `data/`. */
-export async function listTree(rel: string, opts: { wholeRepo?: boolean } = {}): Promise<TreeNode[]> {
-  const root = opts.wholeRepo ? REPO_DIR : DATA_DIR;
-  const abs = opts.wholeRepo ? resolveWithin(root, rel) : resolveData(rel || ".");
-  return walk(abs, toPosix(path.relative(root, abs)), opts.wholeRepo ? REPO_SKIP : new Set());
+/**
+ * List a directory tree under `data/`. There is no whole-checkout walk: until Phase 8 a `wholeRepo`
+ * option walked the directory and would have listed `.env.local`; "Whole repo" is now git's tracked
+ * files (`repoTree` in `browse.ts`), and a walk that could reach the key is one nobody can call.
+ */
+export async function listTree(rel: string): Promise<TreeNode[]> {
+  const abs = resolveData(rel || ".");
+  return walk(abs, toPosix(path.relative(DATA_DIR, abs)));
+}
+
+/**
+ * A fingerprint of every file under `data/` outside the `skip` prefixes: each path with its size, its
+ * modification and change times to the nanosecond, and its file id. A cache over the tree compares it
+ * on every read, so it notices a write the store did not make — undo's `git checkout`, a file edited
+ * in another program — which `events.onWrite` never hears about.
+ *
+ * **The residual gap, stated so nobody takes this for a content hash.** An edit that keeps the size
+ * and the file id, and lands within the same timestamp tick as the write before it, with the cache
+ * rebuilt in between, is invisible. The tick is the file system's clock, not the field's width: NTFS
+ * stores 100 ns but is stamped from a clock that moves every 1–16 ms, Linux fills nanoseconds from a
+ * coarse kernel clock of a few ms, FAT32 keeps 2 s. The change time narrows it — no ordinary tool can
+ * set it, so one that restores an old modification time is still seen — and so does the file id,
+ * which an editor saving through a temporary file and a rename replaces.
+ */
+export async function treeSignature(skip: string[] = []): Promise<string> {
+  const hash = createHash("sha256");
+  const visit = async (abs: string, rel: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(abs, { withFileTypes: true });
+    } catch {
+      hash.update(`${rel}\0unreadable\n`);
+      return;
+    }
+    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    for (const entry of entries) {
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (skip.some((prefix) => `${childRel}/`.startsWith(prefix))) continue;
+      const childAbs = path.join(abs, entry.name);
+      if (entry.isDirectory()) await visit(childAbs, childRel);
+      else if (entry.isFile()) {
+        const info = await stat(childAbs, { bigint: true }).catch(() => null);
+        hash.update(info ? `${childRel}\0${info.size}\0${info.mtimeNs}\0${info.ctimeNs}\0${info.ino}\n` : `${childRel}\0gone\n`);
+      }
+    }
+  };
+  await visit(DATA_DIR, "");
+  return hash.digest("hex");
 }
 
 function notFound(rel: string, err: unknown): never {
@@ -195,7 +235,9 @@ export async function deleteFile(rel: string): Promise<void> {
   emitWrite([rel]);
 }
 
-export async function rename(from: string, to: string): Promise<void> {
+// Named `moveFile` rather than after the fs verb: `files.test.ts` flags every member call of that verb
+// in the project so no write can skip `renameAtomic`, and this one goes through it (Phase 8 is its first caller).
+export async function moveFile(from: string, to: string): Promise<void> {
   const absTo = resolveData(to);
   await fsMkdir(path.dirname(absTo), { recursive: true });
   try {

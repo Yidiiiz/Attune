@@ -1,6 +1,6 @@
 // A request that fails its route's schema is a 400 in the §14 shape with a fixed message, one route
-// per family that parses a body — agent, chats, collections, history, settings, tasks. The other four
-// families (calendar, files, sync, weather) parse no body with zod. What is checked is the whole
+// per family that parses a body — agent, chats, collections, files, history, settings, tasks. Calendar,
+// sync and weather parse no body with zod; knowledge and search parse only a query string. What is checked is the whole
 // body, so a zod dump, a field path or anything the client sent cannot ride along in it; and that the
 // dump is not lost, only moved to the server's console.
 //
@@ -32,6 +32,7 @@ beforeAll(async () => {
       params: { slug: "movies" },
       body: { item: `Not A Slug ${SENTINEL}` },
     },
+    files: { handler: (await import("./files/op/route.ts")).POST as Handler, body: { op: SENTINEL, path: 7 } },
     history: { handler: (await import("./history/undo/route.ts")).POST as Handler, body: { batch: 7, force: SENTINEL } },
     settings: { handler: (await import("./settings/route.ts")).PUT as Handler, body: { timezone: [SENTINEL] } },
     tasks: { handler: (await import("./tasks/route.ts")).POST as Handler, body: { items: SENTINEL } },
@@ -47,7 +48,7 @@ const send = (route: { handler: Handler; params?: Record<string, string>; body: 
   );
 
 describe("a body that fails its schema", () => {
-  for (const family of ["agent", "chats", "collections", "history", "settings", "tasks"]) {
+  for (const family of ["agent", "chats", "collections", "files", "history", "settings", "tasks"]) {
     it(`is 400 with the fixed message and nothing else — ${family}`, async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const response = await send(routes[family]);

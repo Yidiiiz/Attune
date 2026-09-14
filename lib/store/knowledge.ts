@@ -103,19 +103,8 @@ const ORDER: Record<string, readonly string[]> = {
 
 const SCHEMAS = { note: NoteSchema, map: MapSchema, collection: CollectionSchema, session: SessionSchema };
 
-/** Title to slug: lowercase ASCII words joined by hyphens, at most 40 characters, never empty. */
-export function slugify(text: string, fallback: string): string {
-  const base = text
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  if (base.length <= 40) return base || fallback;
-  const cut = base.slice(0, 40);
-  const boundary = cut.lastIndexOf("-");
-  return (boundary > 0 ? cut.slice(0, boundary) : cut).replace(/-+$/, "") || fallback;
-}
+/** Title to slug. Lives in `lib/knowledge/slug.ts`, which is pure; kept here for the writers. */
+export { slugify } from "../knowledge/slug.ts";
 
 /** The first `# ` heading in `body`, or null. */
 export function headingOf(body: string): string | null {
@@ -162,8 +151,8 @@ export async function listKnowledge(): Promise<string[]> {
   return found.sort();
 }
 
-/** `<prefix>_<YYYYMMDD>_<4 hex>` (§4.2, §4.5), regenerated on collision with an id already in use. */
-export async function newKnowledgeId(prefix: "n" | "k"): Promise<string> {
+/** `<prefix>_<YYYYMMDD>_<4 hex>` (§4.2, §4.3, §4.5), regenerated on collision with an id already in use. */
+export async function newKnowledgeId(prefix: "n" | "m" | "k"): Promise<string> {
   const day = todayIn((await readSettings()).timezone).replace(/-/g, "");
   const taken = new Set<unknown>();
   for (const rel of await listKnowledge()) {

@@ -15,8 +15,10 @@
 // so a volatile line ahead of the breakpoint would invalidate everything behind it on every call
 // and turn the cache into a pure write cost. Do not merge them back together.
 
-import { readText } from "../store/files.ts";
-import { StoreError } from "../store/paths.ts";
+import { readBinary, readText } from "../store/files.ts";
+import { StoreError, resolveData } from "../store/paths.ts";
+import { credentialPath } from "../security/credential-paths.ts";
+import { looksLikeText } from "../security/raw.ts";
 import { listTasks } from "../store/tasks.ts";
 import { readSettings } from "../store/settings.ts";
 import { datePart, nowIso, todayIn } from "../schedule/dates.ts";
@@ -83,6 +85,43 @@ async function readOrEmpty(rel: string): Promise<string> {
     return "";
   }
   return text.replace(/<!--[\s\S]*?-->/g, "").trim();
+}
+
+/**
+ * §6.2's "open document's full text", with a ceiling (Decision 85). The block sits behind the cache
+ * breakpoint, so it is paid for on every turn of a conversation that has a file open; past the cap
+ * the text is cut at a line break and a marker says how much was sent, so neither the model nor the
+ * debug view can take a truncated file for the whole of it.
+ */
+export const OPEN_DOCUMENT_CAP = 32_000;
+
+export function capDocument(rel: string, text: string, cap: number = OPEN_DOCUMENT_CAP): string {
+  if (text.length <= cap) return text;
+  const lineEnd = text.lastIndexOf("\n", cap);
+  const end = lineEnd > cap / 2 ? lineEnd : cap;
+  const count = (n: number): string => n.toLocaleString("en-US");
+  return `${text.slice(0, end)}\n\n[Truncated: this is the first ${count(end)} of ${count(text.length)} characters of ${rel}. The rest is not in this context.]`;
+}
+
+/**
+ * The open document's block. Refused paths stay refused, a missing file is empty as `readOrEmpty`
+ * has it, and two things are said rather than sent: a credential-shaped file, whose name alone keeps
+ * it out of every surface of the browser (`lib/security/credential-paths.ts`), and a binary, which
+ * decoded as text would be noise at best.
+ */
+async function openDocument(rel: string): Promise<string> {
+  resolveData(rel); // a path out of data/ is the caller's error and throws, before any block names it
+  const credential = credentialPath(rel);
+  if (credential) return `[${rel} is ${credential}; its contents are not sent.]`;
+  let bytes: Buffer;
+  try {
+    bytes = await readBinary(rel);
+  } catch (err) {
+    if (err instanceof StoreError && err.code === "forbidden_path") throw err;
+    return "";
+  }
+  if (!looksLikeText(bytes)) return `[${rel} is not a text file (${bytes.length} bytes); its contents are not sent.]`;
+  return capDocument(rel, bytes.toString("utf8").replace(/<!--[\s\S]*?-->/g, "").trim());
 }
 
 const PROFILE_FILES: Array<{ label: string; rel: string }> = [
@@ -220,7 +259,7 @@ export async function assembleContext(
   }
 
   if (input.openFile !== undefined) {
-    system.push(block("Open document", input.openFile, await readOrEmpty(input.openFile)));
+    system.push(block("Open document", input.openFile, await openDocument(input.openFile)));
   }
 
   for (const id of referencedIds) {

@@ -19,6 +19,7 @@ import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
 import { StoreError } from "../store/paths.ts";
+import { looksLikeText } from "../security/raw.ts";
 import { refuseBatch, unloggedTexts } from "./scan.ts";
 import { commitExclusions } from "./in-flight.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
@@ -108,13 +109,19 @@ export interface BatchResult {
  */
 const held = new Map<string, Buffer>();
 
+/**
+ * A file's snapshot: its text inline when it is text and small, else `{ git: true }` with the bytes
+ * held for rollback. A binary is `{ git: true }` at any size — as text it would be decoded lossily
+ * and written back through the text path, which is how a restored image would come back corrupted.
+ */
 export async function snapshotContent(rel: string): Promise<Snapshot> {
   if (!(await files.exists(rel))) return null;
-  if ((await files.byteLength(rel)) > INLINE_LIMIT) {
-    if (!held.has(rel)) held.set(rel, await files.readBinary(rel));
+  const bytes = await files.readBinary(rel);
+  if (bytes.length > INLINE_LIMIT || !looksLikeText(bytes)) {
+    if (!held.has(rel)) held.set(rel, bytes);
     return { git: true };
   }
-  return { content: await files.readText(rel) };
+  return { content: bytes.toString("utf8") };
 }
 
 export async function snapshotFields(rel: string, keys: string[]): Promise<Snapshot> {

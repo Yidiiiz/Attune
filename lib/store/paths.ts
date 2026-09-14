@@ -10,8 +10,9 @@
 import path from "node:path";
 
 /** `secret_rejected` is refused content, not a malformed request: the write path found a
- * credential in what was about to be logged and wrote nothing (§11.5). */
-export type StoreErrorCode = "not_found" | "exists" | "invalid" | "forbidden_path" | "secret_rejected";
+ * credential in what was about to be logged and wrote nothing (§11.5). `conflict` is a write made
+ * against a version of a file that is no longer the one on disk — someone else wrote it first. */
+export type StoreErrorCode = "not_found" | "exists" | "invalid" | "forbidden_path" | "secret_rejected" | "conflict";
 
 export class StoreError extends Error {
   readonly code: StoreErrorCode;

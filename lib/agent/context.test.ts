@@ -21,7 +21,7 @@ const DATA = path.join(SANDBOX, "data");
 
 process.env.ATTUNE_REPO_DIR = SANDBOX;
 
-const { assembleContext, currentTime, estimateTokens, stableSettings } = await import("./context.ts");
+const { assembleContext, capDocument, currentTime, estimateTokens, OPEN_DOCUMENT_CAP, stableSettings } = await import("./context.ts");
 const { defaultSettings } = await import("../store/settings.ts");
 const { invalidateTaskCache } = await import("../store/tasks.ts");
 const { HEURISTIC } = await import("./memory.ts");
@@ -213,6 +213,35 @@ describe("the blocks that depend on what the caller is looking at", () => {
     await expect(assembleContext({ mode: "ask", openFile: "../.env.local" }, AT)).rejects.toThrow(
       /escapes the data directory/,
     );
+  });
+
+  it("caps the open document at a line break, and says how much of it was sent (Decision 85)", async () => {
+    await seedData();
+    const line = "x".repeat(99);
+    const long = Array.from({ length: 500 }, () => line).join("\n"); // 49,999 characters
+    await mkdir(path.join(DATA, "files/docs"), { recursive: true });
+    await writeFile(path.join(DATA, "files/docs/long.md"), long);
+
+    const { system } = await assembleContext({ mode: "ask", openFile: "files/docs/long.md" }, AT);
+    const text = system[system.length - 1].text;
+    const [kept, marker] = text.split("\n\n[Truncated: ");
+    expect(kept.length).toBeLessThanOrEqual(OPEN_DOCUMENT_CAP);
+    expect(kept.endsWith(line)).toBe(true); // cut at a line break, not mid-line
+    expect(marker).toBe(`this is the first ${kept.length.toLocaleString("en-US")} of 49,999 characters of files/docs/long.md. The rest is not in this context.]`);
+    // A document under the cap goes in whole, with no marker.
+    expect(capDocument("a.md", line)).toBe(line);
+  });
+
+  it("says rather than sends a binary or a credential-shaped open document", async () => {
+    await seedData();
+    await mkdir(path.join(DATA, "files/images"), { recursive: true });
+    await writeFile(path.join(DATA, "files/images/a.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]));
+    await writeFile(path.join(DATA, "files/.env"), "TOKEN=zq-sentinel-7\n");
+
+    const image = (await assembleContext({ mode: "ask", openFile: "files/images/a.png" }, AT)).system.at(-1)?.text;
+    expect(image).toBe("[files/images/a.png is not a text file (6 bytes); its contents are not sent.]");
+    const env = (await assembleContext({ mode: "ask", openFile: "files/.env" }, AT)).system.at(-1)?.text;
+    expect(env).toMatch(/^\[files\/\.env is an environment file; its contents are not sent\.\]$/);
   });
 
   it("skips a referenced task that does not exist instead of failing the request", async () => {

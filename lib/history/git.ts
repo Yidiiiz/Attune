@@ -250,6 +250,16 @@ export async function status(): Promise<SyncStatus> {
   return { state: count === 0 ? "synced" : "pending", ahead: count };
 }
 
+/**
+ * Every path git tracks in this checkout, repository-relative with forward slashes — what "Whole
+ * repo" in the Files panel may list and open (the Phase 8 approval). An untracked `.env.local` is not
+ * in it, and `lib/security/credential-paths.ts` refuses it separately in case it ever is.
+ */
+export async function trackedFiles(): Promise<string[]> {
+  await assertOwnRepository();
+  return (await git(["ls-files", "-z"])).split("\0").filter(Boolean);
+}
+
 /** The contents of `path` at `commit`. Used to reconstruct a `{ git: true }` snapshot. */
 export async function show(commit: string, path: string): Promise<string | null> {
   return gitOk(["show", `${commit}:${path}`]);

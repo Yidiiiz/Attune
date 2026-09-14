@@ -19,9 +19,43 @@ export interface Refusal {
   message: string;
 }
 
+/** A file the commit will carry whose bytes the log does not: its path, and its text. */
+export interface Unlogged {
+  rel: string;
+  text: string;
+}
+
+/**
+ * The text of every file this batch leaves behind a `{ git: true }` snapshot — an upload, a text
+ * file over the inline limit. The log carries none of it, but the commit does, and the pre-commit
+ * hook scans every staged file, so this has to be scanned here or the hook refuses the commit and
+ * every one after it (hard rule 4). Read the way the hook reads one: a NUL byte means binary and is
+ * skipped, anything else is text. The text is then scanned whole, as every snapshot here is, where the
+ * hook goes line by line: no pattern is anchored, so whatever matches within a line matches within
+ * the text, and this refuses everything the hook would. `read` is the store's binary read, passed in
+ * so this module still touches no disk of its own.
+ *
+ * Data paths only. Phase 9's `code.change` targets are repository paths this reader cannot reach;
+ * that batch owes the same scan of its own files.
+ */
+export async function unloggedTexts(applied: Applied[], read: (rel: string) => Promise<Buffer>): Promise<Unlogged[]> {
+  const last = new Map<string, Snapshot>();
+  for (const step of applied) {
+    if (step.spec.type === "code.change") continue;
+    for (const [rel, snap] of Object.entries(step.after)) last.set(rel, snap);
+  }
+  const found: Unlogged[] = [];
+  for (const [rel, snap] of last) {
+    if (snap === null || !("git" in snap)) continue;
+    const bytes = await read(rel);
+    if (!bytes.includes(0)) found.push({ rel, text: bytes.toString("utf8") });
+  }
+  return found;
+}
+
 /** The first reason to refuse this batch, or null. Secrets first, as they were before the others. */
-export function refuseBatch(spec: BatchSpec, applied: Applied[], targets: string[]): Refusal | null {
-  const secret = scanBatch(spec, applied);
+export function refuseBatch(spec: BatchSpec, applied: Applied[], targets: string[], unlogged: Unlogged[] = []): Refusal | null {
+  const secret = scanBatch(spec, applied, unlogged);
   if (secret) {
     return {
       code: "secret_rejected",
@@ -106,7 +140,7 @@ interface Rejection {
  * snapshots exist to restore files byte for byte. So the batch is refused instead, whole, before
  * anything is logged (AGENTS.md hard rules; PROJECT.md Decision 50).
  */
-export function scanBatch(spec: BatchSpec, applied: Applied[]): Rejection | null {
+export function scanBatch(spec: BatchSpec, applied: Applied[], unlogged: Unlogged[] = []): Rejection | null {
   const described = [
     spec.summary,
     ...applied.map((step) => step.spec.summary),
@@ -128,6 +162,12 @@ export function scanBatch(spec: BatchSpec, applied: Applied[]): Rejection | null
         if (hit) return { where: rel, pattern: hit };
       }
     }
+  }
+
+  // The bytes a `{ git: true }` snapshot leaves out of the log, which the commit still carries.
+  for (const { rel, text } of unlogged) {
+    const hit = findSecret(text);
+    if (hit) return { where: rel, pattern: hit };
   }
 
   return null;

@@ -255,10 +255,14 @@ export async function show(commit: string, path: string): Promise<string | null>
   return gitOk(["show", `${commit}:${path}`]);
 }
 
-/** Undo a commit's effect on `paths` only, leaving the result in the working tree uncommitted. */
-export async function revertPaths(commit: string, paths: string[]): Promise<void> {
+/**
+ * Put `paths` back as they were at `revision`, uncommitted. The paths are repository-relative, as git
+ * reads them from `REPO_DIR`: a data file is `data/<rel>`. Undo asks for a commit's parent, redo for
+ * the commit itself (`applySnapshot`).
+ */
+export async function restorePaths(revision: string, paths: string[]): Promise<void> {
   await assertOwnRepository();
-  await git(["checkout", `${commit}^`, "--", ...paths]);
+  await git(["checkout", revision, "--", ...paths]);
 }
 
 /** Porcelain status limited to `paths`. Empty means clean. */

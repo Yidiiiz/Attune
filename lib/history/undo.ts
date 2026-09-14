@@ -139,7 +139,7 @@ function reverseAction(target: Batch, direction: "undo" | "redo", commit: string
         for (const [rel, snap] of Object.entries(restore)) {
           if (!targets.includes(rel)) targets.push(rel);
           before[rel] = current[rel] ?? null;
-          await applySnapshot(rel, snap, entry.commit ?? commit);
+          await applySnapshot(rel, snap, entry.commit ?? commit, direction === "undo" ? "before" : "after", entry.type === "code.change");
           after[rel] = snap;
         }
       }

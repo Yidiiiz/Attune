@@ -1473,6 +1473,34 @@ are the raw route's and the "Whole repo" rules and Decision 20's rewording: a De
 the code has met it is a guess, and `q`'s own row is the record of what a spec sentence ahead of its
 code costs.
 
+### Approved conditions — Phase 8, the `{ git: true }` snapshot defects (rule 9)
+
+Found in Stage A, after Step 0 (`61676db`) and before any Stage A code, while checking whether the
+document view's saves could produce a `{ git: true }` snapshot. Three probes in a throwaway checkout:
+redo of an upload threw (`git checkout 59417a8^ -- files/images/2026-09/cdf3cefe-x.png`); undo of a
+task-body edit over 64 KB threw (`git checkout 6c95ef6^ -- tasks/2026-09-14-big.md`) and left the
+file changed; a task body over 64 KB holding a key-shaped string was logged and committed, and so was
+a two-line uploaded `notes.txt` holding one, which `scripts/check-secrets.mjs --all` then refused in
+the same checkout ("Commit refused"). The question put to the owner, verbatim:
+
+"Stage A found a hard-rule break, reproduced in a throwaway checkout. A `{ git: true }` snapshot is
+never secret-scanned: runBatch accepted and committed a 2-line uploaded notes.txt holding a key, and
+check-secrets refuses that same file. In the real repo, that is hard rule 4's commit deadlock,
+reachable today through the composer's attach. Two more defects share the path. Undo and redo of
+`{ git: true }` on data/ paths throw (git is handed `files/…` instead of `data/files/…`, and redo
+checks out the commit's parent). Rollback can't restore them either. So an edit over 64 KB can't be
+undone, and neither can Delete/Rename of an upload in Phase 8. How should I proceed?"
+
+The answer, verbatim: "Fix all three now (Recommended)". The option as it was offered:
+
+"Own code: commit before the rest of Stage A, failing tests first and kept in the suite. (1) The
+write-path scan reads the on-disk bytes of every `{ git: true }` target and scans them the way the
+hook does (skip files with a NUL byte, otherwise line by line), refusing before anything is logged.
+(2) Rollback restores a `{ git: true }` before-state from bytes captured in memory when the snapshot
+was taken; nothing new is logged. (3) Undo/redo pass git `data/<rel>`, at `<commit>^` for undo and
+`<commit>` for redo. batch.ts is at 294 lines, so the capture may need the split Decision 56 names.
+Then Stage A continues."
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

@@ -18,7 +18,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — conditions recorded; Step 0, then Stage A, then a stop for review | — |
+| 8 — Knowledge browser | in progress — Stage A built, checked, stopped for review; B1 and B2 follow, each stopping | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
@@ -264,9 +264,119 @@ exits 0: 43/43 gating, and the known flake passed this run, reported apart.
 **Known gaps, not coverage.** `PreviewPanel`'s collection Add is wired and not browser-checked; it is
 row 7.7, blocked on a key, because Tasks mode's extraction is a `parse` call the scripted provider
 refuses. Rows 7.1–7.4 stay blocked on a key. Rows 7.5 and 7.6 are visual. A toast still covers Send
-visually for its seven seconds; clicks pass through it. One more, in the runner itself:
-`check:ui`'s arguments pass through a shell on Windows, so a `-g` pattern containing `|` is cut
-at the pipe. Use one term per run.
+visually for its seven seconds; clicks pass through it. One more, in the runner itself, which Phase
+8 fixed before its own work: `check:ui`'s arguments went through a shell on Windows. A `-g` pattern
+with a space was split in two, and one with `|` or `&` ran what followed as a command. They now reach
+Playwright with no shell on any platform (`61676db`, Decision 91), and any pattern works as typed.
+
+**Phase 8 Stage A — built, checked, stopped for review.** Five commits so far, three `code:` and two
+`docs:` before this one. `a2a84e4` recorded the approval. `61676db` is Step 0. `56c6f43` recorded a
+question the stage had to ask, and `103c6f4` is its answer. `2ec0219` is the stage itself.
+
+- **Step 0.** `check:ui` runs `process.execPath` with `@playwright/test`'s own CLI, resolved from its
+  `exports`, and never a shell. The runner moved to `scripts/playwright-run.ts` so a fake CLI can
+  drive it. Seven new tests cover `a|b`, `Stop leaves` and `x&y`, each arriving as one argv entry,
+  and a marker file that a shell would have created. A mutation that put the shell back, with the
+  executable quoted so only the arguments differed, failed the five cases carrying a space, `|` or
+  `&`, and the marker file appeared. A real run with `-g "Stop leaves|a rejected key toasts"`
+  matched both checks. `addFile` moved to `lib/history/file-actions.ts` as motion: `--color-moved`
+  marks 75 lines, and the 10 it does not are the route's import swap, the new file's seven-line
+  header and its one import.
+- **The `{ git: true }` defects, found before any Stage A code** and taken first at the owner's
+  direction (the conditions above). The secret scan read a `{ git: true }` snapshot as empty text, so
+  a key in an uploaded text file was logged and committed, and the hook then refused every commit.
+  Rollback could not restore such a snapshot. Undo and redo handed git a path without `data/`, and
+  redo checked out the wrong revision. The fix went in failing tests first: six of seven failed
+  before it, and all seven stay in the suite (Decision 89).
+- **Stage A.** The nine routes (`/api/files/{tree,read,raw,write,op}`, `/api/search`,
+  `/api/knowledge/{tree,graph,backlinks}`) and the builders behind them: saves by path, a checkbox
+  click, New folder, Rename, Delete (Decision 86). Search (87). The browser's security rules (88).
+  The link index checking the disk, with backlinks and the graph as one reading of it (90). The
+  open document capped (85). `items.ts` made genuinely pure, with the import rule for components
+  now followed through `lib/`. Nothing renders yet.
+
+**Checked, and how.** `npm test` passes 649/649 across 53 files, and `tsc` is clean.
+`check:ui` exits 0: 43/43 gating, and the known flake passed, reported apart. Every one of these ran
+over HTTP against a throwaway checkout served by `next dev`, all passing:
+
+- **§17's own checks:**
+  - Edit, save and undo restores a note by SHA-256.
+  - The LaTeX sheet saved unchanged keeps its SHA-256 with no log line and no commit, whether the
+    table is untouched or sent back whole.
+  - A body edit writes exactly the typed body.
+  - A checkbox click is one `knowledge.write` that flips exactly its line.
+  - Backlinks list the linking files, including a collection naming a task by `[[t_…]]`.
+  - The graph's edges into each of 16 nodes equal that node's backlinks.
+  - The context endpoint carries the open document's block.
+- **The approval's conditions:**
+  - A click on a line that changed since it was drawn is 409, with nothing written.
+  - A save against a file edited elsewhere is 409, and the other edit is kept.
+  - A credential in a save is 422, naming the file and the pattern without echoing the match, and
+    the file is untouched.
+  - The raw route serves the `.html`, `.svg` and HTML-named-`.png` fixtures as octet-stream
+    attachments with `nosniff` and `sandbox`, and a real PNG inline.
+  - `.env.local` is refused by path five ways, with no byte of it in any answer, and is absent from
+    both trees.
+- **Stage A's own behavior:**
+  - A link added by hand shows in backlinks with no store write to announce it.
+  - An uploaded text file holding a key is 422, while a clean one uploads.
+  - Deleting an upload and undoing restores the same bytes.
+  - Rename refuses a note, and refuses a linked collection saying why.
+  - Rename lets through a map that only the generated index lists.
+  - Search ranks a title match first.
+  - `kb:check` exits 0 on the checkout. On the owner's own `data/`, read-only, it is clean.
+
+**Mutations, each failing exactly the case written for it:**
+- Dropping the no-op path, the stale check, the toggle's line check, the link-index signature, the
+  read's containment check or the tracked-file check.
+- Loosening the search bound by one character.
+- Counting the generated index as a linker.
+- Dropping task-id links from backlinks.
+- Restoring `items.ts`'s old import.
+
+**Amendment `u`, the running tally the approval asked for:** two runs this phase with the flake in
+them, one full `check:ui` and Step 0's filtered run, and no failure. No new form has appeared, and no
+surface that could show one renders yet. **Carried, unchanged:** rows 7.1–7.4, 7.7, 5.5 and 6b.7 stay
+blocked on a key.
+
+**Not verified, and why.** Nothing in Stage A draws anything, so every visible condition belongs to
+B1 and B2. That includes the checkbox's disabled state being visible and explained, the handover's
+kept text, and `q`'s focus refetch. The raw route's headers were checked; what a browser does with a
+PDF under them was not, which is why PDF downloads (Decision 88).
+
+**Ten things for the review.**
+1. **Two files are over the cap and were not split.** `lib/history/batch.ts` is at 328 lines, two
+   under the 330 Decision 56 once accepted: the held bytes belong with `snapshotContent` and the
+   rollback that reads them. `lib/store/files.ts` is at 303. Decision 56 named one seam for
+   `batch.ts`, which Phase 7 took. Inventing another is a stop-and-ask, so both are here instead.
+2. **§4.8's `used-by` column is an obligation neither the plan nor the approval covered.** §4.8 says
+   it "is filled from the link index on regeneration", and `manifest.ts` says it stays empty "until
+   the link index exists (Phase 8)". Filling it at regeneration makes it wrong between regenerations,
+   because a note that starts linking an upload does not regenerate the manifest. My recommendation
+   is to amend §4.8 instead: an upload's backlinks now answer "who uses this" live, and `kb:check`'s
+   notice already names the unused ones. Not changed.
+3. **A hole the approval did not name, closed.** A symlink in `data/`, or a tracked one in the
+   checkout, could lead to `.env.local` past both the name rule and the tracked rule. A read now
+   resolves the real path, refuses one outside its tree, and applies the name rule to it too.
+4. **The generated listings do not count as linkers for Rename.** `knowledge/index.md` links every map
+   and collection, and `files/index.md` every upload. Counted, they would refuse every such rename,
+   and my first test missed that because its map had never been indexed. The rename regenerates both.
+5. **A task linked only by `[[t_…]]` can be renamed.** An id link survives a rename and a path link
+   does not, so only path links refuse it.
+6. **A body-only save of a task or a knowledge file re-serializes its frontmatter** through the file's
+   own writer, which stamps `updatedAt`. A file under `files/` and a profile file keep an untouched
+   block byte for byte. §17's byte-for-byte checks hold because an unchanged save writes nothing and
+   undo restores whole content.
+7. **PDF downloads and an SVG does not render in a document** (Decision 88, the approval's fallback).
+   Showing PDF inline needs the viewer shown safe first.
+8. **A new `StoreError` code, `conflict`, answers 409** for a stale save and a stale click.
+9. **`listTree` lost its `wholeRepo` option**, the directory walk that would have listed `.env.local`,
+   and the store's `rename` is now `moveFile` so the rename rule's own check stops flagging it.
+10. **Three small known gaps.**
+    - Undo of New folder removes its `.gitkeep` but leaves the empty folder on disk; git never had it.
+    - A renamed upload's manifest row loses a hand-written description, because rows are keyed by path.
+    - Redo of an uploaded text file with CRLF line endings restores it with LF, because
+      `.gitattributes` normalizes what git stores.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -1529,6 +1639,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `5d8efb6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `5d8efb6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
 | u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `483b23f` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `2ce9008` and on `f5018e5`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `483b23f`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
 | v | **A rename that rewrites the links to the file it renames.** Phase 8's Rename stays inside one folder and is refused when anything links to the file, and the refusal says why: renaming would leave every one of those links pointing at nothing. **The consequence, stated plainly: a note can never be renamed from the app.** §6.3 requires every note to be linked from a map, so every note always has a linker, and Rename on a note is a dead end the user can see, not only a deferral. The same holds for any task, map, collection or file something links to. The way round it today is by hand, outside the app, then fixing the links, which `kb:check` reports. Building it means one batch that renames the file and rewrites every body linking to it — tasks, notes, maps, collections — and §6.3's scan accepting the new path as the same note rather than a new one without a map. It can never be complete: a finalized message is never edited (§16.2), so every message whose `refs` name the old path keeps pointing at it | Phase 8 approval, open call 5 and the rename condition | unscheduled | **deferred — a user-visible dead end, stated as one** |
+| w | **A `code.change` batch must secret-scan its own files' bytes.** Phase 8 found that a `{ git: true }` snapshot was never scanned, so a key in an upload reached the commit and the hook then refused every commit after it (Decision 89). `unloggedTexts` in `lib/history/scan.ts` now reads such files and scans them the way the hook does, but **only for data paths**. It skips `code.change` entries, because their targets are repository paths the store's reader cannot reach. Phase 9's `code.change` is the one batch whose every file is `{ git: true }` by design, and it commits outside `data/`, so it is exactly where the deadlock would come back. Before `build.ts` commits anything, its batch has to hand `refuseBatch` the text of each changed repository file, skipping one with a NUL byte as the hook does | Phase 8 Stage A, the `{ git: true }` fix | **Phase 9**, with `lib/agent/build.ts` | **outstanding — a constraint on code that does not exist yet** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 
@@ -1592,7 +1703,7 @@ npm install            # postinstall sets core.hooksPath=.githooks on every mach
 npm run dev            # scripts/dev.mjs → next dev, flushes git push on exit
 npm run init           # seed/ → data/ (refuses if data/ is non-empty)
 npm test               # check-lib-imports, then vitest
-npm run check:ui       # Playwright, chromium, dev server + throwaway checkout — not part of `npm test`; `@known-flake` checks run after, apart, and never set the exit code (Decision 83)
+npm run check:ui       # Playwright, chromium, dev server + throwaway checkout — not part of `npm test`; `@known-flake` checks run after, apart, and never set the exit code (Decision 83); arguments reach Playwright with no shell, so `-g "a b|c"` works as typed (Decision 91)
 npm run history -- list [--n 20] | undo <batch> [--force] | redo <batch>
 npm run kb:check       # orphans, broken links, size caps — exit 1 violations, 2 could not evaluate (Decision 73)
 npm run check-secrets  # also runs from .githooks/pre-commit

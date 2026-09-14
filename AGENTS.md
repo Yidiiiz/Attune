@@ -18,7 +18,9 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8–10 | not started | — |
+| 8 — Knowledge browser | in progress — conditions recorded; Step 0, then Stage A, then a stop for review | — |
+| 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
+| 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
@@ -1319,6 +1321,158 @@ time limit. With the container already click-through, a toast can't take a click
 corner, so the check passes everywhere. Cost: Undo lives in one place instead of two, and the toast
 still covers Send visually for 7 s (clicks pass through)."
 
+### Approved conditions — Phase 8 (rule 9)
+
+Verbatim from the approval. The plan proposed Step 0 — `check:ui`'s arguments passed without a shell,
+and `addFile` moved to `lib/history/file-actions.ts` as motion — in its own `code:` commit with no
+review stop; then Stage A — the link index's freshness, the pure backlinks, graph and tree readers,
+`search.ts`, the nine routes and the save, checkbox and file-operation builders, with nothing
+rendering — stopping for review; then Stage B, the surfaces, stopping for review; then Stage C, the
+graph. It corrected the phase's scope against §17 (the rail's other three panels, `Tree.tsx`, file
+operations, the search box, and amendments `l`, `q` and `m` alongside `s`), reported the shell defect
+as wider than `|` — a pattern containing a space is split in two, and `|` or `&` runs what follows as
+a command — and named, among its findings, that `/api/files/raw` would serve an uploaded `.html` or
+`.svg` from the app's own origin, and that the "Whole repo" listing would show `.env.local` to a read
+route. Eight open calls.
+
+Phase 8 plan reviewed. Approved to start under the conditions below. Same
+caveat as before: I'm reviewing the handoff, not the code, so anything resting
+on a line I haven't read is a question, not a ruling.
+
+The two security findings are the most valuable part of this plan. Both are
+things that would have shipped quietly.
+
+SCOPE — SPLIT IT
+Take your own offer: Stage C becomes Phase 8b in its own session. The graph is
+the one part with a new dependency, a canvas rendering path, and no dependency
+on it from anything else in the phase. It's the clean seam.
+
+Stage B also needs an internal checkpoint. As written it's the rail, Tree, file
+operations, the whole document view, four amendments, a components/tasks/ move,
+and the search box. That's not one reviewable unit. Split it:
+- B1: rail, Tree, document view read-only (strip, frontmatter, checkboxes,
+  links, images, backlinks). Stop.
+- B2: file operations, edit/save through the UI, amendments s/l/q/m, docked
+  composer, search box. Stop.
+
+If B1 comes in small, we collapse the checkpoint and move on. Easier than
+unpicking a stage that grew.
+
+SECURITY — /api/files/raw
+The inline allowlist and the headers are right. Two conditions.
+
+PDF is the hole in it. It's the one type served inline and exempted from
+CSP: sandbox, and PDFs carry scripting. If the exemption exists because sandbox
+breaks the viewer, then PDF goes to download alongside everything else for now;
+inline PDF is a convenience and this is the app's own origin. If you've
+established the viewer is safe under the headers you're setting, show me that
+and I'll take inline.
+
+Make the allowlist decide on sniffed content, not extension. A .png that isn't
+a PNG gets served inline with an image content-type under an extension-keyed
+rule. Sniff, and on any disagreement between sniff and extension, serve as a
+download.
+
+Add the check that the sandbox actually holds: a fixture .html and .svg under
+uploads, fetched through the route, asserting the disposition and the headers.
+A rule with no failing-case test is a rule that gets relaxed later by someone
+who doesn't know why it's there.
+
+SECURITY — "WHOLE REPO"
+Git-tracked-only is the right primitive and I'm glad you found it. Two things.
+
+It's necessary, not sufficient. It protects .env.local because that file is
+untracked, which is true today and is one committed mistake away from being
+false. Add an explicit deny-list on top — .env*, *.pem, *.key, id_*, anything
+credential-shaped — applied to both the tree and the read route, independent of
+tracking status. Belt and braces, because the failure is unrecoverable and the
+check is cheap.
+
+Enforce it in the read route, not just the tree. A path that doesn't appear in
+the tree must still be refused when requested directly. Test that specifically:
+request .env.local by path and assert the refusal.
+
+FINDINGS — CONDITIONS
+- Link index freshness signature: path + size + mtime misses a same-size edit
+  inside one mtime tick. Rare, but the failure is a silently stale index, which
+  is exactly the class this is meant to close. Use nanosecond mtime where the
+  platform gives it, and say in the code what the residual gap is. If that's
+  awkward, hash instead — you're already statting every file.
+- The 409 stale-save check: be explicit about which bytes the SHA covers, and
+  keep it the same bytes on both sides. If the editor hashes what it loaded but
+  the route hashes after re-serializing frontmatter, every save is a false 409.
+- "Open document" block with no size cap: don't leave this as an observation.
+  Cap it in Stage A, say what happens past the cap (truncate with a marker, not
+  silent drop), and record the number as a Decision.
+- Rename: your table means a note can never be renamed, since a map always
+  links it. That's coherent, but it's a user-visible dead end, not just a
+  deferral. File the link-rewriting amendment with that consequence stated
+  plainly, and make the refusal message say why rather than just listing the
+  linking files.
+- Checkbox toggling: disabling on count mismatch is the right safety valve.
+  Make the disabled state visible and explained, not a silently inert checkbox.
+- items.ts header correction: yes, and fix the import story rather than only
+  the comment.
+
+OPEN CALLS
+1. Split — C becomes Phase 8b. B splits as above. Otherwise as proposed.
+2. Reopening a conversation with context.file — agreed, show the conversation
+   with the file as a chip. Amend §16.9 and §4.7. The literal reading is
+   clearly not what anyone wants.
+3. Sending from the document view — agreed, including sessionStorage handover
+   and keeping text out of the URL. One condition: if the handover entry is
+   missing or already consumed, the text must not silently vanish. Keep it in
+   the composer and warn.
+4. What the document view may write, by path — approved as tabled, recorded as
+   a Decision. Enforce it server-side in the builder, not in the view. The view
+   decides what to show; the route decides what's allowed.
+5. Rename within-folder only, refused when linked — agreed, with the note above.
+6. Search scoring — agreed: best single score, case-insensitive, subsequence
+   bounded at twice the query length. Test both sides of the bound. Record the
+   bound and the reason, the way Decision 72 recorded the 0.8.
+7. How far q reaches — agreed. Document view plus open conversation, Decision 20
+   reworded to name them.
+8. Amendment s button placement — agreed, row list under the preview. Injecting
+   into sanitized HTML is the wrong shape and you're right to avoid it.
+
+CARRIED FORWARD — CONFIRMED
+- Rows 7.1-7.4, 7.7, 5.5, 6b.7 stay listed as blocked.
+- Amendment u: your reading of "a second form" is what I meant — anything
+  beyond the two on record, and the document view is the surface I'd expect a
+  third to appear on. Running tally per stage report, stop and tell me at more
+  than one in five over five or more runs. Agreed.
+- The check:ui shell bug: excellent find, and much worse than what I flagged.
+  Arbitrary command execution from a -g pattern is not a quoting nit. Fix at
+  the top of the phase as proposed, with the test covering all three patterns,
+  and pull the workaround out of AGENTS.md.
+
+ORDER
+Conditions into the status block (docs:), then Step 0, then Stage A, then stop.
+Same as you proposed.
+
+**The write policy the approval refers to as "tabled"**, as the plan put it, so open call 4 can be
+re-read rather than recalled. It becomes a Decision with the code that enforces it, in the builder:
+
+| Under `data/` | Save | New | Rename | Delete |
+|---|---|---|---|---|
+| `tasks/` | through `writeTask`; `id` can't change | "New task" (title only) | only if nothing links to it | yes |
+| `knowledge/notes/` | yes | title and map required | no (a map always links it) | yes |
+| `knowledge/maps/`, `knowledge/collections/` | yes | yes | only if nothing links to it | yes |
+| `knowledge/profile/` | body only | no | no | no |
+| `knowledge/sessions/` | yes | no | no | yes |
+| `files/` | text files only | text file, folder | only if nothing links to it | yes |
+| `knowledge/index.md`, `files/index.md`, `chats/`, `history/`, `settings/`, anything outside `data/` | read-only | — | — | — |
+
+**The spec calls this settles, made in the same commit as the conditions.** §17's Phase 8 no longer
+carries the graph, and Phase 8b does, with the graph's check (open call 1). §16.9 and §4.7 now say
+that reopening a conversation shows the conversation, with its file as a chip in the header, rather
+than reopening the file (open call 2). Amendment `v` files the link-rewriting rename with its
+consequence stated. The three Decisions the approval asks for — the write policy, the search bound
+and the open document's cap — are written with the code each describes, as Decision 72 was, and so
+are the raw route's and the "Whole repo" rules and Decision 20's rewording: a Decision that names a number or a rule before
+the code has met it is a guess, and `q`'s own row is the record of what a spec sentence ahead of its
+code costs.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -1346,6 +1500,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | **outstanding** |
 | t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `5d8efb6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `5d8efb6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
 | u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `483b23f` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `2ce9008` and on `f5018e5`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `483b23f`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
+| v | **A rename that rewrites the links to the file it renames.** Phase 8's Rename stays inside one folder and is refused when anything links to the file, and the refusal says why: renaming would leave every one of those links pointing at nothing. **The consequence, stated plainly: a note can never be renamed from the app.** §6.3 requires every note to be linked from a map, so every note always has a linker, and Rename on a note is a dead end the user can see, not only a deferral. The same holds for any task, map, collection or file something links to. The way round it today is by hand, outside the app, then fixing the links, which `kb:check` reports. Building it means one batch that renames the file and rewrites every body linking to it — tasks, notes, maps, collections — and §6.3's scan accepting the new path as the same note rather than a new one without a map. It can never be complete: a finalized message is never edited (§16.2), so every message whose `refs` name the old path keeps pointing at it | Phase 8 approval, open call 5 and the rename condition | unscheduled | **deferred — a user-visible dead end, stated as one** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 
@@ -1422,7 +1577,7 @@ npm run publish-check  # readiness for the public remote
 - **Module header** on every source file: one line saying what it owns, then a `Failure behavior:` paragraph saying what happens when it breaks (degrade this feature, never the page).
 - **Z-index tiers:** 20 in-scroll surfaces · 30 panels and bars · 40 toasts and modals. No other values.
 - **No `enum`, `const enum`, `namespace`, or parameter properties (`constructor(private x)`) under `lib/`.** `scripts/*.mjs` import those files through plain Node, which strips types rather than compiling, and all four need emitted runtime code. `tsc --noEmit` and `next build` accept them happily; only the CLI breaks, and only at runtime. `npm test` runs `scripts/check-lib-imports.mjs` first, which imports every module under `lib/` in plain Node and names the ones that will not load, so this fails at test time rather than at a prompt. `lib/`→`lib/` imports carry the `.ts` extension for the same reason (`PROJECT.md` Decision 44).
-- **`data-*` test hooks are sanctioned, and named the same way everywhere: `data-<thing>` on the element that *is* one of those things, valued with that record's stable identity.** `data-date` on a calendar cell, `data-task` on a task row, `data-message` on a message row (Phase 6), `data-node` on a graph node (Phase 8). Singular, kebab-case, a noun for what the element is — never what it looks like or where it sits. Application code never reads one: if the app needs the value, it already has it in props or state, and an attribute the app depends on is not a test hook but an undeclared piece of state. They exist so a check can name an element without a fragile selector, and the reason to settle the convention rather than let each phase invent one is in `HANDOFF-CHAT.md`: `dom-map.ts` was 265 lines of mapping rendered DOM back to message identity, caused entirely by a DOM that carried no ids, and it is listed there under the fights that do not exist for this project because we render from our own data. That advantage is only real if the ids are actually put in the markup.
+- **`data-*` test hooks are sanctioned, and named the same way everywhere: `data-<thing>` on the element that *is* one of those things, valued with that record's stable identity.** `data-date` on a calendar cell, `data-task` on a task row, `data-message` on a message row (Phase 6), `data-node` on a graph node (Phase 8b). Singular, kebab-case, a noun for what the element is — never what it looks like or where it sits. Application code never reads one: if the app needs the value, it already has it in props or state, and an attribute the app depends on is not a test hook but an undeclared piece of state. They exist so a check can name an element without a fragile selector, and the reason to settle the convention rather than let each phase invent one is in `HANDOFF-CHAT.md`: `dom-map.ts` was 265 lines of mapping rendered DOM back to message identity, caused entirely by a DOM that carried no ids, and it is listed there under the fights that do not exist for this project because we render from our own data. That advantage is only real if the ids are actually put in the markup.
 - **Splitting a file along a seam the spec already draws needs no approval and gets reported. Inventing a seam to fit a line count is a stop-and-ask.** Hard rule 5's ~300-line cap and rule 7's "say why first and wait" pull against each other the moment a file grows past it, and the resolution is *where the seam came from*, not how big the file was. If `PROJECT.md` already treats the parts as separate things — its own paragraph, its own numbered step, its own section — then the split is the spec's and building it is ordinary work; say in the phase report that it happened and why. If the parts only became separate because a number had to come down, the split is a design decision the owner has not made, and a file over the cap is the better outcome until they do: an invented seam is a coupling claim, and a wrong one costs more than the length it bought back. **Phase 5's composer is the first case and is on the right side of it:** `ComposerSheet.tsx` hit 428, and `Attachments.tsx` and `VoiceButton.tsx` are §9.2's two optional inputs, `useComposerTurn.ts` is §9.4 and §9.5's whole conversation with the server, and `draft.ts` is §9.5 step 4's merge rule. None of the four is a category invented on the spot.
 - **Timers are never correctness.** Wait on the observable consequence; a timeout is a failure guard.
 - **A browser check waits on a state transition only the action under test can produce, never on a condition that may already hold.** Two of Phase 6b's branching checks passed before their action had rendered: they waited on "the newest assistant message is complete", which was already true of the *previous* turn, and then read message ids that were still the old ones. What they wait on now is the composer emptying (`toHaveValue("")`) or the editor unmounting (`toHaveCount(0)`) — states that exist only once `send` has resolved without a failure, which is after `finalizeTurn` wrote and the conversation was re-read. The question to ask of every wait is "could this have been true one moment before I acted?"; if it could, the check is measuring the run's history rather than its own action. **This is the failure that makes a suite pass while testing nothing, and it does not announce itself** — one of the two passed on the first run and was found only because its neighbour failed the same way. It is the sharper form of the timer rule above: waiting on the observable consequence is not enough when the consequence was already there.

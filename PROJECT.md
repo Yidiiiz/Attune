@@ -456,7 +456,7 @@ updatedAt: 2026-09-03T16:20:00-04:00
 ---
 ```
 
-The body is empty. `activeLeafId` is the entire branch state. `context` is the association from §16.9: it is set when the conversation is started from a document view or "Ask about this", and reopening the conversation reopens that context.
+The body is empty. `activeLeafId` is the entire branch state. `context` is the association from §16.9: it is set when the conversation is started from a document view or "Ask about this", and reopening the conversation keeps that context in every turn and shows the file as a chip in the header (§16.9).
 
 `messages/<id>.md`:
 
@@ -1227,7 +1227,7 @@ Do not reproduce: phantom messages after a failed send; an interrupted stream st
 ### 16.9 Where chat meets the rest
 
 - `extractRefs(text)` (`lib/chat/refs.ts`) finds task ids (`\bt_\d{8}_[0-9a-f]{4}\b`) and `data/`-relative paths in markdown links. They are stored in `refs`, rendered as links, counted as graph edges from the conversation node, and listed in a task's backlinks.
-- `conversation.context` records the file or tasks a conversation is about (§4.7). Reopening the conversation reopens that file in the document view.
+- `conversation.context` records the file or tasks a conversation is about (§4.7). Reopening the conversation shows the conversation, with that file as a chip in its header that opens it in the document view; the file stays in context for every turn. It does not reopen the file in place of the messages, which would put a document where someone opening a conversation expects to read what was said.
 - Conversations live only in `data/chats/`.
 
 ### 16.10 Tests
@@ -1278,8 +1278,13 @@ This is the largest phase; if (c) or (f) grows past a day of work, it splits int
 
 ### Phase 8 — Knowledge browser
 
-Rail, Tree (both panels), document view with edit/save/frontmatter table/checkboxes/backlinks/KaTeX, file operations, search. **Graph view last**, after backlinks have proven the index.
-**Checks:** edit-save-undo restores the file byte-for-byte (SHA-256 equal); LaTeX survives a round trip (SHA-256 equal); clicking a checkbox in a collection saves one action; backlinks list the linking files; the graph opens on empty `data/` with the empty state and on a populated one shows edges matching backlinks; a document open in the main pane is in the next turn's context (debug view shows it).
+Rail, Tree (both panels), document view with edit/save/frontmatter table/checkboxes/backlinks/KaTeX, file operations, search. The graph is Phase 8b's.
+**Checks:** edit-save-undo restores the file byte-for-byte (SHA-256 equal); LaTeX survives a round trip (SHA-256 equal); clicking a checkbox in a collection saves one action; backlinks list the linking files; a document open in the main pane is in the next turn's context (debug view shows it).
+
+### Phase 8b — Graph view
+
+The graph view of §10.2, after Phase 8's backlinks have proven the index. Split out of Phase 8 at its plan's approval: it is the one part with a new dependency and a canvas rendering path, and nothing else in Phase 8 depends on it.
+**Checks:** the graph opens on empty `data/` with the empty state and on a populated one shows edges matching backlinks.
 
 ### Phase 9 — Build mode
 

@@ -7,7 +7,7 @@
 // to `runBatch`: if any file fails, the whole batch rolls back and no chip appears for any of them.
 
 import { runBatch } from "@/lib/history/batch";
-import { addFile } from "@/lib/history/actions";
+import { addFile } from "@/lib/history/file-actions";
 import { StoreError } from "@/lib/store/paths";
 import { handle, ok } from "../../respond";
 

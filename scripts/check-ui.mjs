@@ -22,12 +22,13 @@
 // guard so the script cannot hang, not the thing being measured. Anything else Playwright reports is
 // passed through untouched: a failing check should look like a failing check. The one exception is
 // a check tagged `@known-flake`, which is reported under its own heading after the rest and does
-// not decide the exit code (below).
+// not decide the exit code (`playwright-run.ts`).
 
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import net from "node:net";
 import { DEV_PORTS, E2E_PORT } from "../e2e/ports.ts";
+import { runChecks } from "./playwright-run.ts";
 
 const INSTALL = "npx playwright install chromium";
 const PROBE_TIMEOUT_MS = 1_000;
@@ -137,44 +138,6 @@ if (executable === null || !existsSync(executable)) {
   process.exit(1);
 }
 
-// **Known flakes run second, and never set the exit code.** `playwright.config.ts` puts every check
-// tagged `@known-flake` in a project of its own. The rest run first and alone decide the result, so
-// a run whose only failure is a filed flake reads as the clean run it is; the flakes then run under
-// their own heading, still reported with their real outcome. Each project is counted with `--list`
-// first so that a filter matching only one of them does not make the other say "No tests found".
-const args = process.argv.slice(2);
-const SHELL = { shell: WINDOWS };
-
-function count(project) {
-  const listed = spawnSync("npx", ["playwright", "test", "--list", `--project=${project}`, ...args], {
-    encoding: "utf8",
-    ...SHELL,
-  });
-  const match = /Total: (\d+) tests?/.exec(listed.stdout ?? "");
-  return match ? Number(match[1]) : 0;
-}
-
-const run = (project) =>
-  spawnSync("npx", ["playwright", "test", `--project=${project}`, ...args], { stdio: "inherit", ...SHELL }).status ?? 1;
-
-const gating = count("chromium");
-const flaky = count("known-flake");
-
-if (gating === 0 && flaky === 0) {
-  // Nothing matched either project: let Playwright say so in its own words.
-  process.exit(spawnSync("npx", ["playwright", "test", ...args], { stdio: "inherit", ...SHELL }).status ?? 1);
-}
-
-const status = gating > 0 ? run("chromium") : 0;
-
-if (flaky > 0) {
-  console.log(
-    `\ncheck:ui: ${flaky} known flake${flaky === 1 ? "" : "s"} — reported here, not counted above ` +
-      "(AGENTS.md, Deferred amendments)\n",
-  );
-  const flakeStatus = run("known-flake");
-  console.log(`\ncheck:ui: known flakes ${flakeStatus === 0 ? "passed" : "failed"} this run; not counted.`);
-}
-
-if (gating > 0) console.log(`check:ui: ${status === 0 ? "clean" : "FAILED"} — ${gating} checks decide the result.`);
-process.exit(status);
+// The checks themselves, gating first and known flakes apart (Decision 83), with every argument
+// handed to Playwright as one argv entry and no shell in between — `playwright-run.ts` says why.
+process.exit(runChecks(process.argv.slice(2)));

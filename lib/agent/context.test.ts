@@ -9,7 +9,7 @@
 // edge case, and the property worth pinning is that it produces well-formed empty blocks in the
 // right order rather than throwing or quietly leaving them out.
 
-import { cp, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -242,6 +242,19 @@ describe("the blocks that depend on what the caller is looking at", () => {
     expect(image).toBe("[files/images/a.png is not a text file (6 bytes); its contents are not sent.]");
     const env = (await assembleContext({ mode: "ask", openFile: "files/.env" }, AT)).system.at(-1)?.text;
     expect(env).toMatch(/^\[files\/\.env is an environment file; its contents are not sent\.\]$/);
+  });
+
+  it("refuses an open document that is a link out of data/, rather than sending what it leads to", async () => {
+    await seedData();
+    const outside = path.join(SANDBOX, "outside");
+    await mkdir(outside, { recursive: true });
+    await writeFile(path.join(outside, "plain.md"), "zq-outside-sentinel\n");
+    await mkdir(path.join(DATA, "files"), { recursive: true });
+    await symlink(outside, path.join(DATA, "files", "door"), "junction");
+
+    const attempt = assembleContext({ mode: "ask", openFile: "files/door/plain.md" }, AT);
+    await expect(attempt).rejects.toThrow(/outside data\//);
+    expect(await attempt.catch((err: Error) => err.message)).not.toContain("zq-outside-sentinel");
   });
 
   it("skips a referenced task that does not exist instead of failing the request", async () => {

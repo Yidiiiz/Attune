@@ -12,21 +12,19 @@
 //   - **A link is followed only if it stays home.** A read resolves the real path and refuses one
 //     that lands outside its root — so a symlink in `data/`, or a tracked one in the checkout,
 //     pointing at `.env.local` is refused — and applies the name rule to the real path as well.
+//     The rule is `realWithin` in `paths.ts`, the same one every store read and write takes.
 //
 // Failure behavior: every refusal is a `StoreError` naming the path and the reason; nothing here
 // reads a refused file's bytes, so a refusal cannot leak what it guarded.
 
-import { lstat, readFile, realpath } from "node:fs/promises";
-import path from "node:path";
+import { lstat, readFile } from "node:fs/promises";
 import { credentialPath, credentialRefusal } from "../security/credential-paths.ts";
 import { listTree, resolveWithin } from "./files.ts";
-import { DATA_DIR, REPO_DIR, StoreError, resolveData } from "./paths.ts";
+import { DATA_DIR, REPO_DIR, StoreError, realWithin, resolveData } from "./paths.ts";
 import type { TreeNode } from "./files.ts";
 
 /** Larger than this is not opened in the browser; a text editor or the file manager still can. */
 export const MAX_OPEN_BYTES = 8 * 1024 * 1024;
-
-const toPosix = (rel: string): string => rel.split(path.sep).join("/");
 
 /** Drop every credential-shaped node, and everything under one, from a tree. */
 function withoutCredentials(nodes: TreeNode[]): TreeNode[] {
@@ -89,19 +87,9 @@ export async function readForBrowser(rel: string, where: "data" | "repo", tracke
     if (!tracked?.has(rel)) refuse(`${rel} is not a file git tracks, and "Whole repo" shows only those.`);
   }
 
-  let real: string;
-  try {
-    real = await realpath(abs);
-  } catch {
-    throw new StoreError("not_found", `no such file: ${rel}`);
-  }
-  const home = await realpath(root);
-  if (!real.startsWith(home + path.sep)) refuse(`${rel} is a link to somewhere outside ${where === "data" ? "data/" : "the checkout"}, which is not followed.`);
-  const realRel = toPosix(path.relative(home, real));
-  const realCredential = credentialPath(realRel);
-  if (realCredential) refuse(`${rel} leads to ${realRel}, which is ${realCredential}; it is not opened.`);
-
-  const info = await lstat(real);
+  const real = await realWithin(root, abs, rel);
+  const info = await lstat(real).catch(() => null);
+  if (info === null) throw new StoreError("not_found", `no such file: ${rel}`);
   if (!info.isFile()) throw new StoreError("invalid", `${rel} is not a file.`);
   if (info.size > MAX_OPEN_BYTES) {
     throw new StoreError("invalid", `${rel} is ${(info.size / 1024 / 1024).toFixed(1)} MB, more than the browser opens; use a text editor or the file manager.`);

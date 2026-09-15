@@ -25,6 +25,9 @@ const MAP = "knowledge/maps/reading.md";
 const MAP_TEXT = "---\nschema: 1\nid: m_20260914_0e0e\ntitle: Reading\nupdatedAt: 2026-09-14T10:00:00-04:00\n---\n\nBooks and papers.\n";
 
 const { regenerateIndex } = await import("../store/knowledge.ts");
+const { createTask } = await import("./actions.ts");
+const { linkIndex } = await import("../knowledge/index.ts");
+const { backlinksOf } = await import("../knowledge/graph.ts");
 
 beforeEach(async () => {
   await checkout.reset({
@@ -89,6 +92,90 @@ describe("Rename", () => {
   it("keeps the extension and the folder", async () => {
     await expect(run(renameAction(MAP, "books.txt"))).rejects.toMatchObject({ code: "invalid" });
     await expect(run(renameAction(MAP, "../books.md"))).rejects.toMatchObject({ code: "invalid" });
+  });
+});
+
+// The listings Rename does not count as linkers are regenerated in its own batch, so neither is left
+// holding a link to the old name (the Stage A review, item 4). Checked by what the listing now says
+// and by the link index: every edge out of it lands on a file that exists.
+describe("Rename regenerates the listing it ignored, in the same batch", () => {
+  const deadEdges = async (listing: string): Promise<string[]> => {
+    const index = await linkIndex();
+    return (index.outgoing.get(listing) ?? []).filter((edge) => !index.files.has(edge));
+  };
+
+  it("for a map: knowledge/index.md names the new path and not the old, and undo restores both", async () => {
+    const index = await sha("knowledge/index.md");
+    const { batch, targets } = await run(renameAction(MAP, "books.md"));
+    expect(targets).toEqual(expect.arrayContaining([MAP, "knowledge/maps/books.md", "knowledge/index.md"]));
+    const listed = await readFile(abs("knowledge/index.md"), "utf8");
+    expect(listed).toContain("maps/books.md");
+    expect(listed).not.toContain("maps/reading.md");
+    expect(await deadEdges("knowledge/index.md")).toEqual([]);
+
+    await undoBatch(batch);
+    expect(await sha("knowledge/index.md")).toBe(index);
+    expect(await deadEdges("knowledge/index.md")).toEqual([]);
+  });
+
+  it("for an upload: files/index.md names the new path and not the old, and undo restores both", async () => {
+    const added = await run(addFile("docs", "notes.txt", Buffer.from("plain text\n"), "check"));
+    const rel = added.targets[0];
+    const manifest = await sha("files/index.md");
+    const moved = `${rel.slice(0, rel.lastIndexOf("/"))}/renamed.txt`;
+
+    const { batch, targets } = await run(renameAction(rel, "renamed.txt"));
+    expect(targets).toEqual(expect.arrayContaining([rel, moved, "files/index.md"]));
+    const listed = await readFile(abs("files/index.md"), "utf8");
+    expect(listed).toContain(moved);
+    expect(listed).not.toContain(rel);
+    expect(await deadEdges("files/index.md")).toEqual([]);
+
+    await undoBatch(batch);
+    expect(await sha("files/index.md")).toBe(manifest);
+    expect(existsSync(abs(rel))).toBe(true);
+  });
+});
+
+// A task can be named by its id or by its path. Only an id survives a rename, so only a path link
+// refuses one — in every form a path link takes (the Stage A review, item 5).
+describe("Rename of a task", () => {
+  const newTask = async (): Promise<{ rel: string; id: string }> => {
+    const { targets } = await run(createTask({ title: "Essay draft" }));
+    const rel = targets[0];
+    const id = /^id: (t_\S+)$/m.exec(await readFile(abs(rel), "utf8"))?.[1] ?? "";
+    return { rel, id };
+  };
+  const linker = async (rel: string, body: string, fields = ""): Promise<void> => {
+    await writeFile(abs(rel), `---\nschema: 1\nid: m_20260914_1111\ntitle: Linker\n${fields}updatedAt: 2026-09-14T10:00:00-04:00\n---\n\n${body}\n`);
+  };
+
+  it.each([
+    ["a data/-relative body link", (task: string) => [`See [the essay](${task}).`, ""]],
+    ["a file-relative body link", (task: string) => [`See [the essay](../../${task}).`, ""]],
+    ["a frontmatter field", (task: string) => ["No link in the body.", `links:\n  - ${task}\n`]],
+  ])("is refused while %s names its path", async (_form, make) => {
+    const { rel } = await newTask();
+    const [body, fields] = make(rel);
+    await linker("knowledge/maps/linker.md", body, fields);
+    const message = await run(renameAction(rel, "2026-09-14-essay.md")).catch((err: Error) => err.message);
+    expect(message).toContain("'Linker'");
+    expect(existsSync(abs(rel))).toBe(true);
+  });
+
+  it("is refused when a file names it both ways, because the path link would still break", async () => {
+    const { rel, id } = await newTask();
+    await linker("knowledge/maps/linker.md", `- [ ] draft → [[${id}]]\n\nAlso [the essay](${rel}).`);
+    await expect(run(renameAction(rel, "2026-09-14-essay.md"))).rejects.toMatchObject({ code: "invalid" });
+  });
+
+  it("goes ahead when every link to it is by id, and the id link then finds it at its new name", async () => {
+    const { rel, id } = await newTask();
+    await linker("knowledge/maps/linker.md", `- [ ] draft → [[${id}]]`);
+    const to = "tasks/2026-09-14-essay.md";
+    await run(renameAction(rel, "2026-09-14-essay.md"));
+    expect(existsSync(abs(to))).toBe(true);
+    expect(backlinksOf(await linkIndex(), to).linkers.map((one) => one.path)).toContain("knowledge/maps/linker.md");
   });
 });
 

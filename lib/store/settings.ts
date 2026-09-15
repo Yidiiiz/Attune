@@ -12,7 +12,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { renameAtomic } from "./files.ts";
-import { resolveData } from "./paths.ts";
+import { resolveForRead, resolveForWrite } from "./paths.ts";
 
 export const SETTINGS_PATH = "settings/settings.json";
 
@@ -77,7 +77,7 @@ export interface ReadSettingsResult {
 
 /** Read settings, repairing an unparsable file rather than failing. */
 export async function readSettingsResult(): Promise<ReadSettingsResult> {
-  const abs = resolveData(SETTINGS_PATH);
+  const abs = await resolveForRead(SETTINGS_PATH);
   let text: string;
   try {
     text = await readFile(abs, "utf8");
@@ -91,7 +91,7 @@ export async function readSettingsResult(): Promise<ReadSettingsResult> {
   } catch {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const brokenRel = `${SETTINGS_PATH}.broken-${stamp}`;
-    await renameAtomic(abs, resolveData(brokenRel));
+    await renameAtomic(await resolveForWrite(SETTINGS_PATH), await resolveForWrite(brokenRel));
     const settings = defaultSettings();
     await writeSettings(settings);
     return { settings, recoveredFrom: brokenRel };
@@ -111,7 +111,7 @@ export async function writeSettings(settings: Settings): Promise<void> {
  * Exported because themes (§4.10) will need exactly this in Phase 10.
  */
 export async function writeJsonAtomic(rel: string, value: unknown): Promise<void> {
-  const abs = resolveData(rel);
+  const abs = await resolveForWrite(rel);
   const text = `${JSON.stringify(value, null, 2)}\n`.replace(/\r\n/g, "\n");
 
   try {

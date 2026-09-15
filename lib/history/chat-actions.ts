@@ -175,8 +175,8 @@ function flatten(nodes: TreeNode[]): string[] {
  * **It does not delete the conversation's attachments, and cannot** (Decision 65). They live in
  * `data/files/` with the rest of §9.2's uploads, deduplicated by content hash, so the file a message
  * points at may be the same file another conversation points at; sweeping it would break the other
- * one. What is left behind is an upload whose manifest `used-by` has gone empty, which `kb:check`
- * reports. That is a known trade rather than an oversight, and Decision 65 is where it is argued.
+ * one. What is left behind is an upload nothing links to any more, which `kb:check` reports as a
+ * notice. That is a known trade rather than an oversight, and Decision 65 is where it is argued.
  */
 export function removeConversation(convId: string, summary?: string): ActionSpec {
   return {

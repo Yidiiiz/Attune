@@ -126,6 +126,55 @@ describe("§17: LaTeX survives a round trip", () => {
   });
 });
 
+// The conflict path after a save the writer re-stamps (the Stage A review, item 6). A knowledge file's
+// writer stamps `updatedAt`, so the bytes on disk are not the bytes the page sent: the version the
+// save answers with has to cover what was written, or the next save is a false 409 — and it has to
+// be taken inside the batch, or a write landing after it is a false pass.
+describe("the version a save answers with", () => {
+  it("covers the bytes written, stamp included, so the next save goes through and a stale one does not", async () => {
+    const doc = await read(NOTE);
+    const first = await saveDocument(store, { path: NOTE, base: doc.version, fields: null, body: `${doc.body}One.\n` });
+    expect((await read(NOTE)).data.updatedAt).not.toBe(doc.data.updatedAt); // the writer did re-stamp
+    expect(first.version).toBe(await sha(NOTE));
+
+    const second = await saveDocument(store, { path: NOTE, base: first.version, fields: null, body: `${doc.body}One.\nTwo.\n` });
+    expect(second.unchanged).toBe(false);
+    expect(second.version).toBe(await sha(NOTE));
+    await expect(saveDocument(store, { path: NOTE, base: first.version, fields: null, body: "stale\n" })).rejects.toMatchObject({ code: "conflict" });
+  });
+
+  it("is taken inside the batch, so a write landing after the batch still conflicts with the next save", async () => {
+    const other = NOTE_TEXT.replace("Columns", "The columns"); // an editor, elsewhere
+    const doc = await read(NOTE);
+    let reads = 0;
+    // A store whose second read lets the other write in first — the gap between a batch returning
+    // and anything read after it, made deterministic.
+    const racing = {
+      ...store,
+      files: {
+        ...store.files,
+        readBinary: async (rel: string): Promise<Buffer> => {
+          reads += 1;
+          if (reads === 2) await writeFile(abs(NOTE), other);
+          return store.files.readBinary(rel);
+        },
+      },
+    };
+    const saved = await saveDocument(racing, { path: NOTE, base: doc.version, fields: null, body: `${doc.body}Mine.\n` });
+    await writeFile(abs(NOTE), other); // the same write, where the save read nothing after its batch
+
+    await expect(saveDocument(store, { path: NOTE, base: saved.version, fields: null, body: "clobber\n" })).rejects.toMatchObject({ code: "conflict" });
+    expect(await readFile(abs(NOTE), "utf8")).toBe(other);
+  });
+
+  it("does the same for a checkbox click", async () => {
+    const line = "- [ ] Change of basis: $[v]_B = P^{-1}[v]_{B'}$";
+    const index = (await read(SHEET)).body.split("\n").indexOf(line);
+    const clicked = await toggleCheckbox(store, { path: SHEET, line: index, expected: line });
+    expect(clicked.version).toBe(await sha(SHEET));
+  });
+});
+
 describe("refusals", () => {
   it("refuses a save against a file that changed on disk after it was opened, and writes nothing", async () => {
     const doc = await read(NOTE);

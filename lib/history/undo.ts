@@ -79,9 +79,9 @@ export function findConflicts(batches: Batch[], batchId: string): string[] {
  * nothing to restore in the first place, and putting `.env.local` through the store would resolve
  * it under `data/` and write a file nobody meant.
  *
- * `{ git: true }` is deliberately not covered: it restores through `git revert`, which addresses
- * repository paths correctly, and it is how `code.change` reaches them legitimately. Nor is `null`,
- * which is not a snapshot of contents.
+ * `{ git: true }` is deliberately not covered: it restores from the commit (`git.restorePaths`), which
+ * names a repository path as itself and a data path as `data/<rel>`, and it is how `code.change`
+ * reaches repository paths legitimately. Nor is `null`, which is not a snapshot of contents.
  *
  * Only undo is guarded, and that is enough: redo requires a batch whose latest undo succeeded, and
  * this refusal is what stops one ever existing.

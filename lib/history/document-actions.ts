@@ -9,7 +9,10 @@
 // normalized. The read route computes it with this function and hands it to the page; the page never
 // hashes anything, it sends the same string back as `base`; the builder computes it again with this
 // function, over the same read, before it writes. One function, one read, both sides — so a file
-// nobody else touched cannot fail the comparison (the Phase 8 approval's 409 condition).
+// nobody else touched cannot fail the comparison (the Phase 8 approval's 409 condition). The version a
+// save answers with is taken the same way, inside its batch, from the bytes it wrote — the writer's
+// `updatedAt` stamp included — so the next save is not a false 409, and a write landing after the
+// batch is not a false pass (the Stage A review, item 6).
 //
 // **A save that changes nothing writes nothing, and logs nothing.** `saveDocument` compares first and
 // answers `unchanged` without a batch, which is what lets an equation sheet go through Edit and Save
@@ -141,14 +144,19 @@ function typeFor(policy: Policy): ActionSpec["type"] {
   return policy.kind === "task" ? "task.update" : policy.kind === "file" ? "file.write" : "knowledge.write";
 }
 
-/** One save as an action. Everything the route checked is checked again here, inside the batch. */
-export function saveAction(input: SaveInput, summary?: string): ActionSpec {
+/** One save as an action, with everything the route checked checked again inside the batch. `written`
+ * is handed the version of the bytes the save leaves on disk, read before the batch ends. */
+export function saveAction(input: SaveInput, summary?: string, written?: (version: string) => void): ActionSpec {
   const rel = input.path;
   const kind = policyFor(rel, { text: true });
   return {
     type: typeFor(kind),
     summary: summary ?? `${input.base === null ? "Create" : "Save"} '${nameOf(rel)}'`,
     apply: async (store: Store) => {
+      const done = async <T>(result: T): Promise<T> => {
+        written?.(versionOf(await store.files.readBinary(rel)));
+        return result;
+      };
       const bytes = (await store.files.exists(rel)) ? await store.files.readBinary(rel) : null;
       const policy = policyFor(rel, { text: bytes === null || looksLikeText(bytes) });
       refuse(bytes === null ? policy.create : policy.save);
@@ -159,7 +167,7 @@ export function saveAction(input: SaveInput, summary?: string): ActionSpec {
         // §6.3: a new note arrives with its map link, through the same builder a proposal uses.
         if (!input.mapLink) throw new StoreError("invalid", "A new note names the map it belongs to (§6.3).");
         const content = input.text ?? joinFrontmatter(input.fields ?? {}, input.body ?? "");
-        return writeKnowledge({ path: rel, op: "create", content, reason: input.reason ?? "", mapLink: input.mapLink }, "manual").apply(store);
+        return done(await writeKnowledge({ path: rel, op: "create", content, reason: input.reason ?? "", mapLink: input.mapLink }, "manual").apply(store));
       }
 
       const run = async (): Promise<void> => {
@@ -172,9 +180,9 @@ export function saveAction(input: SaveInput, summary?: string): ActionSpec {
       if (policy.kind === "file" || policy.kind === "task") {
         const before: Snapshots = { [rel]: await store.snapshotContent(rel) };
         await run();
-        return { targets: [rel], before, after: { [rel]: await store.snapshotContent(rel) } };
+        return done({ targets: [rel], before, after: { [rel]: await store.snapshotContent(rel) } });
       }
-      return recorded(store, [rel], run); // a knowledge file can change what the index says
+      return done(await recorded(store, [rel], run)); // a knowledge file can change what the index says
     },
   };
 }
@@ -226,14 +234,15 @@ export async function saveDocument(store: Store, input: SaveInput): Promise<{ un
     if (unchanged) return { unchanged: true, version: input.base };
   }
 
+  let version = "";
   const result = await runBatch({
     actor: "user",
     scope: "user",
     summary: `${input.base === null ? "create" : "save"} ${rel}`,
     commitPrefix: commitPrefixFor(rel),
-    actions: [saveAction(input)],
+    actions: [saveAction(input, undefined, (taken) => (version = taken))],
   });
-  return { ...result, unchanged: false, version: versionOf(await store.files.readBinary(rel)) };
+  return { ...result, unchanged: false, version };
 }
 
 /** A GFM task-list line: its marker and box, then the one character a click flips. */
@@ -253,7 +262,7 @@ export interface ToggleInput {
  * both land: what has to be unchanged is the line clicked, not the whole file. The check, the flip and
  * the write all happen inside the batch, where nothing else can write in between.
  */
-export function toggleAction(input: ToggleInput): ActionSpec {
+export function toggleAction(input: ToggleInput, written?: (version: string) => void): ActionSpec {
   const rel = input.path;
   const box = CHECKBOX.exec(input.expected);
   const ticking = box?.[2] === " ";
@@ -271,13 +280,14 @@ export function toggleAction(input: ToggleInput): ActionSpec {
         throw new StoreError("conflict", `That checkbox's line in ${rel} changed after the page was drawn, so nothing was saved. Reopen the file.`);
       }
       lines[input.line] = `${box[1]}${ticking ? "x" : " "}${box[3]}${input.expected.slice(box[0].length)}`;
-      return saveAction({ path: rel, base: versionOf(bytes), fields: null, body: lines.join("\n") }, summary).apply(store);
+      return saveAction({ path: rel, base: versionOf(bytes), fields: null, body: lines.join("\n") }, summary, written).apply(store);
     },
   };
 }
 
 export async function toggleCheckbox(store: Store, input: ToggleInput): Promise<BatchResult & { version: string }> {
-  const action = toggleAction(input);
+  let version = "";
+  const action = toggleAction(input, (taken) => (version = taken));
   const result = await runBatch({
     actor: "user",
     scope: "user",
@@ -285,5 +295,5 @@ export async function toggleCheckbox(store: Store, input: ToggleInput): Promise<
     commitPrefix: commitPrefixFor(input.path),
     actions: [action],
   });
-  return { ...result, version: versionOf(await store.files.readBinary(input.path)) };
+  return { ...result, version };
 }

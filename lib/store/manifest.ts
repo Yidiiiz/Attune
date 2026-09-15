@@ -30,7 +30,10 @@ interface ManifestRow {
   description: string;
 }
 
-/** Parse the existing table so hand-written descriptions survive regeneration. */
+/**
+ * Parse the existing table so hand-written descriptions survive regeneration. A table written before
+ * Phase 8 has a fifth, always-empty `used-by` cell; the first four are in the same places either way.
+ */
 async function readManifestRows(): Promise<Map<string, ManifestRow>> {
   const rows = new Map<string, ManifestRow>();
   let text: string;
@@ -42,15 +45,16 @@ async function readManifestRows(): Promise<Map<string, ManifestRow>> {
   for (const line of text.split("\n")) {
     if (!line.startsWith("|")) continue;
     const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
-    if (cells.length < 5 || cells[0] === "path" || /^-+$/.test(cells[0])) continue;
+    if (cells.length < 4 || cells[0] === "path" || /^-+$/.test(cells[0])) continue;
     rows.set(cells[0], { added: cells[1], source: cells[2], description: cells[3] });
   }
   return rows;
 }
 
 /**
- * Rewrite `files/index.md` from what is on disk. The `used-by` column stays empty until the link
- * index exists (Phase 8); the column is here from the start so the table shape never changes.
+ * Rewrite `files/index.md` from what is on disk. There is no `used-by` column: who uses a file is its
+ * backlinks, read live from the link index, and a column filled here would be stale from the first
+ * link written after it — the wrong answer to the question someone deletes a file on (§4.8).
  */
 export async function regenerateManifest(sources: Map<string, string> = new Map()): Promise<void> {
   const previous = await readManifestRows();
@@ -67,14 +71,14 @@ export async function regenerateManifest(sources: Map<string, string> = new Map(
   collect(await listTree("files"));
   files.sort((a, b) => a.path.localeCompare(b.path));
 
-  const lines = ["| path | added | source | description | used-by |", "| --- | --- | --- | --- | --- |"];
+  const lines = ["| path | added | source | description |", "| --- | --- | --- | --- |"];
   for (const file of files) {
     const prior = previous.get(file.path);
     const added =
       prior?.added ||
       (file.updatedAt === undefined ? "" : todayIn(timezone, new Date(file.updatedAt)));
     const source = sources.get(file.path) ?? prior?.source ?? "";
-    lines.push(`| ${file.path} | ${added} | ${source} | ${prior?.description ?? ""} |  |`);
+    lines.push(`| ${file.path} | ${added} | ${source} | ${prior?.description ?? ""} |`);
   }
   await writeText(MANIFEST_PATH, `${MANIFEST_HEADER}${lines.join("\n")}\n`);
 }

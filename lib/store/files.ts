@@ -1,20 +1,20 @@
-// Owns: generic file access inside the data tree — the tree listing, text and binary reads, the
-// atomic LF-normalized text write every other store module builds on, and the uploads directory
-// with its manifest (PROJECT.md §4.8, §5).
+// Owns: generic file access inside the data tree — the tree listing, text and binary reads, and the
+// atomic LF-normalized text write every other store module builds on (PROJECT.md §5). The uploads
+// directory and its manifest are `manifest.ts`'s.
 //
 // Failure behavior: reads throw StoreError("not_found") and writes throw "forbidden_path" rather
-// than guessing. Every write is tmp + rename, so a crash leaves either the old file or the new one
-// and never half of either — and the rename retries a transient Windows `EPERM`, which is another
-// process holding the file for a moment rather than a permission problem (see `renameAtomic`). A
-// tree walk that cannot read one directory omits it and keeps walking: one unreadable folder should
-// cost you that folder, not the browser.
+// than guessing, and neither follows a link further than `paths.ts` allows. Every write is tmp +
+// rename, so a crash leaves the old file or the new one and never half of either; the rename retries
+// a transient Windows `EPERM`, which is another process holding the file for a moment rather than a
+// permission problem (see `renameAtomic`). A tree walk that cannot read one directory omits it and
+// keeps walking: one unreadable folder should cost you that folder, not the browser.
 
 import { createHash } from "node:crypto";
 import {
   appendFile, mkdir as fsMkdir, open, readFile, readdir, rename as fsRename, rm, stat, writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { DATA_DIR, StoreError, resolveData } from "./paths.ts";
+import { DATA_DIR, StoreError, resolveData, resolveForRead, resolveForWrite } from "./paths.ts";
 import { emitWrite } from "./events.ts";
 
 export interface TreeNode {
@@ -85,7 +85,7 @@ export function resolveWithin(root: string, rel: string): string {
  */
 export async function listTree(rel: string): Promise<TreeNode[]> {
   const abs = resolveData(rel || ".");
-  return walk(abs, toPosix(path.relative(DATA_DIR, abs)));
+  return walk(await resolveForRead(rel || "."), toPosix(path.relative(DATA_DIR, abs)));
 }
 
 /**
@@ -137,7 +137,7 @@ function notFound(rel: string, err: unknown): never {
 
 export async function readText(rel: string): Promise<string> {
   try {
-    return await readFile(resolveData(rel), "utf8");
+    return await readFile(await resolveForRead(rel), "utf8");
   } catch (err) {
     notFound(rel, err);
   }
@@ -145,7 +145,7 @@ export async function readText(rel: string): Promise<string> {
 
 export async function readBinary(rel: string): Promise<Buffer> {
   try {
-    return await readFile(resolveData(rel));
+    return await readFile(await resolveForRead(rel));
   } catch (err) {
     notFound(rel, err);
   }
@@ -204,7 +204,7 @@ export async function renameAtomic(tmp: string, abs: string): Promise<void> {
  * rename. Every module that writes markdown goes through here so those three properties hold once.
  */
 export async function writeText(rel: string, text: string): Promise<void> {
-  const abs = resolveData(rel);
+  const abs = await resolveForWrite(rel);
   const normalized = text.replace(/\r\n/g, "\n");
 
   try {
@@ -222,7 +222,7 @@ export async function writeText(rel: string, text: string): Promise<void> {
 
 /** Binary counterpart. No normalization, for obvious reasons. */
 export async function writeBinary(rel: string, bytes: Buffer): Promise<void> {
-  const abs = resolveData(rel);
+  const abs = await resolveForWrite(rel);
   await fsMkdir(path.dirname(abs), { recursive: true });
   const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
   await writeFile(tmp, bytes);
@@ -231,19 +231,19 @@ export async function writeBinary(rel: string, bytes: Buffer): Promise<void> {
 }
 
 export async function deleteFile(rel: string): Promise<void> {
-  await rm(resolveData(rel), { recursive: true, force: true });
+  await rm(await resolveForWrite(rel), { recursive: true, force: true });
   emitWrite([rel]);
 }
 
 // Named `moveFile` rather than after the fs verb: `files.test.ts` flags every member call of that verb
 // in the project so no write can skip `renameAtomic`, and this one goes through it (Phase 8 is its first caller).
 export async function moveFile(from: string, to: string): Promise<void> {
-  const absTo = resolveData(to);
+  const absTo = await resolveForWrite(to);
   await fsMkdir(path.dirname(absTo), { recursive: true });
   try {
     // The same transient-Windows retry as an atomic write's rename: a file operation the reader
     // asked for should not fail because an indexer had the file open for a moment.
-    await renameAtomic(resolveData(from), absTo);
+    await renameAtomic(await resolveForWrite(from), absTo);
   } catch (err) {
     notFound(from, err);
   }
@@ -251,7 +251,7 @@ export async function moveFile(from: string, to: string): Promise<void> {
 }
 
 export async function mkdir(rel: string): Promise<void> {
-  await fsMkdir(resolveData(rel), { recursive: true });
+  await fsMkdir(await resolveForWrite(rel), { recursive: true });
   emitWrite([rel]);
 }
 
@@ -261,7 +261,7 @@ export async function mkdir(rel: string): Promise<void> {
  * buy atomicity would cost more than it protects.
  */
 export async function appendText(rel: string, text: string): Promise<void> {
-  const abs = resolveData(rel);
+  const abs = await resolveForWrite(rel);
   await fsMkdir(path.dirname(abs), { recursive: true });
   await appendFile(abs, text.replace(/\r\n/g, "\n"), "utf8");
   emitWrite([rel]);
@@ -278,7 +278,7 @@ export async function byteLength(rel: string): Promise<number> {
 
 /** Read from `offset` to end. Paired with `replaceTail` for the log's one in-place edit. */
 export async function readTail(rel: string, offset: number): Promise<string> {
-  const handle = await open(resolveData(rel), "r");
+  const handle = await open(await resolveForRead(rel), "r");
   try {
     const size = (await handle.stat()).size;
     if (offset >= size) return "";
@@ -292,7 +292,7 @@ export async function readTail(rel: string, offset: number): Promise<string> {
 
 /** Truncate at `offset` and write `text` there. The log uses it to fill in a just-known commit. */
 export async function replaceTail(rel: string, offset: number, text: string): Promise<void> {
-  const handle = await open(resolveData(rel), "r+");
+  const handle = await open(await resolveForWrite(rel), "r+");
   try {
     await handle.truncate(offset);
     await handle.write(Buffer.from(text.replace(/\r\n/g, "\n"), "utf8"), 0, undefined, offset);

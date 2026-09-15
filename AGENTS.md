@@ -18,7 +18,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — Stage A built, checked, stopped for review; B1 and B2 follow, each stopping | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219` |
+| 8 — Knowledge browser | in progress — Stage A accepted with seven items; the items, then B1, which stops; B2 follows | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
@@ -1610,6 +1610,118 @@ hook does (skip files with a NUL byte, otherwise line by line), refusing before 
 was taken; nothing new is logged. (3) Undo/redo pass git `data/<rel>`, at `<commit>^` for undo and
 `<commit>` for redo. batch.ts is at 294 lines, so the capture may need the split Decision 56 names.
 Then Stage A continues."
+
+### Approved conditions — Phase 8 Stage A review (rule 9)
+
+The owner's review of Stage A, verbatim:
+
+"Stage A accepted. Proceed to B1 under the conditions below. One item first.
+
+1. THE {git: true} SNAPSHOT DEFECTS — CHECK THE LIVE REPO
+Right call to fix these mid-stage, and finding them by writing the tests first
+is why they turned up. But the first one has a history, not just a future: a key
+in an uploaded text file got committed, and after that the pre-commit hook
+refuses every subsequent commit.
+
+Before B1, check whether that already happened in any real checkout — this repo
+and any throwaway that outlived its run. Same shape as the home-folder question:
+a silent bug that ran for an unknown period, and the thing to establish is
+whether it left anything behind. Read-only, report, don't remediate.
+
+If it did fire, the secret is in history and the answer is rotation, not
+rewriting. Tell me and stop.
+
+Also confirm the other two defects were reachable only through paths that
+existed before Phase 8. Rollback failing to restore a git-snapshot, and undo/
+redo hitting the wrong path and revision, are undo-correctness bugs, and undo
+correctness is the thing every SHA check in this project rests on. If any check
+that passed in Phase 7 was passing over one of these, I want to know which.
+
+ITEMS FOR REVIEW
+1. batch.ts 328, files.ts 303 over cap. Accepted as reported — reporting beats
+   inventing a seam. Record both with the reason, and note that batch.ts has no
+   remaining named seam so the next growth needs a Decision, not a judgement
+   call.
+2. §4.8's used-by column: agreed, amend rather than build. An upload's backlinks
+   answer the question live; a column filled at manifest-regeneration time is
+   stale by construction, and a stale answer to "who uses this" is worse than no
+   column, because it's the answer someone deletes a file on.
+3. Symlink hole: good catch and the right fix. Confirm it covers writes as well
+   as reads — a save or a rename through a symlink that lands outside its folder
+   must be refused by the same rule. If writes go through a different path,
+   they need the same resolution, and a test.
+4. Generated index files not counted for rename: agreed. Condition: a rename
+   must regenerate those indexes in the same batch, the way Phase 7 made the
+   index a target of the note-creating action. Otherwise a rename leaves a dead
+   link in a file the rename rule deliberately ignored.
+5. Task renameable because id links survive: agreed for [[t_…]] links. Confirm
+   path-form links to the task are still counted and still block. If both forms
+   can address a task, only one of them surviving a rename is the case to be
+   sure about.
+6. Frontmatter rewrite and updatedAt on save: fine. Check it against the 409 —
+   the editor hashes what it loaded, the route must hash the same bytes, and a
+   route that re-stamps before hashing turns every save into a false conflict.
+   You've said unchanged saves write nothing, which covers the byte checks, but
+   the conflict path is the one to verify.
+7. PDFs download, SVGs don't render: correct, that's the fallback and nobody has
+   shown the viewer is safe. Record it as the current position with what would
+   change it, so it reads as a decision rather than an omission.
+
+ACCEPTED AS REPORTED
+- check:ui with no shell, proven by putting the shell back and watching a marker
+  file appear. That's the demonstration I wanted.
+- The open-document cap at 32,000 characters, recorded.
+- Mutation testing every guard, each failing exactly its own test. This is the
+  strongest evidence in the report and I'd like it to stay the habit.
+- 33 HTTP checks covering all four of my conditions, including .env.local
+  refused five ways and the fake .png. Good.
+- Amendment u: 2 runs, 0 failures, no new form. Keep the tally running.
+- Blocked rows unchanged and still listed.
+
+B1
+Rail, Tree, document view read-only. Stop at the end. If it comes in small we
+collapse the checkpoint and go straight on to B2; don't merge them pre-emptively.
+
+Carry into B1: the document view is the surface I'd expect a third form of u to
+appear on. Decisions 69 and 70 keep it off the server-render path, which should
+help, but watch for it specifically."
+
+**The live-repo check (item "one first"), done before any code, read-only. It did not fire.**
+- **This repository.** The hook is active (`core.hooksPath=.githooks`), and there is no remote. The
+  hook's own `SECRET_PATTERNS`, run over every one of the 623 objects in the store, reachable or
+  not, over the index and over the working tree, found nothing. Nothing has ever been uploaded. No
+  file under `data/` has ever been over 4,460 bytes, against the 64 KB line. None of the four
+  batches in `actions.jsonl` has a `{ git: true }` snapshot or a failed commit; the one without a
+  hash is `bcb7929`, whose hash waits for the next batch (Decision 47). `.env.local` does not exist
+  on this machine.
+- **What the defect would have left here.** Not a secret in history. Every batch commits the whole
+  of `data/` (`paths = ["data", …]`), so with the hook active the upload's own commit is refused, the
+  key stays on disk uncommitted, and every later commit carries it and is refused too. The trace
+  would be `meta.commitFailed` in the log, and there is none. In a checkout without the hook, which
+  is every throwaway, the key is committed.
+- **Every other Attune repository on the machine**: 228 under `%TEMP%` and the scratch directories,
+  plus `.e2e-sandbox`. None has a remote. Sixteen hold something secret-shaped, and each is a fake
+  planted on purpose: the fixture `.env.local` files of `browse.test.ts` and
+  `app/api/files/routes.test.ts` (`E` and `R` repeated, built from fragments), the one
+  `git-snapshot.test.ts` run from before the fix, at 04:21 (`Q` repeated), and the two Stage A
+  probes (`A` and `K` repeated). A check that its value is one character repeated, run without
+  printing it, passed on every key-shaped match in the three repositories that are not fixtures. As
+  a control, the scanner reported the probe's committed key in the object store, the index and
+  the tree.
+- **Found on the way, not remediated:** the test suite leaves its temporary checkouts behind. 228
+  of them have piled up since 7 September.
+- **The other two defects were reachable before Phase 8, and no check passed over them.** The 64 KB
+  `{ git: true }` path is in `b931994` (Phase 2): undo, redo and rollback of any batch touching a
+  text file over 64 KB were broken from then on. Redo of an upload was broken from `03e2b4b`
+  (Phase 5), when the upload route landed. Before the fix, no vitest file wrote a file over 64 KB
+  or undid or redid an upload. No browser check did either: the knowledge checks undo a
+  `habits.md` of a few lines, and the attachment checks never undo. No HTTP check recorded here
+  did either. Every SHA check through Phase 7 restored `{ content }`, `{ fields }` or `null`, and
+  none rested on the git path. The nearest is `undo.test.ts`'s case that leaves a `{ git: true }`
+  snapshot out of the unrestorable guard. It restores nothing, and it passed on a comment saying
+  such a snapshot "restores through `git revert`, which addresses repository paths correctly". That
+  was false for a data path. §7.2 still describes `git revert --no-commit`, which the code never
+  ran. Both are corrected.
 
 ## Deferred amendments
 

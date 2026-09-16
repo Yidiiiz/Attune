@@ -28,6 +28,7 @@ import { ZodError } from "zod";
 import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
 import { StoreError } from "../store/paths.ts";
 import { looksLikeText } from "../security/raw.ts";
+import { CHECKBOX } from "../knowledge/checkbox.ts";
 import { runBatch } from "./batch.ts";
 import { recorded, writeKnowledge } from "./knowledge-actions.ts";
 import { commitPrefixFor, policyFor } from "./write-policy.ts";
@@ -244,9 +245,6 @@ export async function saveDocument(store: Store, input: SaveInput): Promise<{ un
   });
   return { ...result, unchanged: false, version };
 }
-
-/** A GFM task-list line: its marker and box, then the one character a click flips. */
-const CHECKBOX = /^(\s*(?:[-*+]|\d{1,9}[.)])\s+\[)([ xX])(\])(?=\s|$)/;
 
 export interface ToggleInput {
   path: string;

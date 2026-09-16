@@ -19,15 +19,17 @@
 
 import DOMPurify from "dompurify";
 import katex from "katex";
-import { marked } from "marked";
+import { Marked, marked } from "marked";
 
 /** NUL cannot appear in a markdown source we wrote, which is what makes it a safe placeholder.
  * Exported so a test can build the expected intermediate text without a raw NUL in its own source. */
 export const MARK = "\u0000";
 
-interface Stashed {
+export interface Stashed {
   text: string;
-  math: Array<{ tex: string; display: boolean }>;
+  /** `raw` is the whole span as it was in the source, delimiters included: a display block over
+   * several lines becomes a one-line placeholder, and `checkboxes.ts` needs to count the lines back. */
+  math: Array<{ tex: string; display: boolean; raw: string }>;
 }
 
 /** Ranges `marked` must see verbatim: fenced blocks and inline code. */
@@ -53,7 +55,7 @@ export function stashMath(source: string): Stashed {
 
     return text.replace(re, (whole, tex: string, at: number) => {
       if (inCode(at)) return whole;
-      math.push({ tex: tex.trim(), display });
+      math.push({ tex: tex.trim(), display, raw: whole });
       return `${MARK}${math.length - 1}${MARK}`;
     });
   };
@@ -75,16 +77,62 @@ export function restoreMath(html: string, math: Stashed["math"]): string {
   });
 }
 
+/**
+ * Where a document's links and images go (PROJECT.md §10.2). A chat message has none of this: its
+ * links are left as written, which is why chat renders through the shared `marked` and a document
+ * through an instance of its own.
+ */
+export interface LinkRules {
+  /** The address a link should have, or null to leave it as written. */
+  href: (target: string) => string | null;
+  /** An image either shows inline from `src`, or becomes a download link to `download`. */
+  image: (target: string) => { src: string } | { download: string } | null;
+}
+
+const escapeAttr = (text: string): string =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+/**
+ * A `marked` whose links and images follow `rules`. Returning `false` hands a token back to marked's
+ * own renderer, which does the escaping; only the download link, which marked has no form for, is
+ * written here.
+ */
+function documentMarked(rules: LinkRules): Marked {
+  return new Marked({
+    gfm: true,
+    breaks: false,
+    renderer: {
+      link(token) {
+        const to = rules.href(token.href);
+        if (to !== null) token.href = to;
+        return false;
+      },
+      image(token) {
+        const where = rules.image(token.href);
+        if (where === null) return false;
+        if ("src" in where) {
+          token.href = where.src;
+          return false;
+        }
+        const name = token.text || token.href.split("/").pop() || "file";
+        return `<a href="${escapeAttr(where.download)}">${escapeAttr(name)} (download)</a>`;
+      },
+    },
+  });
+}
+
 /** Markdown and math, rendered but NOT sanitized. Never put this in a page; see `renderMarkdown`. */
-export function renderUnsafe(source: string): string {
+export function renderUnsafe(source: string, rules?: LinkRules): string {
   const { text, math } = stashMath(source);
-  const html = marked.parse(text, { async: false, gfm: true, breaks: false }) as string;
+  const html = rules
+    ? (documentMarked(rules).parse(text, { async: false }) as string)
+    : (marked.parse(text, { async: false, gfm: true, breaks: false }) as string);
   return restoreMath(html, math);
 }
 
 /** `renderUnsafe`, sanitized. Requires a DOM; call it in the browser only. */
-export function renderMarkdown(source: string): string {
-  return DOMPurify.sanitize(renderUnsafe(source), {
+export function renderMarkdown(source: string, rules?: LinkRules): string {
+  return DOMPurify.sanitize(renderUnsafe(source, rules), {
     // KaTeX emits MathML alongside its HTML; these two are the tags DOMPurify's MathML profile
     // does not carry by default.
     ADD_TAGS: ["semantics", "annotation"],

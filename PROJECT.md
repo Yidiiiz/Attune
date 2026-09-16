@@ -207,6 +207,12 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 95. **`files/index.md` has no `used-by` column** (the Stage A review, item 2; §4.8 amended rather than built). §4.8 said the column "is filled from the link index on regeneration", and the column shipped empty until the index existed. Filled that way, it is stale by construction: a note that starts linking an upload does not regenerate the manifest. A stale answer to "who uses this" is worse than none, because it is the answer someone deletes a file on. An upload's backlinks in the document view answer the question live, and `kb:check`'s notice names the uploads nothing links to. The generator writes four columns, and the seed's `files/index.md` is exactly what it writes for an empty `files/` (`lib/store/manifest.test.ts` holds that). A table written with the fifth column keeps its descriptions. The owner's `data/files/index.md` changes shape the next time an upload regenerates it.
 
+96. **Files added to the §3 layout in Phase 8 B1, and the rail's fourth icon is not one of them.** `components/browser/` gains `Tree.tsx` and `Panels.tsx` (the Knowledge and Files panels, §10.2's "same component, fed different `TreeNode[]` arrays"), `DocumentView.tsx` and `DocumentBody.tsx`, `FrontmatterTable.tsx`, `Backlinks.tsx`, `href.ts` (every address the browser hands out, pure, so node tests hold it), `useDocument.ts` (Decision 97), `remember.ts` (`localStorage`) and `Browser.module.css`. `components/markdown/checkboxes.ts` is Decision 98's line matching, and `lib/knowledge/checkbox.ts` holds the one task-line regex both it and `document-actions.ts` read, so the page and the route cannot disagree about what a box is. **Graph has no rail icon yet.** §10.2 lists four panels and Phase 8b builds the fourth; an icon that opens nothing is a dead end drawn on purpose, so it arrives with the view. `components/chat/Rail.tsx` now takes its panels as a record keyed by name rather than a single `children`, which is what let Phase 8 add two without touching the drag or the width; the fold does for three icons what Phase 6b's did for one.
+
+97. **The document view never adopts a server render, and its one way in is ordered by issue** (Decisions 69 and 70, and the approval's instruction to watch that surface for a third form of amendment `u`). `app/chat/page.tsx` hands `DocumentView` a path, which tree that path is in, and the open conversation's id — never the file's contents — and keys it by `${where}:${path}`, so opening another file is a remount, not an update to adopt. `useDocument.ts` reads through `/api/files/read` alone: each `reload()` takes a ticket, and a read that returns after a later one was applied is dropped, which is what keeps a checkbox click's re-read from being undone by an older one in flight. Nothing in `components/browser/` calls `router.refresh()`, the route by which `u`'s stale render reaches the chat pane. A read that fails leaves the last good document on screen with the reason above it, because blanking a document someone is reading is the worse failure.
+
+98. **A checkbox is clickable only while the page and the file provably agree on which line it is; otherwise every box in the file is disabled and says why** (the Phase 8 approval's checkbox condition; Decision 86). A rendered box does not know its line, and application code may not read one from a `data-*` attribute (AGENTS.md Conventions). So `components/markdown/checkboxes.ts` lexes the same stashed text the view renders, counts the math stash back out so a display block over several lines does not shift everything after it, and takes the nth task item the lexer found as the nth box drawn. It refuses to guess in three cases: the page drew a different number of boxes than the lexer found task items (raw HTML can draw an `<input>` of its own), a drawn box's ticked state is not its line's, or the line is not one `lib/knowledge/checkbox.ts` says a click can flip — a box inside a quote, which the route would refuse anyway. The reason is a sentence, shown above the body **and** on each box as its `title`, so a box that does nothing never looks like one that is broken. `DocumentBody.tsx` finds the boxes by position in document order, which is what the lines were matched against. **One consequence is load-bearing and not obvious:** the `dangerouslySetInnerHTML` prop is one object per HTML string. React 19 compares that prop by identity (`react-dom` 19.2's `updateProperties`) and assigns `innerHTML` whenever the object differs, whatever `__html` holds, so a fresh object per render re-set the HTML and put `marked`'s own `disabled` attribute back on every box after the layout effect had cleared it. Every node test passed while the boxes were dead in the browser; `components/markdown/Markdown.tsx` has the same shape and is reported, not changed, because nothing in a chat message depends on the DOM being left alone.
+
 ---
 
 ## 1. Hard rules
@@ -259,10 +265,15 @@ components/
   composer/                  # ComposerButton, ComposerSheet, ModeSelector, PreviewPanel, TaskCard,
                              #   ProposalPanel, KnowledgeCard, CollectionCard (the tray — Decision 80)
   chat/                      # Conversation, MessageView, ChatComposer, Sidebar, Annotations, QuoteRefs
-  browser/                   # Rail, Tree, DocumentView, FrontmatterTable, GraphView
+  browser/                   # Tree + Panels (Knowledge, Files), DocumentView + DocumentBody,
+                             #   FrontmatterTable, Backlinks, href.ts (every address it hands out),
+                             #   useDocument.ts (the open file, ordered — Decisions 69, 70),
+                             #   remember.ts (localStorage); GraphView is Phase 8b's (Decision 96)
   history/                   # HistorySheet
   settings/                  # one file per settings section
-  markdown/                  # Markdown.tsx (marked + katex + dompurify), Checklist toggling
+  markdown/                  # Markdown.tsx (marked + katex + dompurify), pipeline.ts (Decision 31,
+                             #   with a document's own link and image rules), checkboxes.ts: which
+                             #   body line each drawn box came from, and whether any may be clicked
 lib/
   store/                     # ONLY module that touches the filesystem
     paths.ts                 # DATA_DIR, SEED_DIR, REPO_DIR, resolveData(rel) with traversal guard, and the link rule (Decision 94)
@@ -317,6 +328,7 @@ lib/
     auto-apply.ts            # §6.3's one write per turn that skips the card (Decision 79)
     distill.ts               # a conversation → a session summary proposal (Decision 80)
   knowledge/
+    checkbox.ts              # the one GFM task-line rule: which lines a click may flip (Decision 96)
     links.ts                 # extractLinks(fromPath, data, body); resolution precedence (Decision 74)
     items.ts                 # collection item lines and slugs (§4.5)
     index.ts                 # LinkIndex build/cache, checked against the disk on every read (Decision 90)
@@ -919,17 +931,17 @@ Timeline from `max(nowMin, day.startMin)` (or `day.startMin` for other days) to 
 1. **Chats** — `listConversations()` grouped Pinned / Today / Yesterday / This week / Older, search box filtering by title, context menu: Rename, Pin, Delete (confirm), Distill to knowledge (§6, creates a session summary proposal).
 2. **Knowledge** — a curated tree built from the maps: top level is each map by `title` plus **Collections**; expanding a map lists the notes it links to, in the map's order. Built by `GET /api/knowledge/tree`, which parses map bodies through the link index.
 3. **Files** — the raw tree under `data/` with a "Whole repo" toggle, which shows git's tracked files outside `data/`; a credential-shaped name is never listed or opened (Decision 88). Context menu: New file, New folder, Rename, Delete, Reveal in graph. Outside `data/` the tree is read-only unless the composer is in Build mode; the context menu says so.
-4. **Graph** — opens the graph view in the main pane.
+4. **Graph** — opens the graph view in the main pane. Built in Phase 8b, and it has no rail icon until then (Decision 96).
 
-Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed different `TreeNode[]` arrays; the Knowledge panel simply passes a curated tree. Expanded-set, active panel, and scroll positions persist in `localStorage`.
+Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed different `TreeNode[]` arrays; the Knowledge panel simply passes a curated tree. Expanded-set, active panel, and scroll positions persist in `localStorage`. The rail shows one panel at a time: choosing another shows it, and choosing the one already shown folds the panel away, which is what the single Chats icon did in Phase 6b.
 
 **Main pane** shows a conversation or a document, never both, never tabs. Opening anything from the rail swaps in the document view with a strip at the top: the path, an Edit/Preview toggle, Save, and a "← Back to chat" control. The chat composer stays docked at the bottom in document view; sends in document view set `conversation.context.file` to the open path and the document's full text is in context (§6.2). If no conversation is active, a new one is created with that context.
 
-**Document view** (`components/browser/DocumentView.tsx`):
+**Document view** (`components/browser/DocumentView.tsx`). Phase 8 B1 builds the read-only half — the strip, the frontmatter table, the rendered body with its links, images and checkboxes, and "Linked from"; the Edit/Preview toggle, Save and the docked composer are B2's. It is handed a path and reads the file itself, ordered (Decision 97):
 
-- Preview renders markdown through `components/markdown/Markdown.tsx`. Edit is a monospace textarea. `Ctrl/Cmd+S` saves; the toggle and navigation warn when dirty (`beforeunload` and an in-app confirm).
+- Preview renders markdown through Decision 31's pipeline, as `Markdown.tsx` does, but with the document's own link and image rules (`DocumentBody.tsx`, `href.ts`). Edit is a monospace textarea. `Ctrl/Cmd+S` saves; the toggle and navigation warn when dirty (`beforeunload` and an in-app confirm).
 - Frontmatter renders as `FrontmatterTable.tsx`: one row per key, value editable as text (arrays as comma-separated, booleans as checkboxes). Body and table save together as one `file.write` (or `task.update` / `knowledge.write` by path).
-- Checkboxes in preview are clickable and save immediately (one action per click); a click on a line that has changed since it was drawn is refused and writes nothing (Decision 86).
+- Checkboxes in preview are clickable and save immediately (one action per click); a click on a line that has changed since it was drawn is refused and writes nothing (Decision 86). A box the page cannot tie to its line is disabled and says why, as is every box in a file the policy will not let this view save (Decision 98).
 - Links to `data/` paths navigate in place. **Backlinks** ("Linked from") from the link index at the bottom.
 - Raster images (PNG, JPEG, GIF, WebP) inline from `GET /api/files/raw?path=`; anything else, PDF and SVG included, a download link from the same route. PDF goes in an `<iframe>` only once its viewer has been shown safe without the sandbox, and an SVG renders only once `<img>` has been shown to hold one; Decision 93 says what would show each.
 - **Math:** `$…$` inline and `$$…$$` display through KaTeX; the raw text is never touched by the renderer, so edit-and-save round-trips byte-for-byte.

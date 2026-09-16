@@ -18,7 +18,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — Stage A accepted with seven items; the items, then B1, which stops; B2 follows | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219` |
+| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built and stopped for review; B2 follows | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
@@ -377,6 +377,125 @@ PDF under them was not, which is why PDF downloads (Decision 88).
     - A renamed upload's manifest row loses a hand-written description, because rows are keyed by path.
     - Redo of an uploaded text file with CRLF line endings restores it with LF, because
       `.gitattributes` normalizes what git stores.
+
+**Phase 8 B1 — built, checked, stopped for review.** The rail's two new panels, the tree they share,
+and the document view read-only. Nothing here writes except a checkbox click, which was Stage A's
+route; Edit, Save, the file operations and the docked composer are B2's.
+
+- **The rail** takes its panels as a prop (`components/chat/Rail.tsx:35`), which is what let two be
+  added without touching the drag, the width or the fold. One panel shows at a time; choosing the one
+  already shown folds it. Graph has no icon, and gets one when Phase 8b builds the view behind it.
+- **The tree** is one component for both panels (`components/browser/Tree.tsx`), fed
+  `/api/knowledge/tree` or `/api/files/tree`. Expanded folders, the active panel, "Whole repo" and
+  each tree's scroll position are `localStorage` (`remember.ts`), read after mount so the server and
+  the first client render agree.
+- **The document view** is handed a path and reads the file itself, ordered by ticket
+  (`useDocument.ts:56`), and is keyed by the path so another file is a remount. Decisions 96–98 record
+  the three things in it worth a decision: the file list and the missing Graph icon, the reload rule
+  and why the surface has no `router.refresh()`, and the checkbox line matching with the React 19
+  consequence below.
+
+**Checked, and how.** `npm test` passes 691/691 across 57 files, and `tsc` is clean. The full
+`check:ui` exits 0: **54 checks decide the result**, up from 43, and the known flake passed this run
+and is reported apart. `e2e/browser.spec.ts` is the 11 new ones, each judging by the
+bytes on disk and the log's line count rather than by what the page says. Its fixtures are written
+straight into the sandbox and prefixed `b1-`, so no other spec's files are touched.
+- The rail switches between all three panels, remembers the choice across a reload, and folds the open
+  one.
+- The Knowledge tree lists a map by its title, hides the notes it links until the map is expanded,
+  shows them when it is, and remembers that across a reload.
+- A note opens from the tree with its path, its frontmatter rows, its KaTeX rendered and its row marked
+  `aria-current`; "← Back to chat" returns to the conversation it was opened from, with `?c=` intact
+  and `?open=` gone.
+- A link to another `data/` file opens it in place: a marker set on `window` before the click is still
+  there after it, which is what "without loading the page again" means.
+- A real PNG shows inline from the raw route with `naturalWidth` 1; the SVG beside it is a download
+  link, no `<img>`, and the page title proves its script did not run.
+- "Linked from" lists the map that links the note, with no read errors.
+- A checkbox click writes exactly one `knowledge.write` and flips exactly its own line, leaving every
+  other line of the file byte-identical.
+- A box whose line was edited on disk after the page was drawn is refused *in place* — the reason is
+  above the body, not a toast — the outside edit is kept, and the re-read shows it.
+- A file with a box inside a quote disables every box in the file, with the reason above the body, the
+  reason on each box as its `title`, a computed opacity below 1, and a forced click that writes nothing.
+- A generated index opens read-only and says why.
+- "Whole repo" lists `README.md` but neither the untracked `scratch.txt` nor the credential-shaped
+  `config/id_ed25519`, opens `README.md` read-only with "Outside data/" and no backlinks, and
+  unchecking it puts the `data/` tree back.
+
+**Found in the browser, after every node test passed: the checkboxes were dead.** `marked` renders a
+task box with `disabled`, and a layout effect clears it. React 19 compares `dangerouslySetInnerHTML`
+by object identity (`react-dom` 19.2's `updateProperties`, read in `node_modules`) and assigns
+`innerHTML` whenever the object differs, whatever `__html` holds, so a fresh `{ __html }` per render
+re-set the HTML and put `disabled` back. The object is now memoized on the HTML string
+(`components/browser/DocumentBody.tsx:60`). `components/markdown/Markdown.tsx` has the same shape and
+is reported below, not changed.
+
+**A mutation run left a mutation in the tree, and two results were read against it before I noticed.**
+The run the owner interrupted was killed inside its fourth mutation, so the `finally` that restores
+the file never ran, and `router.push(href)` stayed replaced by `window.location.assign(href)` — a full
+page load where the view navigates in place. The tree then *was* the mutation, and everything run
+after it read that as the source. It surfaced because two mutations with nothing to do with links both
+failed the link check; what settled it was the transcript under `.claude/projects/`, not a
+recollection of what the line had been (rule 10). The file is restored, a clean run of the browser
+checks passes 11/11 as the baseline the mutations below are read against, and `mutate-ui.mjs` now
+writes the bytes it holds to `mutation-in-flight.json` before it edits and deletes that file after it
+restores, so a killed run leaves a breadcrumb instead of a silent edit. **Nothing was committed from
+the bad window**; the two results it produced are discarded, not reported.
+
+**Mutations, each failing exactly the check written for it**, and all read against a baseline run of
+the same 11 checks with no mutation applied, which passed 11/11.
+- The `{ __html }` object built fresh per render → the two checkbox-click checks. This is the real
+  defect above, and the two checks that catch it are the ones that click a box.
+- Boxes enabled whatever the plan says → the disabled-box check.
+- The reason not shown above the body → the disabled-box check.
+- A link navigating by `window.location.assign` instead of the router → the in-place link check.
+- Every image inline, SVG included → the image check.
+- The rail not reading its remembered panel → the rail check **and** the Knowledge-tree check, which
+  reloads the page and needs the rail to come back on Knowledge to find the tree at all.
+- The tree not reading its remembered expansion → the Knowledge-tree check.
+- `documentHref` dropping the conversation → the Back check.
+
+**Reported, not fixed.** None is B1's to change, and each is written here so it is not rediscovered.
+- `components/markdown/Markdown.tsx:57` builds its `dangerouslySetInnerHTML` object in the render
+  body, the shape that killed the checkboxes. Nothing in a chat message depends on the DOM being left
+  alone today, so it is a latent cost, not a bug; the fix is one `useMemo` and belongs with whoever
+  next touches that file.
+- `components/chat/useSidebar.ts:64` reads `element.dataset.message`, which the `data-*` convention
+  forbids: application code marks an element, it does not read one back.
+- **The test suite leaves its temporary checkouts behind.** 228 had piled up under `%TEMP%` by the
+  Stage A check, and this stage's runs added more. Reported in the Stage A live-repo check and still
+  true.
+
+**Amendment `u`, the running tally, and the thing the owner asked B1 to watch for.** Three runs this
+phase with the flake in them — Stage A's two and this stage's full `check:ui` — and no failure. No new
+form has appeared. The owner's specific worry was a third form of `u` on the document view, and that
+surface now exists and has been exercised: ten runs of `e2e/browser.spec.ts` this stage (the baseline,
+the eight mutations, and the full suite) open documents, navigate between them in place, click
+checkboxes and re-read after each click, and no stale render appeared in any of them. Decisions 69 and
+70 are why, and Decision 97 writes down the two properties that carry it: nothing is server-rendered
+into the view's state, and the one way in is ordered by ticket so an older read cannot overwrite a
+newer one. **Carried, unchanged:** rows 7.1–7.4, 7.7, 5.5 and 6b.7 stay blocked on a key.
+
+**Not verified, and why.** The document view's read-only half is what B1 built, so every condition
+about editing — the Edit/Preview toggle, Save, the dirty warning, the docked composer's `sessionStorage`
+handover and its kept text, amendment `q`'s focus refetch — belongs to B2 and none of it is claimed
+here. `FrontmatterTable` shows values and does not take them back yet. The checkbox's disabled state
+*is* verified, visibly: that was the approval's B1 condition and it has its own check.
+
+**Three things for the review.**
+1. **The interrupted mutation run above.** The defect is mine and the window is closed, but the
+   general shape is worth a ruling: a tool that edits the working tree to measure it can leave the
+   tree changed, and every later reading is then of the wrong thing. The breadcrumb file is what I
+   changed; whether mutation runs should instead work in a copy of the checkout is a Decision I have
+   not made.
+2. **`components/chat/Rail.tsx` grew from a rail with one icon to one with three**, which is the only
+   Phase 6b file B1 changed. Its prop went from `children` to a `panels` record keyed by panel name;
+   the page owned the Chats panel before and still does, so nothing was re-homed. Phase 6b built the
+   geometry for exactly this: the drag and the width are untouched, and the fold now does for three
+   icons what it did for one — clicking the panel you are already on puts it away.
+3. **No B1 file is over hard rule 5's cap.** The largest is `Browser.module.css` at 272 lines, which
+   Decision 56 puts out of scope, and the largest module is `Panels.tsx` at 133.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 

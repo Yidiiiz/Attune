@@ -44,7 +44,7 @@ export function useAnnotationDraft(
         scroller?.querySelector<HTMLElement>(`[data-message='${CSS.escape(message.id)}']`) ?? null;
       const remembered = memory.current?.get() ?? null;
       // A selection remembered from a different message is not this message's selection.
-      const chosen = remembered?.messageId === message.id ? remembered : null;
+      const chosen = element !== null && remembered?.row === element ? remembered : null;
 
       if (element === null || chosen === null) {
         reportFailure("There is nothing to annotate", "Select some text in the message first.");
@@ -57,7 +57,7 @@ export function useAnnotationDraft(
         return;
       }
 
-      const { messageId: _target, ...anchor } = chosen;
+      const { row: _row, ...anchor } = chosen;
       setDraft({ targetMessageId: message.id, top: element.offsetTop, ...anchor });
     },
     [scroller, roomForGutter],

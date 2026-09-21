@@ -165,7 +165,12 @@ function offsetOfNode(index: TextIndex, node: Node, offset: number): number | nu
 }
 
 export interface RememberedSelection {
-  messageId: string;
+  /**
+   * The message row the selection was made in. The element, not its id: the caller already knows
+   * which message it is annotating and compares rows, so nothing here reads `data-message` back
+   * (AGENTS.md, Conventions).
+   */
+  row: HTMLElement;
   quote: string;
   prefix: string;
   suffix: string;
@@ -204,10 +209,9 @@ export function rememberSelection(scroller: HTMLElement): {
     const row = element?.closest<HTMLElement>("[data-message]") ?? null;
     if (row === null || !scroller.contains(row)) return;
 
-    const messageId = row.dataset.message;
     const inside = selectionInside(row);
-    if (messageId === undefined || inside === null) return;
-    last = { messageId, ...inside };
+    if (inside === null) return;
+    last = { row, ...inside };
   };
 
   document.addEventListener("selectionchange", capture);

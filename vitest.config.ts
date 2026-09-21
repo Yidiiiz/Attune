@@ -20,5 +20,8 @@ export default defineConfig({
     // `app/` is included for the route tests, which call a route's handler directly with a `Request`
     // — the only way to observe the whole response body a caller would get.
     include: ["lib/**/*.test.ts", "scripts/**/*.test.ts", "components/**/*.test.ts", "app/**/*.test.ts"],
+    // Fails the run if it ends with more test-made temp directories than it began with — the check
+    // that `lib/testing/checkout.ts` removed every one it made (AGENTS.md, the B1 review's addendum).
+    globalSetup: ["lib/testing/leftovers.ts"],
   },
 });

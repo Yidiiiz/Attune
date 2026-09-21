@@ -3,7 +3,9 @@
 // controls that fork the conversation at this point (§16.2, §10.2).
 //
 // The `data-message` attribute is the sanctioned test hook (AGENTS.md, Conventions): a noun for
-// what the element *is*, valued with the record's stable identity. Nothing in the app reads it.
+// what the element *is*, valued with the record's stable identity. Nothing in the app reads its value
+// (`components/data-hooks.test.ts`); the chat does find a row by an id it already holds, as a
+// selector, which that test does not cover.
 //
 // **The open editor is this row's own state**, not the view's. Editing is a property of a message —
 // two rows can be mid-edit at once and neither is more current than the other — and hoisting it

@@ -51,8 +51,13 @@ export default function Markdown({ text, className }: MarkdownProps) {
     }
   }, [mounted, text]);
 
+  // One object per `html`, not per render: React 19 compares `dangerouslySetInnerHTML` by identity,
+  // so a fresh object re-sets the markup on every render of the row, and the text nodes under a
+  // reader's selection are replaced out from under it (Decision 98).
+  const inner = useMemo(() => (html === null ? null : { __html: html }), [html]);
+
   const classes = [styles.markdown, className].filter(Boolean).join(" ");
 
-  if (html === null) return <div className={classes}>{text}</div>;
-  return <div className={classes} dangerouslySetInnerHTML={{ __html: html }} />;
+  if (inner === null) return <div className={classes}>{text}</div>;
+  return <div className={classes} dangerouslySetInnerHTML={inner} />;
 }

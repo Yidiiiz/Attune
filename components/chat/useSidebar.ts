@@ -57,13 +57,19 @@ export interface SidebarState {
  * `offsetTop` is relative to the offset parent, so the scroller is given `position: relative` in
  * `Chat.module.css` to *be* that parent. Without it the tops carry the header's height as a
  * constant error, which is not visible in a screenshot and moves the reading margin.
+ *
+ * The ids come from `pairs`, which is the path the view rendered, in order; the element is found
+ * from the id, as `scrollMessageIntoView` below finds it. Reading the id back off the element would
+ * make `data-message` state the app depends on (AGENTS.md, Conventions; `components/data-hooks.test.ts`).
  */
-function measure(scroller: HTMLElement): RowBox[] {
+function measure(scroller: HTMLElement, pairs: Pair[]): RowBox[] {
   const rows: RowBox[] = [];
-  for (const element of scroller.querySelectorAll<HTMLElement>("[data-message]")) {
-    const id = element.dataset.message;
-    if (id === undefined) continue;
-    rows.push({ id, top: element.offsetTop, height: element.offsetHeight });
+  for (const pair of pairs) {
+    for (const message of pair.response === null ? [pair.prompt] : [pair.prompt, pair.response]) {
+      const element = scroller.querySelector<HTMLElement>(`[data-message='${CSS.escape(message.id)}']`);
+      if (element === null) continue;
+      rows.push({ id: message.id, top: element.offsetTop, height: element.offsetHeight });
+    }
   }
   return rows;
 }
@@ -94,7 +100,7 @@ export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): Sideb
     const read = (): void => {
       frame = 0;
       setReading(
-        currentMessage(measure(scroller), {
+        currentMessage(measure(scroller, pairs), {
           scrollTop: scroller.scrollTop,
           clientHeight: scroller.clientHeight,
           scrollHeight: scroller.scrollHeight,

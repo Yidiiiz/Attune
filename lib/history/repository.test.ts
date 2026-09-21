@@ -8,14 +8,14 @@
 // never demonstrated the escape would pass just as well with the containment deleted.
 
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { cp, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createTempDir } from "../testing/checkout.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const OUTER = await mkdtemp(path.join(tmpdir(), "attune-enclosing-"));
+const OUTER = await createTempDir("enclosing");
 const INNER = path.join(OUTER, "checkout");
 
 const raw = (cwd: string, args: string[], env: NodeJS.ProcessEnv = process.env): string =>

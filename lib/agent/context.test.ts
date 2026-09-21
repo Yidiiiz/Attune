@@ -9,14 +9,14 @@
 // edge case, and the property worth pinning is that it produces well-formed empty blocks in the
 // right order rather than throwing or quietly leaving them out.
 
-import { cp, mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { cp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTempDir } from "../testing/checkout.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-context-"));
+const SANDBOX = await createTempDir("context");
 const DATA = path.join(SANDBOX, "data");
 
 process.env.ATTUNE_REPO_DIR = SANDBOX;

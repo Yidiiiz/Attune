@@ -8,12 +8,12 @@
 // approximately is prose someone has to retype.
 
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTempDir } from "../testing/checkout.ts";
 
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-chats-"));
+const SANDBOX = await createTempDir("chats");
 const DATA = path.join(SANDBOX, "data");
 
 process.env.ATTUNE_REPO_DIR = SANDBOX;

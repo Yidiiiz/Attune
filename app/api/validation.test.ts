@@ -7,13 +7,11 @@
 // The sandbox is an empty directory: every one of these must fail before it reads the store, so a
 // route that reads first answers something other than 400 and the test says so.
 
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { createTempDir } from "../../lib/testing/checkout.ts";
 
-process.env.ATTUNE_REPO_DIR = mkdtempSync(join(tmpdir(), "attune-validation-"));
+process.env.ATTUNE_REPO_DIR = await createTempDir("validation");
 
 type Handler = (request: Request, context: { params: Promise<Record<string, string>> }) => Promise<Response>;
 

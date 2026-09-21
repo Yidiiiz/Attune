@@ -1,6 +1,7 @@
-// The browser half of PROJECT.md §17 step (c) — linear chat — plus the two properties that only
-// exist on a page: that a rejected send leaves the composer holding what was typed, and that a
-// reply renders as markdown with its math and without whatever HTML it happened to contain.
+// The browser half of PROJECT.md §17 step (c) — linear chat — plus the properties that only exist
+// on a page: that a rejected send leaves the composer holding what was typed, that a reply renders
+// as markdown with its math and without whatever HTML it happened to contain, and that the rendered
+// markup is set once rather than again on every render (Decision 98).
 //
 // One spec file per §17 step letter: branching is `branching.spec.ts`. The split is the step
 // letters' own, not a line count (AGENTS.md, Conventions), and it is what keeps `check:ui`
@@ -11,7 +12,7 @@
 // is `lib/agent/turn.test.ts`; these are the assertions that one cannot make.
 
 import { expect, test } from "@playwright/test";
-import { assistant, newConversation, say } from "./helpers";
+import { assistant, exchange, newConversation, say } from "./helpers";
 
 // `data-ui` is the app's own hook convention (AGENTS.md); Playwright's default is `data-testid`.
 test.use({ testIdAttribute: "data-ui" });
@@ -40,6 +41,19 @@ test("a send streams, finishes, renders markdown, and names the conversation", a
 
   // The composer emptied, because this send landed.
   await expect(page.locator("[data-ui='chat-input']")).toHaveValue("");
+});
+
+test("a finished reply's markup is set once, not again on every render of the view", async ({ page }) => {
+  await newConversation(page);
+  await exchange(page, "first");
+  const first = page.locator("[data-message][data-role='assistant']").first();
+  // A property on the node itself: it survives any re-render that keeps the node, and nothing else.
+  await first.locator("strong").evaluate((node) => ((node as unknown as { probe?: number }).probe = 1));
+
+  // A second turn re-renders the whole view many times over while it streams.
+  await exchange(page, "second");
+  await expect(page.locator("[data-message][data-role='assistant']")).toHaveCount(2);
+  expect(await first.locator("strong").evaluate((node) => (node as unknown as { probe?: number }).probe)).toBe(1);
 });
 
 test("a reply's HTML is sanitized and its math is rendered", async ({ page }) => {

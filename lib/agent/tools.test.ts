@@ -6,12 +6,12 @@
 // - The three collectors write nothing. The whole design of §9.5 rests on a model being unable to
 //   change a file, so "propose_tasks left the tree exactly as it was" is checked, not assumed.
 
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTempDir } from "../testing/checkout.ts";
 
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-tools-"));
+const SANDBOX = await createTempDir("tools");
 const DATA = path.join(SANDBOX, "data");
 
 process.env.ATTUNE_REPO_DIR = SANDBOX;

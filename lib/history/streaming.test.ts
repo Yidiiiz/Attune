@@ -5,12 +5,12 @@
 //
 // Runs against a temp checkout through `ATTUNE_REPO_DIR`, set before `paths.ts` loads.
 
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTempDir } from "../testing/checkout.ts";
 
-const SANDBOX = await mkdtemp(path.join(tmpdir(), "attune-streaming-"));
+const SANDBOX = await createTempDir("streaming");
 const DATA = path.join(SANDBOX, "data");
 
 process.env.ATTUNE_REPO_DIR = SANDBOX;

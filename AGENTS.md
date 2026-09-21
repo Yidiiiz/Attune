@@ -2075,6 +2075,41 @@ then the rest of B2. Stop at the end of B2."
   only on the mutation runs' own command lines, never in `vitest.config.ts`, and it is not used for
   any run that counts.
 
+### Approved conditions — the failure-evidence commit and the idle runs (rule 9)
+
+The owner's reply to the report after `e80e6da`/`ef1e430`, verbatim:
+
+"Machine is idle now — Medal is closed. Go ahead with the two full check:ui runs.
+
+LEFTOVERS
+The 11 are approved by name. An explicit list you've written out is exactly
+what the condition was asking for; the thing I ruled out was deciding the set by
+a broad match at deletion time. Remove all 462: the 451 from the saved listings
+plus these 11, each matched by exact name:
+
+attune-auto-apply-vyxDvw, attune-batch-commit-7xzSQ2, attune-batch-commit-icko9P,
+attune-chat-actions-83AMjD, attune-chat-actions-xkSDnc, attune-distill-dH0g5v,
+attune-distill-wgq4Sr, attune-enclosing-NNMYSQ, attune-file-routes-k4N00p,
+attune-git-snapshot-Omd1xP, attune-git-snapshot-euDUAY
+
+Log the count before and after. Stop and report anything that refuses to
+delete rather than forcing it.
+
+ACCEPTED
+- Failure evidence: per-run folders, never auto-cleared, and the root cause —
+  the flake run emptying test-results/ and wiping the gating run's traces — is
+  a better find than the condition. That's why three failures went unexplained.
+- The mutation table, as usual.
+- createTempDir from beforeEach/beforeAll: fine as a comment, because the
+  end-of-run leftover check is the actual enforcement and it caught both of
+  your attempts. That's the convention being checked, not just written down.
+- Load finding recorded, 15 files named, no timeout raised. Correct.
+
+ORDER
+Idle check:ui twice, then the leftovers, then the data-* refs commit, then the
+rest of B2. If either idle run fails, the evidence folder is the first thing I
+want to see, and that failure comes before anything else."
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

@@ -18,7 +18,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built; B2's first commit (the B1 review's three items) built and stopped for review, the rest of B2 not started | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c` |
+| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built; B2's first commit (the B1 review's three items) built and stopped for review, the rest of B2 not started | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |

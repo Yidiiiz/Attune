@@ -36,7 +36,11 @@ export default defineConfig({
   fullyParallel: false, // one app, one data directory, one git repository
   workers: 1,
   retries: 0,
-  reporter: [["list"]],
+  // The list for the terminal, and `scripts/ui-evidence.ts` for a folder that survives the run: each
+  // failing check's errors, trace and the server's output while it ran (the review of B2's first
+  // commit). `trace` stays "retain-on-failure"; the reporter copies each trace out of
+  // `test-results/`, which Playwright empties at the start of every invocation.
+  reporter: [["list"], ["./scripts/ui-evidence.ts"]],
   timeout: 45_000,
   // A failure guard, never a measurement (AGENTS.md, Conventions: timers are never correctness).
   // Raised from 10s because a single `runBatch` commit on a loaded machine has been observed at

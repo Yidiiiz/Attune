@@ -11,13 +11,22 @@
 // runs it. Each argument is then one argv entry, byte for byte, with nothing between the caller and
 // Playwright that interprets it.
 //
+// **Every run keeps its evidence** (the review of B2's first commit). `runChecks` picks one folder for
+// the whole run, `check-ui-evidence/<start time>/`, and hands it to both invocations in
+// `CHECK_UI_EVIDENCE`, so the gating checks and the known flakes write into the same place and
+// neither empties the other's. `ui-evidence.ts` is the reporter that fills it, and the run's last
+// line names the folder.
+//
 // Failure behavior: a CLI that cannot be resolved throws, which `check-ui.mjs` reaches only after its
 // own install check has passed — so it means a broken install, and says so loudly rather than
 // running nothing. Playwright's own output passes through untouched.
 
 import { spawnSync } from "node:child_process";
 import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
+import path from "node:path";
+import { EVIDENCE_ENV, EVIDENCE_ROOT, runFolder } from "./ui-evidence.ts";
 
 const require = createRequire(import.meta.url);
 
@@ -47,22 +56,37 @@ export function playwright(
  */
 export function runChecks(
   args: string[],
-  { cli = playwrightCli(), log = console.log }: { cli?: string; log?: (line: string) => void } = {},
+  {
+    cli = playwrightCli(),
+    log = console.log,
+    evidence = runFolder(EVIDENCE_ROOT),
+  }: { cli?: string; log?: (line: string) => void; evidence?: string } = {},
 ): number {
+  const env = { ...process.env, [EVIDENCE_ENV]: evidence };
   const count = (project: string): number => {
-    const listed = playwright(["test", "--list", `--project=${project}`, ...args], { encoding: "utf8" }, cli);
+    // `--reporter=list` replaces the configured reporters for the count, so the evidence reporter
+    // runs only for runs that run something: a count that matches nothing is not an error.
+    const listed = playwright(["test", "--list", "--reporter=list", `--project=${project}`, ...args], { encoding: "utf8" }, cli);
     const match = /Total: (\d+) tests?/.exec(String(listed.stdout ?? ""));
     return match ? Number(match[1]) : 0;
   };
   const run = (project: string): number =>
-    playwright(["test", `--project=${project}`, ...args], { stdio: "inherit" }, cli).status ?? 1;
+    playwright(["test", `--project=${project}`, ...args], { stdio: "inherit", env }, cli).status ?? 1;
+  const kept = (): string => {
+    const failures = path.join(evidence, "failures");
+    const failed = existsSync(failures) ? readdirSync(failures).length : 0;
+    const errors = existsSync(path.join(evidence, "errors.txt")) ? ", and errors outside any check" : "";
+    return `check:ui: evidence kept in ${evidence} — ${failed} failing check${failed === 1 ? "" : "s"}${errors}.`;
+  };
 
   const gating = count("chromium");
   const flaky = count("known-flake");
 
   if (gating === 0 && flaky === 0) {
     // Nothing matched either project: let Playwright say so in its own words.
-    return playwright(["test", ...args], { stdio: "inherit" }, cli).status ?? 1;
+    const status = playwright(["test", ...args], { stdio: "inherit", env }, cli).status ?? 1;
+    log(kept());
+    return status;
   }
 
   const status = gating > 0 ? run("chromium") : 0;
@@ -77,5 +101,6 @@ export function runChecks(
   }
 
   if (gating > 0) log(`check:ui: ${status === 0 ? "clean" : "FAILED"} — ${gating} checks decide the result.`);
+  log(kept());
   return status;
 }

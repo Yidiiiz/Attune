@@ -11,19 +11,25 @@
 //     a space, a `|` or an `&` in it was re-parsed on the way — split in two, or run as a command.
 //     These cases fail if any shell comes back, on either platform: POSIX `sh -c` splits and pipes
 //     the same way `cmd.exe` does.
+//   - **The evidence a failing check leaves** (the review of B2's first commit). `ui-evidence.ts` is
+//     driven with the events Playwright would send it, and `runChecks` must hand both of its
+//     invocations the same folder, so the known flakes' run cannot empty the gating run's.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { FullConfig, FullResult, Suite, TestCase, TestResult } from "@playwright/test/reporter";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, "check-ui.mjs");
 const { DEV_PORTS, E2E_PORT } = await import("../e2e/ports.ts");
 const { playwright, playwrightCli, runChecks } = await import("./playwright-run.ts");
+const { default: EvidenceReporter, EVIDENCE_ENV } = await import("./ui-evidence.ts");
+const { createTempDir } = await import("../lib/testing/checkout.ts");
 
 const release: Array<() => void> = [];
 
@@ -90,6 +96,7 @@ const FAKE_CLI = `
 import { appendFileSync } from "node:fs";
 const argv = process.argv.slice(2);
 appendFileSync(process.env.FAKE_LOG, JSON.stringify(argv) + "\\n");
+appendFileSync(process.env.FAKE_LOG + ".env", (process.env.CHECK_UI_EVIDENCE ?? "(unset)") + "\\n");
 const project = argv.find((a) => a.startsWith("--project="))?.slice(10);
 if (argv.includes("--list")) console.log("Total: " + (process.env["FAKE_TOTAL_" + project] ?? "1") + " test in 1 file");
 process.exit(Number(process.env["FAKE_STATUS_" + project] ?? 0));
@@ -167,9 +174,182 @@ describe("how check:ui hands its arguments to Playwright", () => {
     expect(seen[2]).toEqual(["test", "-g", "nothing matches"]);
   });
 
+  it("hands every invocation one evidence folder, and names it at the end", () => {
+    const evidence = path.join(dir, "evidence-run");
+    const lines: string[] = [];
+    runChecks([], { cli, log: (line) => lines.push(line), evidence });
+
+    const seen = readFileSync(`${log}.env`, "utf8").trim().split("\n");
+    // Two counts, which keep only the list reporter, then the gating run and the known flakes' run,
+    // both told the same folder.
+    expect(seen).toEqual(["(unset)", "(unset)", evidence, evidence]);
+    const [countGating, countFlaky, runGating, runFlaky] = calls();
+    for (const argv of [countGating, countFlaky]) expect(argv).toContain("--reporter=list");
+    for (const argv of [runGating, runFlaky]) expect(argv.some((arg) => arg.startsWith("--reporter"))).toBe(false);
+    expect(lines.at(-1)).toContain(`evidence kept in ${evidence}`);
+  });
+
   it("finds the real CLI the way Node would, with no npx and no shell", () => {
     const real = playwrightCli();
     expect(existsSync(real)).toBe(true);
     expect(path.basename(real)).toBe("cli.js");
+  });
+});
+
+// The events Playwright sends a reporter, reduced to what `ui-evidence.ts` reads.
+function fakeTest(title: string, line: number): TestCase {
+  const test = {
+    title,
+    expectedStatus: "passed",
+    location: { file: path.join("e2e", "annotations.spec.ts"), line, column: 1 },
+    titlePath: () => ["", "chromium", "annotations.spec.ts", title],
+  };
+  return test as unknown as TestCase;
+}
+
+function fakeResult(status: string, extra: Record<string, unknown> = {}): TestResult {
+  return {
+    status,
+    duration: 15_234,
+    retry: 0,
+    startTime: new Date("2026-09-21T10:00:00Z"),
+    errors: [],
+    attachments: [],
+    stdout: [],
+    stderr: [],
+    ...extra,
+  } as unknown as TestResult;
+}
+
+const suiteOf = (...projects: string[]): Suite => ({ suites: projects.map((title) => ({ title })) }) as unknown as Suite;
+const config = {} as FullConfig;
+const ended = (status: string): FullResult => ({ status }) as unknown as FullResult;
+
+// One temp directory for the cases below, made at the top of the file, which is the only place
+// `createTempDir` can register the `afterAll` that removes it; each case gets a run folder inside.
+const EVIDENCE_TEMP = await createTempDir("ui-evidence");
+
+describe("the evidence a failing check leaves", () => {
+  let dir = "";
+  let tick = 0;
+  const clock = (): Date => new Date(Date.UTC(2026, 8, 21, 10, 0, tick++));
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(EVIDENCE_TEMP, "run-"));
+    tick = 0;
+  });
+
+  const failures = (): string[] => {
+    const root = path.join(dir, "failures");
+    return existsSync(root) ? readdirSync(root) : [];
+  };
+  const failure = (name: string): string => readFileSync(path.join(dir, "failures", name, "failure.txt"), "utf8");
+
+  it("writes the error, the trace and the server's lines from while the check ran", () => {
+    const trace = path.join(dir, "trace-source.zip");
+    writeFileSync(trace, "trace bytes");
+    const reporter = new EvidenceReporter({ dir, clock });
+    const test = fakeTest("a note on a selection becomes a card", 42);
+
+    reporter.onBegin(config, suiteOf("chromium"));
+    reporter.onStdOut("[WebServer]  GET /chat 200 in 900ms\n");
+    reporter.onTestBegin(test);
+    reporter.onStdOut("[WebServer]  GET /chat?c=abc 200 in 18982ms\n");
+    reporter.onStdOut("the check's own console line\n", test);
+    reporter.onTestEnd(
+      test,
+      fakeResult("failed", {
+        errors: [
+          {
+            message: "\u001b[31mError: expect(locator).toBeVisible() failed\u001b[39m",
+            stack: "\u001b[31mError: expect(locator).toBeVisible() failed\u001b[39m\n    at annotations.spec.ts:57:5",
+            snippet: "> 57 |   await expect(card).toBeVisible();",
+            location: { file: "e2e/annotations.spec.ts", line: 57, column: 5 },
+          },
+        ],
+        attachments: [{ name: "trace", contentType: "application/zip", path: trace }],
+        stdout: ["the check's own console line\n"],
+      }),
+    );
+
+    expect(failures()).toEqual(["01-chromium-annotations-42-a-note-on-a-selection-becomes-a-card"]);
+    const [name] = failures();
+    const text = failure(name);
+    expect(text).toContain("ended:    failed (expected passed), after 15234 ms");
+    // Once, since the stack carries the message, and without Playwright's colours.
+    expect(text.split("Error: expect(locator).toBeVisible() failed")).toHaveLength(2);
+    expect(text).not.toContain("\u001b[");
+    expect(text).toContain("at annotations.spec.ts:57:5");
+    expect(text).toContain("> 57 |   await expect(card).toBeVisible();");
+    expect(text).toContain("the check's own console line");
+    // The server's lines from while it ran, and not the one from before it began.
+    expect(text).toContain("GET /chat?c=abc 200 in 18982ms");
+    expect(text).not.toContain("in 900ms");
+    // The trace is copied beside it, so the folder stands on its own once test-results/ is emptied.
+    const copy = path.join(dir, "failures", name, "trace-source.zip");
+    expect(readFileSync(copy, "utf8")).toBe("trace bytes");
+    expect(text).toContain(`trace: ${copy}`);
+
+    const server = readFileSync(path.join(dir, "server.log"), "utf8");
+    expect(server).toMatch(/^2026-09-21T10:00:01\.000Z \[WebServer\] {2}GET \/chat 200 in 900ms$/m);
+    expect(server).toContain("GET /chat?c=abc 200 in 18982ms");
+    expect(server).not.toContain("own console line");
+  });
+
+  it("keeps a timed-out check, and nothing for a check that passed", () => {
+    const reporter = new EvidenceReporter({ dir, clock });
+    const passed = fakeTest("passes", 10);
+    const timedOut = fakeTest("times out", 20);
+    reporter.onBegin(config, suiteOf("chromium"));
+    reporter.onTestBegin(passed);
+    reporter.onTestEnd(passed, fakeResult("passed"));
+    reporter.onTestBegin(timedOut);
+    reporter.onTestEnd(timedOut, fakeResult("timedOut", { errors: [{ message: "Test timeout of 45000ms exceeded." }] }));
+
+    expect(failures()).toEqual(["01-chromium-annotations-20-times-out"]);
+    expect(failure(failures()[0])).toContain("Test timeout of 45000ms exceeded.");
+  });
+
+  it("lets the known flakes' run add to the gating run's folder without emptying it", () => {
+    const gating = new EvidenceReporter({ dir, clock });
+    const first = fakeTest("first", 1);
+    gating.onBegin(config, suiteOf("chromium"));
+    gating.onTestBegin(first);
+    gating.onTestEnd(first, fakeResult("failed"));
+    gating.onEnd(ended("failed"));
+
+    const flakes = new EvidenceReporter({ dir, clock });
+    const stop = fakeTest("Stop leaves the partial reply", 2);
+    flakes.onBegin(config, suiteOf("known-flake"));
+    flakes.onTestBegin(stop);
+    flakes.onTestEnd(stop, fakeResult("failed"));
+
+    expect(failures()).toEqual([
+      "01-chromium-annotations-1-first",
+      "01-known-flake-annotations-2-stop-leaves-the-partial-reply",
+    ]);
+    const server = readFileSync(path.join(dir, "server.log"), "utf8");
+    expect(server).toContain("--- chromium begins ---");
+    expect(server).toContain("--- known-flake begins ---");
+  });
+
+  it("writes what failed outside any check to errors.txt", () => {
+    const reporter = new EvidenceReporter({ dir, clock });
+    reporter.onBegin(config, suiteOf("chromium"));
+    reporter.onError({ message: "Timed out waiting 120000ms from config.webServer." });
+    reporter.onEnd(ended("interrupted"));
+
+    const errors = readFileSync(path.join(dir, "errors.txt"), "utf8");
+    expect(errors).toContain("Timed out waiting 120000ms from config.webServer.");
+    expect(errors).toContain("the run ended interrupted");
+  });
+
+  it("takes its folder from check:ui when it is given one", () => {
+    process.env[EVIDENCE_ENV] = path.join(dir, "from-env");
+    try {
+      expect(new EvidenceReporter({ clock }).dir).toBe(path.join(dir, "from-env"));
+    } finally {
+      delete process.env[EVIDENCE_ENV];
+    }
   });
 });

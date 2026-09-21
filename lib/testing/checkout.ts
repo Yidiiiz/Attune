@@ -64,6 +64,11 @@ export const REMOVE = { recursive: true, force: true, maxRetries: 30, retryDelay
  * its git process running in the directory, and the removal here can fail with EPERM (both found in
  * Phase 8 B2, the first by planting a throw, the second on a machine under load).
  * The run's teardown removes what is still registered and fails the run naming it.
+ *
+ * Call it at the top of a file, while vitest is still collecting it. Called from any hook or test —
+ * `beforeAll` included — its `afterAll` is registered too late and never runs, and every directory
+ * it made is left for the teardown to find, which fails the run (found when
+ * `scripts/check-ui.test.ts` first called it from `beforeEach`, then from `beforeAll`).
  */
 export async function createTempDir(name: string): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), `${TEMP_PREFIX}${name}-`));

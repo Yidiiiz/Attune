@@ -18,7 +18,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built and stopped for review; B2 follows | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c` |
+| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built; B2's first commit (the B1 review's three items) built and stopped for review, the rest of B2 not started | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
@@ -1916,6 +1916,95 @@ it turned out to hold something nobody expected."
     `gitOptions()`, would act on that enclosing repository. There are no symbolic links in any of the
     430. The only nested `.git` is each `attune-enclosing-*`'s own `checkout/.git`, which the test
     builds on purpose, and every one of those is whole.
+
+**B2's first commit — the three items, built and checked.** The rest of B2 has not started.
+- **`Markdown.tsx`** builds one `dangerouslySetInnerHTML` object per HTML string (Decision 98).
+  New browser check, `e2e/chat.spec.ts`: a property set on a finished reply's `<strong>` node is
+  still there after a second turn.
+- **The `data-*` convention is a check** (Decision 99). There were two value reads, not one:
+  `useSidebar.ts:64` and `anchoring-dom.ts:207`, the second in `rememberSelection`. Both are gone.
+  `measure` takes its ids from `pairs` and finds each row from an id it already holds, the way
+  `scrollMessageIntoView` does. `rememberSelection` keeps the row element, and `useAnnotationDraft`
+  compares elements. `components/data-hooks.test.ts` scans `app/`, `components/` and `lib/`, test
+  files excluded. **What it does not cover**, following the addendum's scope: seven selector uses of
+  a `data-*` attribute in the chat. Four find a row by a held id (`[data-message='…']`), one finds a
+  sidebar entry the same way (`[data-pair='…']`), one is `closest("[data-message]")` in
+  `rememberSelection`, and one is §16.4's `[data-ui]` filter. The Conventions sentence reads on all
+  seven. Item 1 for review.
+- **Temp checkouts** (Decision 100). All 21 leaking files now go through `createTempDir`: the 15
+  that call `createCheckout`, and six that called `mkdtemp` themselves. Removal happens in the file's
+  `afterAll`, and again in the run's teardown for anything still registered. The run fails whenever a
+  run-made directory was still there at the end. Two cases `afterAll` does not reach were found by
+  trying them:
+  - a file that throws while loading never runs its hooks;
+  - under load, a timed-out test's git process holds the checkout as its working directory, so
+    removal fails with EPERM.
+
+  A process-`exit` backstop was tried first, and it never fired.
+
+**Checked, and how.**
+- `tsc` clean. `check-lib-imports`: 68 modules load.
+- **Unit suite: 693/693, in two runs.** A direct `npm test` right after the change, with %TEMP% at
+  451 matching directories before and after. And the baseline of the mutation runs (T0), with
+  `--testTimeout=90000`.
+- **The machine came under heavy load partway through**: a game and a recording encoder were
+  running. From then on, the git-heavy test files time out at the default 5 s test and 10 s hook
+  limits. The last plain `npm test` failed 62 tests, all in those files. Its %TEMP% count was 462
+  before and 462 after: even with 62 timeouts, every directory was removed.
+- **The mutation runs.** Each one was run against a clean baseline, restored byte for byte, with
+  TEMP pointed at a folder of its own:
+
+  | Mutation | Tests | Exit | Directories left |
+  |---|---|---|---|
+  | per-file removal off | 693 pass | fails, naming 21 "teardown did" | 0 |
+  | that plus the check off | 693 pass | passes | 21 |
+  | a throw planted at load in `browse.test.ts` | the file fails | fails, naming 1 "teardown did" | 0 |
+  | that plus teardown's removal off | the file fails | fails, naming 1 "still there" | 1 |
+  | a failing test planted in `browse.test.ts` | that test alone fails | no teardown message | 0 |
+  | `element.dataset.message` put back in `measure` | only `data-hooks.test.ts` fails | — | — |
+  | a `dataset` read put back in `rememberSelection` | only `data-hooks.test.ts` fails | — | — |
+  | a fresh innerHTML object in `Markdown.tsx` | only the new chat check fails, of 9 in `chat.spec.ts` | — | — |
+
+  The last three were each run once more with `--hookTimeout=90000`. Their first runs, and the
+  first browser baseline, had extra failures, all timeouts. They are re-run and discarded, not
+  counted. The browser baseline was 9/9 on the re-run.
+- **Full `check:ui`**, the first run: 54 passed and 1 failed, "deleting a message with replies under
+  it is refused" in `branching.spec.ts`, after 33.7 s. Its error text was not kept. The spec ran
+  6/6 on its own straight after.
+- **Full `check:ui`, the second run, output kept:** 54 passed and 1 failed. The failure was the
+  sidebar's "drops to a strip" check, and it failed inside `newConversation`, before any message
+  existed: the server log shows `GET /chat?c=…` answered in 18,982 ms, past the 15 s wait. That is
+  before `measure` or anything else in this commit runs.
+- **`sidebar.spec.ts` and `annotations.spec.ts` together, straight after:** the sidebar's six
+  passed. Two annotation checks failed ("a note on a selection becomes a card", "two notes on the
+  same message do not overlap"), and their error text was not kept. Those two go through the
+  changed `rememberSelection` and `useAnnotationDraft`. `annotations.spec.ts` alone, straight after
+  that, with output kept: **8/8**. In that run the first requests took up to 12 s. So **no full
+  `check:ui` run has been clean since the change, and two annotation failures are unexplained**.
+  Every failure that was captured was a slow server. Item 2 for review.
+
+**Amendment `u` tally:** the known flake passed in every `check:ui` run this commit made (five
+runs). No failures, and no new form.
+
+**The leftovers now: 462 under `%TEMP%`, removal left for you.** 430 are the ones surveyed above.
+32 were made today by runs of mine, and I left those too, so the count you decide on is exact:
+- 21 from the full run before the fix, which is how the leaking files were identified;
+- 11 from two runs under load, with the first version of the fix, before the registry existed (the
+  EPERM case).
+
+A separate folder, `%TEMP%\b2m`, held the mutation runs' output: the scenario that is meant to
+leave 21 and the one that is meant to leave 1, 22 directories in all. I made it for this during this
+session, and I removed it. It is not among the 462.
+
+**For review.**
+1. **The seven selector uses of `data-*` in the chat** (Decision 99). The check covers value reads,
+   as the addendum scoped it, and the Conventions sentence covers more than that. Either the
+   sentence is narrowed to "reads a value", or the seven get a ref registry and the check widens.
+2. **No clean full `check:ui` since the change.** Every captured failure was the dev server
+   answering slowly while the machine was under load, and two annotation failures are unexplained.
+   The next full run on an idle machine settles it, before anything else in B2 is built on top.
+3. **The 462 leftovers**: 430 from before, and 32 from today's runs, all listed above. Your call.
+   Nothing in them has been touched.
 
 ## Deferred amendments
 

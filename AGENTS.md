@@ -1842,6 +1842,81 @@ help, but watch for it specifically."
   was false for a data path. §7.2 still describes `git revert --no-commit`, which the code never
   ran. Both are corrected.
 
+### Approved conditions — Phase 8 B1 review, addendum (rule 9)
+
+The owner's addendum on two items of the B1 report, verbatim:
+
+"Addendum on the two items cut off earlier. Both go in B2's first commit, with
+the Markdown.tsx fix.
+
+useSidebar.ts:64 — FIX IT
+The convention exists and this is a standing breach of it, so it doesn't stay
+reported. Read the message id the same way the rest of the app does.
+
+Then make the convention checked, the way components/imports.test.ts checks §3.
+A test that fails on any dataset read or getAttribute('data-...') in app code,
+with test files excluded. That's how this one survived: a convention nothing
+enforces is one that drifts, which is what the 13 type-only imports were.
+
+TEMP CHECKOUTS — FIX IT, AND TELL ME WHAT'S THERE
+This has more history than it looks. The home-folder repo came from a test
+leaving git activity in a temp folder; lingering temp checkouts are the same
+neighbourhood, so I want it closed rather than carried.
+
+First, read-only: how many are there, where, roughly how much disk, and which
+test files leave them. Confirm each one is self-contained — its own .git, and
+nothing sitting where a later git walk could climb into it. The ceiling and
+the toplevel assertion should make that moot; confirm it rather than assume it.
+
+Then the fix belongs in lib/testing/checkout.ts, since all four committing test
+files already go through it: register each checkout on creation, remove it in
+teardown, and remove it even when the test fails. Add the check that proves it:
+the suite asserts at the end that the temp directory count is back to where it
+started, and fails if not.
+
+Don't delete the existing leftovers by hand as part of this. Once cleanup
+works, say how many there are and I'll decide — they're test fixtures and I
+expect the answer is "remove them", but the last time a leftover got inspected
+it turned out to hold something nobody expected."
+
+**The temp-checkout survey, done read-only before any code.** Nothing was deleted, moved or run in place.
+- **How many, where, how big.** 430 directories, all directly under `%TEMP%`
+  (`C:\Users\yzhao\AppData\Local\Temp`), all named `attune-*`. Together they hold 44,084 files and
+  9.9 MB. The oldest was last modified on 12 September and the newest on 16 September. Stage A
+  counted 228 dating back to 7 September, and none from before the 12th is left now. Nothing in this
+  project removed them.
+- **Which test files leave them.** A full `vitest run`, with `%TEMP%` listed before and after, left
+  21 new directories, one from each of 21 test files. Fifteen are the files that go through
+  `lib/testing/checkout.ts`. The addendum says four, but fifteen call `createCheckout`. The other six
+  make their own directory with `mkdtemp` and never remove it: `context`, `tools`, `chats`,
+  `repository` (the `attune-enclosing-*` pair), `streaming` and `validation`. Two of the 430 are not
+  from a test file at all. `attune-upload-secret-*` and `attune-gitsnap-*` are the Stage A probes.
+- **Self-contained. 340 are, and 90 have no whole repository of their own.**
+  - 340 directories have a whole `.git` of their own. So do the 27 `checkout/` directories inside the
+    `attune-enclosing-*` ones. For all 367, `git rev-parse --show-toplevel` answers with the
+    directory itself, with or without a ceiling.
+  - 82 have no `.git` at all. 74 of those come from `chats`, `context` and `tools`, which never
+    create a repository. The other 8 are `attune-chat-actions-*` directories, made on 12 September
+    between 14:37 and 21:35. That was before `131b5a2` (23:49 that day) gave that file a repository.
+    They are sandboxes from the runs whose undo commits went where the header of `checkout.ts` says,
+    and each holds only `data/`.
+  - 8 of the `attune-enclosing-*` outer repositories have a `.git` that is missing `HEAD` and
+    `config`. Only two object files are left in each. Each `.git` was last modified at
+    **2026-09-20 01:50:47**. That is four days after this project's last commit (16 September 04:03)
+    and before this session began. At that same second, files were removed from `.git/hooks` and
+    `.git/logs` in 103 leftovers, and from `data/` subdirectories in 19. No file anywhere under
+    `attune-*` was modified after 17 September, so this was deletion, not writing. I do not know what
+    did it. A temp cleaner that removes files by age fits the evidence, and would also account for
+    the pre-12 September directories being gone. I have not verified that.
+  - **With the ceiling, nothing climbs.** Git was run in each of the 90 with the ceiling the app sets
+    (`GIT_CEILING_DIRECTORIES` at the checkout's parent), and every one answered "not a repository".
+    **Without the ceiling, all 90 resolve to the repository that encloses `%TEMP%`**, because
+    `%TEMP%` sits inside one. So the ceiling and the toplevel assertion are what make this moot. The
+    directories themselves do not. A stray `git` call run in any of the 90, from outside the app's
+    `gitOptions()`, would act on that enclosing repository. There are no symbolic links in any of the
+    430. The only nested `.git` is each `attune-enclosing-*`'s own `checkout/.git`, which the test
+    builds on purpose, and every one of those is whole.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

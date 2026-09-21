@@ -2006,6 +2006,75 @@ session, and I removed it. It is not among the 462.
 3. **The 462 leftovers**: 430 from before, and 32 from today's runs, all listed above. Your call.
    Nothing in them has been touched.
 
+### Approved conditions — Phase 8 B2's first commit review (rule 9)
+
+The owner's review of B2's first commit, verbatim:
+
+"All three items accepted. Good survey — 21 files, not 4, and the teardown
+finding (afterAll doesn't run on a load-time throw, git holds checkouts open
+under load) is exactly why cleanup needed a second layer.
+
+DECISIONS
+1. data-* selectors: move them to refs and widen the check. My reading of the
+   convention is that data-* attributes are test hooks, so tests can rename them
+   freely; an app selector keyed on one makes app behaviour depend on a test
+   hook, which is the thing the rule prevents. A selector is a read in every
+   sense that matters. Own commit inside B2, not before it. If any of the seven
+   are genuinely awkward as refs — dynamic lists needing a ref map, say — report
+   that one rather than forcing it, and we'll decide it individually.
+2. Idle-machine check:ui: yes, before any more of B2. I'll confirm the machine
+   is idle. Run the full suite twice. If both are clean, proceed. If the
+   annotation failures recur on an idle machine, they're real, they go through
+   code you changed, and they come first.
+3. The 462 leftovers: remove them. Conditions: only the attune-* directories
+   directly under %TEMP% that the survey listed, matched against that list, not
+   a broader glob; log the count before and after; stop and report if anything
+   refuses to delete rather than forcing it. Leave nothing outside that list
+   touched.
+
+CONDITIONS
+- Failure evidence must always be kept. The first check:ui failure's error text
+  wasn't saved and two annotation failures weren't captured, so three failures
+  are now unexplained with no way back to them. check:ui should write the error,
+  the trace and the server log for every failing check to a file that survives
+  the run. A failure nobody can read is a failure we can't rule out.
+- Record the load finding rather than papering over it. Git-heavy tests timing
+  out under load isn't a leak — you showed nothing leaked — but it is a fragility
+  signal. Don't raise the timeouts to make it go away. Note which tests, and
+  we'll look at it if it shows up idle.
+- The 20 September deletion: accepted as outside the project. Likely an OS temp
+  cleaner; I'll check on my side. No action for you.
+
+ACCEPTED AS REPORTED
+- Markdown.tsx memoized with a check that a finished reply's nodes survive a
+  second turn. That's the right check.
+- anatomy-dom.ts:207 found as a second dataset read. Good.
+- The mutation table — each guard failing exactly its own check, including the
+  "check off, leak passes" row that proves the check is load-bearing. Keep
+  presenting results this way.
+- Amendment u: five runs, no failures, no new form. Keep the tally going.
+
+ORDER
+Idle check:ui twice, then remove the leftovers, then the data-* refs commit,
+then the rest of B2. Stop at the end of B2."
+
+**Read against the repository before building (rule 10).**
+- "anatomy-dom.ts:207" is `components/chat/anchoring-dom.ts:207`, the second `dataset` read the
+  report named. There is no `anatomy-dom.ts`.
+- The failure-evidence condition comes before the idle runs, because an idle run that fails without
+  it would be a fourth unreadable failure. It is its own `code:` commit.
+- **The load finding: the tests that timed out.** The last plain `npm test` under load failed 62
+  tests in 11 files, all of which commit through git: `lib/agent/auto-apply.test.ts`,
+  `lib/agent/distill.test.ts`, `lib/agent/turn.test.ts`, `lib/history/batch-commit.test.ts`,
+  `lib/history/chat-actions.test.ts`, `lib/history/document-actions.test.ts`,
+  `lib/history/file-actions.test.ts`, `lib/history/git-snapshot.test.ts`,
+  `lib/history/knowledge-actions.test.ts`, `lib/history/repository.test.ts` (one test) and
+  `lib/history/sweep.test.ts` (all ten). The mutation runs under the same load also timed out in
+  `lib/knowledge/index.test.ts`, `lib/store/browse.test.ts`, `app/api/files/routes.test.ts` and
+  `app/api/validation.test.ts`. The default timeouts stay as they are. `--testTimeout` was raised
+  only on the mutation runs' own command lines, never in `vitest.config.ts`, and it is not used for
+  any run that counts.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

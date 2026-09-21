@@ -231,6 +231,20 @@ Every call the brief left open, or where this spec deviates from it. One line of
     - that plus teardown's removal off: the one directory stays;
     - a planted failing test: that test fails, and nothing is left.
 
+    **One rule for callers, found by the check itself:** `createTempDir` must be called at the top of a test file, while vitest is collecting it. Called from `beforeEach` or `beforeAll`, its `afterAll` is registered too late and never runs. `scripts/check-ui.test.ts` did both on its way to Decision 101, and the teardown named every directory each time.
+
+101. **Every `check:ui` run keeps the evidence of each failing check in a folder no later run overwrites** (the review of B2's first commit: "a failure nobody can read is a failure we can't rule out"). Three failures in B2's first commit could not be explained afterwards. The error text went only to the terminal. The traces went to `test-results/`, which Playwright empties at the start of each invocation, and `check:ui` makes two, so the known flakes' run wiped the gating run's traces before the run was over. The server's output was interleaved in the scroll with no times on it. Now `playwright-run.ts` picks one folder per run, `check-ui-evidence/<start time>/` (git-ignored and never pruned), and hands it to both invocations in `CHECK_UI_EVIDENCE`. `scripts/ui-evidence.ts`, a Playwright reporter beside the list reporter, fills it:
+    - `server.log`: every line the dev server printed, each stamped with the time it arrived;
+    - for each check that did not end as expected, `failures/<n>-<project>-<spec>-<line>-<title>/failure.txt`: where it is, how it ended and after how long, every error with its stack and snippet, the check's own output, and the server lines that arrived while it ran, with a copy of its trace and other attachments beside it;
+    - `errors.txt`: anything that failed outside a check, such as the server not starting or a run cut short.
+
+    The two `--list` counts pass `--reporter=list`, which replaces the configured reporters for those calls, so a count that matches nothing is not written up as an error. The run's last line names the folder and how many failures it holds. `trace` stays `retain-on-failure`. **Checked in a real run** with two planted failures, one gating and one tagged `@known-flake`: both folders held `failure.txt` and `trace.zip`, while `test-results/` held only the flake's. **Mutation-tested**, each failing only its own case in `scripts/check-ui.test.ts`:
+    - no `failure.txt` written: the two cases that expect one fail;
+    - no trace copied: the case that reads the copy fails;
+    - server lines not limited to the check's own window: the same case fails, on the line from before the check began;
+    - the folder not handed to the runs: the invocation case fails;
+    - the counts keeping every reporter: the invocation case fails.
+
 ---
 
 ## 1. Hard rules
@@ -370,6 +384,7 @@ scripts/
   check-lib-imports.mjs      # imports every lib/**/*.ts in plain Node; runs first in `npm test`
   check-ui.mjs               # npm run check:ui: port guard, browser check, then playwright-run.ts
   playwright-run.ts          # Playwright run with no shell; known flakes apart (Decisions 83, 91)
+  ui-evidence.ts             # reporter: each failing check's errors, trace, server log kept (Decision 101)
   kb-check.mjs
   check-secrets.mjs
   publish-check.mjs

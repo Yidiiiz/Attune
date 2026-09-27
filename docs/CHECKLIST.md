@@ -663,6 +663,80 @@ lines, the preview clearing, and no rows in any Today section.
 
 ---
 
+## Phase 8 — Knowledge browser
+
+§17's own five checks are automated and pass from `npm run check:ui`: edit-save-undo restoring a
+file by SHA-256, a LaTeX sheet through the editor unchanged, a checkbox click saving one action,
+backlinks listing the linking files, and the open document appearing in the next turn's context.
+What is left here needs an eye, a pointer, or a real browser dialog.
+
+### 8.1 The tab-close warning as a person meets it — **pending**
+
+§10.2: *"the toggle and navigation warn when dirty (`beforeunload` and an in-app confirm)."* The two
+in-app warnings are checked — the Edit/Preview toggle and "← Back to chat", both with the dialog
+dismissed and accepted (`e2e/browser-write.spec.ts`). `beforeunload` is not: the browser decides
+whether to show its own dialog, and a headless run cannot answer for a real one.
+
+Steps: open a note, type into the editor without saving, then close the tab (and, separately, press
+reload).
+
+Expected: the browser asks whether to leave. Cancelling keeps every character in the editor.
+
+### 8.2 The document view in both themes — **pending**
+
+The editor, the frontmatter inputs, the strip's Edit/Save buttons, the "unsaved" mark, the
+collection items list, and a refused save's message, in light and dark. The inputs are borderless
+until hovered or focused, which is the thing most likely to read as "not editable" in one theme and
+not the other.
+
+Steps: open a note, a collection and a task with `data-theme` light and dark.
+
+Expected: every control is legible and reads as a control; nothing relies on colour alone.
+
+### 8.3 The editor takes focus without jumping the page — **pending**
+
+`DocumentEditor` focuses with `preventScroll`, the same care §16.4's annotation composer needed. A
+headless check sees focus land but not whether the page moved under it.
+
+Steps: open a long document, scroll to the middle, press Edit.
+
+Expected: the caret is in the textarea and the document has not scrolled to the top.
+
+### 8.4 The search panel over each page — **pending**
+
+`Ctrl/Cmd+K` reaching the box and a hit opening a document are checked. What is not: where the panel
+lands over Today's list, the calendar grid and a conversation, and whether it covers anything a
+person was about to click (Decision 84's lesson, from the toast that sat on Send).
+
+Steps: search for something with results from all four kinds on each of the three tabs.
+
+Expected: the panel is above the page (z 30), does not cover the box it hangs from, and takes no
+click meant for the page behind it.
+
+### 8.5 A PDF and an SVG in a real browser — **settled by construction, 2026-09-27**
+
+Decision 88 serves both as `application/octet-stream` attachments with `nosniff` and
+`Content-Security-Policy: sandbox`, and the browser checks assert the SVG is a download link with no
+`<img>` and that its script did not run. What a browser does with those headers for a PDF — whether
+it downloads or opens a viewer — was never the app's to promise, and the residual is that one
+observation.
+
+Steps: upload a PDF and an SVG, then open each from a document's link.
+
+Expected: both download. If a browser shows the PDF inline anyway, that is the observation
+Decision 93 says would reopen the question.
+
+### 8.6 The Files panel's menu at the panel's narrowest — **pending**
+
+The rail's panel is resizable from 240 to 420 px, and the row menu opens to the right of a `⋯` that
+sits at the row's end. At 240 px with a deeply nested path the menu may reach past the panel.
+
+Steps: narrow the panel to its minimum, expand `knowledge/notes/`, open a row's `⋯`.
+
+Expected: the menu is fully readable and inside the window.
+
+---
+
 ## Phase 1 — carried forward
 
 ### 1.1 `Ctrl+C` on `npm run dev` from Git Bash (mintty) flushes the push — **pending**

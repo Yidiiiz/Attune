@@ -18,7 +18,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built; B2's first commit (the B1 review's three items) built and stopped for review, the rest of B2 not started | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334` |
+| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built; B2 complete and stopped for review. The graph is Phase 8b's | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334`, failure evidence `e80e6da`, data-* refs `ecbaed3`, the rest of B2 `c00929b` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
@@ -496,6 +496,109 @@ here. `FrontmatterTable` shows values and does not take them back yet. The check
    icons what it did for one — clicking the panel you are already on puts it away.
 3. **No B1 file is over hard rule 5's cap.** The largest is `Browser.module.css` at 272 lines, which
    Decision 56 puts out of scope, and the largest module is `Panels.tsx` at 133.
+
+**Phase 8 B2 — built, checked, stopped for review.** Four `code:` commits and four `docs:` across
+the whole of B2, which is rule 4's stage clause plus the three the owner split out by name: the B1
+review's three items (`1c18334`), the failure-evidence runner (`e80e6da`), the `data-*` refs
+(`ecbaed3`), and the rest of B2 (`c00929b`).
+
+- **The document view writes** (Decision 102). An Edit/Preview toggle over a monospace textarea
+  holding the file's bytes, a frontmatter table whose values are editable in the shape they came in
+  as, and one Save that sends both. `base` is the version the editor opened, not the latest read.
+  Unsaved work is guarded by `beforeunload`, by Back, and by the toggle, and a checkbox stops taking
+  clicks while a draft is open.
+- **The composer stays docked under a document** (Decision 103). A send makes the conversation carry
+  the file as its context, hands the text over through `sessionStorage` rather than the URL, and
+  navigates. Three ways it could have lost the text are closed, and the turn waits a render before
+  it starts — see below.
+- **The Files panel's rows have the Chats panel's `⋯`**: New file, New folder, Rename, Delete, each
+  one batch and each undoable, with the builder's own refusal shown where §13.5 puts it. Outside
+  `data/` the menu says the tree is read-only.
+- **The shell has §10.0's search**: `Ctrl/Cmd+K`, a debounced scan whose late answers are dropped,
+  and hits that carry the address they open at.
+- **Four amendments landed with the surfaces they were waiting for** — `s`, `l`, `q` and `m`
+  (Decision 104 for what `m` moved, and why two things moved with it that it did not name).
+
+**Found by running it, and invisible in production would have been worse.** The handover's first
+check left the reply stuck at `streaming` with **no `POST /api/chats/<id>/messages` in the server log
+at all**, and `settle()`'s re-read in it — which `send` runs only on the abort path. `useConversation`
+aborts its request when the view unmounts (§16.8's leak), React's development remount runs that
+cleanup on the way in, and the app only ever runs under `next dev`. The handover now waits one
+render, which is a state change rather than a timer.
+
+**Checked, and how.** `tsc` clean; `check-lib-imports`: 68 modules load. The full `check:ui` exits 0:
+**75 checks decide the result**, up from 56, and the known flake passed and is reported apart.
+`e2e/browser-write.spec.ts` is 19 new ones, split from `browser.spec.ts` as read versus write rather
+than by length: edit-save-undo by SHA-256, a body written character for character, the LaTeX sheet
+through the editor with no log line and then a real round trip undone by SHA-256, a frontmatter value
+saved with the body untouched, a text file edited as itself, the three unsaved-work guards, a 409
+that keeps both sides, a read-only file with no Edit, the handover both ways, New folder and New
+file, Rename and its refusal on a note, Delete asked and answered, the read-only menu outside
+`data/`, a collection item becoming a task, a task's Complete and menu, Today's title link, the
+focus re-read, and the search box.
+
+**Mutations, each against a clean tree restored byte for byte, each failing exactly the check written
+for it** (baseline: 19/19):
+
+| Mutation | What failed |
+|---|---|
+| `base` taken at save time rather than when the editor opened | the 409 check |
+| the dirty comparison always true | the LaTeX unchanged check |
+| the unsaved-work confirm always allowed | the guards check |
+| boxes not blocked while a draft is open | the guards check |
+| the handover not stored before navigating | the send-from-a-document check |
+| the missing-handover warning removed | the empty-handover check |
+| the handover sent during the mount cycle | the send-from-a-document check |
+| the tree not re-read after an operation | the three file-operation checks |
+| Delete not honouring the dialog | the Delete check |
+| the focus refetch removed | the focus check, and the 409 check |
+| a promote not re-reading the document | the collection-items check |
+| Today's title not a link | the Today title check |
+| Complete not wired | the task document check |
+| a frontmatter cell always giving back text | the values test's list case |
+
+**Two of those mutations passed first and the checks were wrong, not the code.** A `base` taken at
+save time survived, because nothing re-read the file between opening and saving — the check now makes
+the window focus in the middle, which is what makes the two versions differ. And a Delete that
+ignored its dialog survived, because "the row is still there" was already true when it was asserted:
+the conventions' own trap, and the cancel case now proves itself through a reload.
+
+**Amendment `u`, the running tally:** nine runs this stage with the flake in them, all passed, no new
+form. **Twenty since the phase began, no failure.** **Carried, unchanged:** rows 7.1–7.4, 7.7, 5.5
+and 6b.7 stay blocked on a key.
+
+**The load fragility, recorded rather than papered over.** Medal is encoding again, and the unit
+suite's best run this stage was **712/713**, its worst 693/713. Every failure is in the git-heavy
+files already named, as 5 s timeouts, `EBUSY`/`EEXIST` on a temp checkout, or `git add -A` failing;
+each file passes on its own. No timeout was raised, in the config or on a command line that counts.
+Three full `check:ui` runs failed the same way before a clean one, and each failure's evidence folder
+shows the dev server answering in 15–40 s, one `POST /api/chats` taking 44.5 s — including in specs
+this stage never touched. The evidence commit is what makes that readable rather than a mystery.
+
+**Not verified, and why.** `docs/CHECKLIST.md` rows 8.1–8.6: the `beforeunload` dialog, the document
+view in both themes, the editor's `preventScroll` focus, where the search panel lands over each page,
+what a real browser does with a PDF under Decision 88's headers, and the row menu at the panel's
+narrowest. Each needs an eye, a pointer, or a dialog a headless run cannot answer for.
+
+**Five things for the review.**
+1. **The Edit/Preview toggle discards, because §10.2 says the toggle warns when dirty.** Taken
+   literally, so the warning guards something real. The better behaviour is to preview the draft and
+   warn only where work can be lost — one line, and a spec sentence to change. Reported rather than
+   taken (Decision 102).
+2. **The Files panel's menu is not policy-aware.** The tree route reports names and kinds, so the
+   menu offers the same entries everywhere under `data/` and the refusal arrives from the builder as
+   a sentence. That is narrower than Decision 86's "the view shows only what will work", which the
+   read route makes true for the open document alone. Making the tree carry a policy per node is a
+   route change, so it is reported.
+3. **One B1 check changed, and only its reading.** `browser.spec.ts` asserted the frontmatter row's
+   *text*; the value is now an input's, so the assertion reads `toHaveValue`. The rows are unchanged.
+4. **Amendment `p` did not fire.** The docked composer under a document is `ChatComposer` itself, so
+   `components/composer/Attachments.tsx` still has two importers rather than three.
+5. **`TaskList.module.css` moved with the components that share it** and is now
+   `components/tasks/TaskList.module.css` at 337 lines — a move plus §10.1's title link, not growth.
+   Decision 56 puts a stylesheet out of hard rule 5's scope; it is named here so that stays a
+   decision rather than an oversight. The largest modules this stage added are `DocumentView.tsx` at
+   237 lines and `Search.tsx` at 144, both under the cap, and `Browser.module.css` is at 418.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -2157,14 +2260,14 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | i | A `force` that saves anyway past a `secret_rejected` refusal. Deferred, not rejected: a force has to exempt the pre-commit hook as well, or the block just moves one step later and the commit fails instead of the save — so half of it is worse than none. Wanted only if a real false positive shows up in use | amendment `h` approval | unscheduled | **deferred, deliberately whole-or-nothing** |
 | j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | closed — `78bd6b9`; the refusal, the file, the pattern, the un-echoed match and the untouched file are all checked over HTTP. `TaskEditForm` clears no field on failure, which is what preserves the text |
 | k | Timeline **edge resize**, deliberately not built, with the semantics settled so it is never guessed at: a **bottom-edge** drag moves the end, so it writes `estimateMin`; a **top-edge** drag moves the start while the end stays put, so it writes `estimateMin` **and** `scheduled` together. §10.1 said both edges write `scheduled`, which was wrong and is corrected. Not built because body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make | Phase 3 build; semantics fixed in the Phase 3 review | unscheduled — build it only if the form proves too slow for the case | **deferred, semantics settled** |
-| l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | **outstanding** |
+| l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | closed — `c00929b`; the Today row's title is a link to `documentHref(task.path)`, and the document it opens carries the task's own Complete button and menu |
 | n | **`npm run publish-check` must never invoke `npm run check:ui`.** The fresh-clone half of `publish-check` installs into a temp directory and starts the app; a clone has no Playwright browser binaries, so calling the browser checks there would turn "is this repo publishable" into "did someone run `playwright install` on this machine". The note also lives in `scripts/check-ui.mjs`, where the phase that writes `publish-check` will be looking | Phase 6a approval, condition 1 | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
 | o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** | closed — `4bd7578`; the `ContentPart` variants, base64 in `anthropic.ts`, the `images`/`pdf` flags read, and attach/paste/drop on the chat composer |
-| m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | **outstanding — trigger recorded** |
+| m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | closed — `c00929b`; the document view was the third importer, so `TaskEditForm`, `TaskMenu`, `format.ts` and `TaskList.module.css` moved to `components/tasks/`, with `RowActions` and Today's row writes (`useTaskActions`) moving with them (Decision 104) |
 | p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
-| q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | **outstanding — a spec claim the code does not support** |
+| q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | closed — `c00929b`; a `focus` listener per view calling that view's own ordered reload — the document view's `useDocument`, and `ChatView`'s `reload`, skipped while a reply streams |
 | r | **`publish-check` greps the published file set for four AI-authorship strings, and §12's skip list does not name `scripts/publish-check.mjs` — but the script has to contain all four literally in order to search for them, so it is the first thing its own grep finds.** The fix is to assemble the patterns from fragments at runtime, the way `SECRET_PATTERNS`' sample table and `lib/store/files.test.ts` do, rather than adding the script to the skip list: a skip list is a rule scoped to an address, which is the shape that let three writers drift past Decision 71 | Phase 6b close, one deferred amendment | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
-| s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | **outstanding** |
+| s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | closed — `c00929b`; §4.5's items are rows under a collection's preview, each with "Make this a task" through `POST /api/collections/[slug]/promote` (Decision 104) |
 | t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `5d8efb6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `5d8efb6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
 | u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `483b23f` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `2ce9008` and on `f5018e5`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `483b23f`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
 | v | **A rename that rewrites the links to the file it renames.** Phase 8's Rename stays inside one folder and is refused when anything links to the file, and the refusal says why: renaming would leave every one of those links pointing at nothing. **The consequence, stated plainly: a note can never be renamed from the app.** §6.3 requires every note to be linked from a map, so every note always has a linker, and Rename on a note is a dead end the user can see, not only a deferral. The same holds for any task, map, collection or file something links to. The way round it today is by hand, outside the app, then fixing the links, which `kb:check` reports. Building it means one batch that renames the file and rewrites every body linking to it — tasks, notes, maps, collections — and §6.3's scan accepting the new path as the same note rather than a new one without a map. It can never be complete: a finalized message is never edited (§16.2), so every message whose `refs` name the old path keeps pointing at it | Phase 8 approval, open call 5 and the rename condition | unscheduled | **deferred — a user-visible dead end, stated as one** |

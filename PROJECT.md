@@ -246,6 +246,22 @@ Every call the brief left open, or where this spec deviates from it. One line of
     - the folder not handed to the runs: the invocation case fails;
     - the counts keeping every reporter: the invocation case fails.
 
+102. **The document view's editing is the file's bytes, a table that gives back the shape it took, and one save that sends both — and the warning about unsaved work is where §10.2 put it** (§10.2, Decision 86). The editor is a monospace textarea holding the body exactly as it is on disk; the markdown pipeline runs on the preview side and never touches it, which is what makes §15's "a LaTeX sheet through Edit and Save keeps its SHA-256" a property rather than a hope. The frontmatter table edits in preview as well as in Edit, because they save together: `asValue` puts a value back in the shape the file had it in — a list stays a list, a number stays a number while the text still reads as one, an empty cell means "not set" as a hand-edited `due:` does (§4.1) — and a value no text box can hold without flattening it, an object or a list of them, is shown and not editable. **`base` is captured when the draft starts, not when Save is pressed**, which is the whole of what a 409 means: the bytes the editor opened. A save taking the version of the last *read* would pass every check that does not re-read in between, and would then overwrite another program's edit without a word; the browser check makes the window focus in the middle for exactly that reason.
+
+     **Unsaved work is guarded three ways and the toggle discards.** `beforeunload` covers the tab, an in-app confirm covers "← Back to chat", and the same confirm covers Edit → Preview, because the preview renders the file rather than the draft. §10.2 says "the toggle and navigation warn when dirty", and a warning that guards nothing would leave the sentence describing something the code does not do. **The alternative is better UX and is reported rather than taken**: preview the draft, and warn only where work can actually be lost. It is the owner's call, and it is one line.
+
+     **A checkbox stops taking clicks while a draft is open**, with that as its reason. A click saves immediately and against the file, so it would land on bytes the draft no longer matches and make the next Save a conflict nobody caused.
+
+103. **A message typed under a document is handed to the conversation through `sessionStorage`, and the turn does not start during the mount cycle** (§10.2, the Phase 8 approval's open call 3). The composer docked under a document does three things in order: makes the conversation exist and carry this file as its `context.file` (§16.9, reading the conversation first so a blind write does not drop the task ids "Ask about this" put there), stores the text under `attune.handover:<conversation>`, and only then navigates. The text is never in the address, which is the approval's condition — an address is copied, kept in history and shown in a tab title. **Nothing may lose it**, so: storage that refuses answers false and the send is refused with the text still in the box; the entry is taken with a read-and-remove, so it is sent once; a marker `&ask=1` with no entry behind it becomes a message above the composer rather than silence; and a send that is refused puts the text back in the box through the composer's `handed` prop.
+
+     **The mount-cycle rule is the part that was found by running it, and it would have been invisible in production.** `useConversation` aborts its request when the view unmounts, which is what stops a stream leaking on navigate-away (§16.8), and React's development remount runs that cleanup once on the way in — so a send started in a mount effect is aborted before it leaves. The first run of the check showed the reply stuck at `streaming`, no `POST /api/chats/<id>/messages` in the server log at all, and `settle()`'s re-read in it, which `send` runs only on the abort path. The handover waits one render, which is a state change rather than a timer: what is being waited for is a render, and that is the thing renders announce. The app only ever runs under `next dev`, so this is not a development-only wrinkle; it is the only mode there is.
+
+104. **Files added to the §3 layout in Phase 8 B2, and what amendment `m` moved.** `components/browser/` gains `DocumentEditor.tsx` and `useDocumentDraft.ts` (Decision 102), `DocumentComposer.tsx` and `handover.ts` (Decision 103), `FileMenu.tsx` and `useFileOps.ts` (the Files panel's New file, New folder, Rename and Delete, each one batch through `/api/files/op` or the create half of `/api/files/write`), `TaskDocument.tsx` (§10.2's Complete button and `⋯` menu on a task file) and `CollectionItems.tsx` (amendment `s`). `components/shell/Search.tsx` is §10.0's field, `Ctrl/Cmd+K` included. `components/chat/useHandover.ts` is the receiving end of Decision 103.
+
+     **Amendment `m` fired and was taken as written.** The document view is the third surface to want Today's task pieces, so `TaskEditForm.tsx`, `TaskMenu.tsx`, `format.ts` and `TaskList.module.css` moved from `components/today/` to `components/tasks/`. Two things moved with them that the amendment did not name and that the move made obvious. `RowActions` was declared in `TaskRow.tsx`, so a shared menu importing it would have depended on the surface it was extracted from; it is now `components/tasks/actions.ts`. And the ~70 lines of `run(...)` calls behind a row — complete, duplicate, reschedule, delete, the inline save — were `TodayView`'s, and a second hand-written copy in the document view is exactly the divergence Decision 53 records, so they are `useTaskActions` in the same file. Each surface supplies only what is its own: how to re-read after a write, and whether it has anywhere to open an "Ask about this" (the document view does not, because the composer under it *is* the Ask).
+
+     **What the Files panel's menu does not decide.** The tree route reports names and kinds, not policy, so the menu offers the same entries everywhere under `data/` and the refusal comes back from `write-policy.ts` as a sentence — inline where a name was typed, as a toast where it was fired from a row (§13.5). That is narrower than Decision 86's "the view shows only what will work", which the read route makes true for the open document alone. **"Reveal in graph" is not in the menu**: Decision 96 already settled that an affordance opening nothing is a dead end drawn on purpose, so it arrives with Phase 8b's view.
+
 ---
 
 ## 1. Hard rules
@@ -291,15 +307,21 @@ app/
   api/                       # every route is <10 lines of adapter; see §14
     respond.ts               # the one {ok:...} JSON shape and the StoreError-to-status mapping
 components/
-  shell/                     # Tabs, SearchBox, SyncStatus, Toast
-  today/                     # DayHeader, TaskRow, TaskMenu, Timeline
+  shell/                     # Tabs, Search (§10.0's field and Ctrl/Cmd+K), SyncStatus, Toast
+  today/                     # DayHeader, TaskRow, TaskList, Timeline, Weather, FirstRunCard
   calendar/                  # CalendarView, CalendarGrid, DayCell, SelectionBar
-  tasks/                     # writes.ts: the one write layer every task surface uses
+  tasks/                     # what more than one task surface uses: writes.ts (the write layer),
+                             #   actions.ts (RowActions and the writes behind a row), TaskMenu,
+                             #   TaskEditForm, format.ts, TaskList.module.css (amendment `m`)
   composer/                  # ComposerButton, ComposerSheet, ModeSelector, PreviewPanel, TaskCard,
                              #   ProposalPanel, KnowledgeCard, CollectionCard (the tray — Decision 80)
   chat/                      # Conversation, MessageView, ChatComposer, Sidebar, Annotations, QuoteRefs
   browser/                   # Tree + Panels (Knowledge, Files), DocumentView + DocumentBody,
-                             #   FrontmatterTable, Backlinks, href.ts (every address it hands out),
+                             #   DocumentEditor + useDocumentDraft (edit and save, Decision 102),
+                             #   FrontmatterTable, Backlinks, TaskDocument, CollectionItems,
+                             #   FileMenu + useFileOps (the Files panel's operations),
+                             #   DocumentComposer + handover.ts (Decision 103),
+                             #   href.ts (every address it hands out),
                              #   useDocument.ts (the open file, ordered — Decisions 69, 70),
                              #   remember.ts (localStorage); GraphView is Phase 8b's (Decision 96)
   history/                   # HistorySheet

@@ -18,8 +18,8 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
 | 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
 | 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | in progress — Stage A accepted and its seven items carried; B1 built; B2 complete and stopped for review. The graph is Phase 8b's | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334`, failure evidence `e80e6da`, data-* refs `ecbaed3`, the rest of B2 `c00929b` |
-| 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session after Phase 8 closes | — |
+| 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334`, failure evidence `e80e6da`, data-* refs `ecbaed3`, the rest of B2 `c00929b`, the toggle `c9ff374`, the policy-aware menu `eb9c14b` |
+| 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session, planned fresh. Two things are waiting for it: the load diagnosis below, and `check:ui` past Decision 67's five-minute threshold | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
 
@@ -599,6 +599,164 @@ narrowest. Each needs an eye, a pointer, or a dialog a headless run cannot answe
    Decision 56 puts a stylesheet out of hard rule 5's scope; it is named here so that stays a
    decision rather than an oversight. The largest modules this stage added are `DocumentView.tsx` at
    237 lines and `Search.tsx` at 144, both under the cap, and `Browser.module.css` is at 418.
+
+**Phase 8 closes — the two items taken, the tally given, the load diagnosed.** Two `code:` commits and
+two `docs:`: the conditions (`50fa624`), the toggle (`c9ff374`), the menu (`eb9c14b`), and this one.
+
+**1. The Edit/Preview toggle shows the draft** (`c9ff374`, Decision 102 rewritten). Preview renders
+what was typed rather than what is on disk, so Edit and Preview are two views of one draft and
+switching between them cannot lose a character — which is why the toggle now asks nothing. Only
+leaving warns: `beforeunload` and the confirm on "← Back to chat". §10.2 says this now.
+
+It was one line, and two more came with it rather than after it. Showing the draft makes it obvious
+that **a control writing the file by another route must not fire while a draft is unsaved** — the
+checkbox rule the owner accepted in B2, which applies word for word to a task's Complete and `⋯`
+menu and to a collection item's "Make this a task". Both were reachable in a dirty preview in B2 as
+well, because the frontmatter table has always been editable there; previewing the draft made it
+visible rather than made it true. All three now take one reason, `draftOpen`, and say it.
+
+**2. The Files panel's menu shows the policy** (`eb9c14b`, Decision 105). `rowPolicy` reads the same
+table the builders enforce and `GET /api/files/tree` calls it per node, so the menu disables what
+will not work and shows the policy's own sentence. The table was reachable without breaking §3
+because the *route* can import `lib/history/` — the component never does; it gets four nullable
+strings. `lib/history/write-policy.test.ts` asserts each answer is the **same string** the primitive
+gives, so a sentence written into `rowPolicy` fails a test rather than drifting in a menu. Server-side
+enforcement is untouched, and the browser check proves it by renaming a note over HTTP after finding
+the entry greyed out. A folder's Rename moved out of `renameAction` into `folderPolicy` on the way, so
+the greyed entry and the thrown error are one string; the builder now has a test for that refusal too.
+
+**Two cases the menu still offers and the writer still refuses**, reported rather than half-closed: a
+new file under `knowledge/notes/` (a note needs the map §6.3 requires, and this menu cannot ask for
+one) and under `knowledge/maps/` or `collections/` (a record needs frontmatter an empty file has
+none of). Both rules live in the record writers, not in the table, so a sentence for them in
+`write-policy.ts` would be the second copy the condition ruled out. They are pinned in the unit test
+so they read as a known edge.
+
+**Mutations, each against a clean tree restored byte for byte, each killed by the check written for
+it** (baselines: `browser-write` 20/20, `write-policy.test.ts` 27/27):
+
+| Mutation | What failed |
+|---|---|
+| the preview renders the file rather than the draft | the toggle check, and the 409 check |
+| the plain-text preview renders the file rather than the draft | the text-file check |
+| the toggle warns and discards again | the toggle check, and the text-file check |
+| a collection's items stay live while a draft is open | the collection-items check |
+| a task's controls stay live while a draft is open | the task document check |
+| the tree route sends no policy | the menu check, and the three file-operation checks |
+| the menu ignores the policy and enables every entry | the menu check |
+| `rowPolicy` answers a file's rename with a sentence of its own | 8 of `write-policy.test.ts`'s cases |
+| the folder-rename sentence changes | `write-policy.test.ts`'s wording pin, and only that — `file-actions.test.ts` asserts against `folderPolicy` itself, so it follows the change. The wording is pinned once, on purpose |
+
+**And the mutation runner itself was wrong first, which is this report's own instance of the owner's
+point.** Its first version spawned the checker as `npm.cmd`, which Node refuses to spawn without a
+shell (`EINVAL`); the catch read that refusal as "the check failed", so the first two mutations were
+reported killed having run nothing at all. Found by noticing that a failing run printed no failing
+test. The runner now spawns `process.execPath` with the CLI's own entry, the way `check:ui` does
+(Decision 91), and refuses to treat a spawn failure as a result. The nine rows above are from the
+fixed runner. Nothing was committed from the bad window and the tree was restored either way; the
+breadcrumb file did its job in that it was absent every time, because the `finally` ran.
+
+**A check of mine was wrong too, and the suite caught it.** The first full run after item 2 failed
+three checks. One was my new menu check asserting Delete enabled on `files` itself — which the policy
+refuses, because `files/` is one of the folders the app keeps, a fact the unit test had told me an
+hour earlier. One was the 409 check, whose way of observing the re-read was "the other program's text
+appears in the preview": true before this commit and false after it, since the preview is now the
+draft. It waits on the read's own response instead, which cannot have already happened. The third was
+a 15-second server response and is in the load section below.
+
+**Mutations test the checks, not the code, and in B2 they did it visibly for the first time.** Two of
+B2's fourteen passed against mutated code because the checks were wrong — a `base` taken at save time
+survived a check that never re-read the file in between, and a Delete ignoring its dialog survived
+"the row is still there", which was already true when it was asserted. Both checks were rewritten to
+prove themselves. That is what the mutation pass is for: a check that a deliberate break walks through
+is a check that was measuring the run's history rather than its own action, and nothing else in this
+project finds one. The same thing happened again in this commit, twice, above.
+
+**Amendment `u`, the tally the B2 report owed.** Three full `check:ui` runs this stage carried the
+flake: it passed in all three, reported apart, and no failure. **Twenty-three since the phase began,
+no failure, and no third form.** The owner's specific worry was a new form on the document view, and
+that surface got the most exercise it has had: the write spec ran eighteen times this stage — four
+filtered baselines, three inside a full run, eleven under a mutation — opening documents, editing,
+saving, previewing drafts, clicking checkboxes and re-reading after each write, with no stale render
+in any of them. **The one thing that looked like a
+candidate was not.** In the first full run the handover check failed with no conversation on screen;
+the evidence names the cause, `POST /api/chats 200 in 15103ms` against the check's 15-second wait,
+with `GET /chat` taking 15.5 s in the same run. That is the load, not a render.
+
+**Carried, unchanged:** rows 7.1–7.4, 7.7, 5.5 and 6b.7 stay blocked on a key.
+
+**Checked, and how.** `tsc` clean; `check-lib-imports` 68 modules. The full `check:ui` exits 0:
+**76 checks decide the result**, up from 75, and the known flake passed and is reported apart
+(evidence `check-ui-evidence/2026-09-27T20-31-18-468Z`). The unit suite is **741/741** — see the load
+section for why that number needs a flag to be reproducible, and what the suite as configured gives.
+
+**Not verified, and why.** `docs/CHECKLIST.md` rows 8.1–8.6, with two of them changed by this commit:
+8.1 is now one in-app warning rather than two, since the toggle no longer warns; 8.6 gained a second
+question, because a disabled menu entry carries the policy's sentence under its label and that is the
+widest thing in the menu.
+
+### The load, diagnosed and not fixed (the Phase 8 close, item 3)
+
+The owner asked for a diagnosis before 8b and explicitly not for an implementation. Nothing here was
+changed in the repository; the one config used to measure a candidate was written outside it or
+deleted, and `git status` was clean before each commit.
+
+**Reproduced.** Three runs of the suite exactly as `vitest.config.ts` has it, on this machine today:
+727/740, 730/740 and 738/741. The spread the owner called unreliable is real and it is not about which
+tests run.
+
+**It is contention, and the errors say so rather than a timeout implying it.** The failures name
+themselves: `ENOTEMPTY: directory not empty, rmdir '…\attune-turn-…\data'`, `EEXIST: file already
+exists, mkdir '…\data'`, `EBUSY: resource busy or locked, unlink '…\data\chats\…\messages\….md'`
+and `Command failed: git add -A`. Every one is inside `Checkout.reset()` in `lib/testing/checkout.ts`
+— `rm -rf data`, then `cp seed → data`, then `git add -A`, then a commit — which runs once per test in
+twelve files. A recursive delete failing with ENOTEMPTY on Windows is another process holding a handle
+inside the tree, not a slow disk.
+
+**Proven both ways, on the same twelve files.**
+
+| How | Result | Wall | Slowest file |
+|---|---|---|---|
+| parallel, as configured | 4 failures, then 5 | 41 s, 51 s | 47 s |
+| `--no-file-parallelism` | **0 failures, twice** | 109 s, 110 s | 15 s |
+
+The files are not slow. Each one takes three to four times longer when twenty forks are churning the
+same disk, and the 5-second default timeout is what that inflation runs into. On the whole suite:
+parallel 40–50 s with 3–13 failures; **fully serial 741/741 in 111 s**; and the hybrid — the twelve git
+files in one fork, the other fifty parallel — 740/740 twice, in 115 s and 119 s.
+
+**The owner's second guess is ruled out.** A private, empty temp root for the whole run changed
+nothing: the same three failures with the same ENOTEMPTY and EEXIST. So "a tmpdir root each" would not
+help; the contention is over the disk and the files themselves, not over `%TEMP%`'s directory index.
+Bounded parallelism helps and does not close it: `maxForks` 4 and 8 both removed every filesystem
+error and left one 5-second timeout in the heaviest test.
+
+**Two things to decide, neither taken.**
+1. **`reset()`'s `rm` and `cp` have no retries**, while the removal in `createTempDir` has
+   `maxRetries: 30, retryDelay: 200` — the `REMOVE` constant in the same file. Node's `rm` retries
+   EBUSY, EMFILE, ENOTEMPTY and EPERM only when asked to, and those are exactly the errors above. This
+   is a line each and it is orthogonal to the scheduling question.
+2. **Scheduling.** `--no-file-parallelism` costs about 70 seconds and is a flag, not a restructure.
+   Per-project `poolOptions.forks.singleFork` for the twelve files costs about the same and keeps the
+   other fifty parallel. One thing to know before writing that: **`fileParallelism` cannot be set per
+   project in vitest 3.2** — it is in the type's `NonProjectOptions` — so the project route has to use
+   `singleFork`, which is what the measurement above used.
+
+**The dev server's 15–40 seconds is the same machine, and it is not git.** In the one failing full
+`check:ui` this session, `GET /chat` took 15,536 ms and `POST /api/chats` 15,103 ms; the second is
+what failed the handover check, whose wait is 15 s. On a clean run twenty minutes later the slowest
+response of the whole suite was 5,313 ms. A `/chat` page render has no git in it, so these are
+machine-wide stalls rather than a git problem, which fits the unit-suite finding being about disk
+contention rather than about git specifically. The number worth keeping: **`playwright.config.ts:49` gives an
+expectation 15 s and the worst stall observed was 15.5 s**, so one stall is a failed check rather than
+a slow one.
+
+**And one the owner has not seen yet, in the same neighbourhood and directly about 8b.**
+`check:ui` now takes **5.8 and 7.0 minutes for its 76 gating checks** in this session's two clean
+runs — 6.2 and 7.4 minutes of wall clock with the flake run after them — which is past the
+five-minute threshold Decision 67 named for itself. The rule there says to shard across workers — which needs a sandbox per
+worker first, because `fullyParallel: false` is there for the one data directory and one git
+repository — or to run by spec file. Not taken here; reported, because 8b adds a canvas spec to it.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 

@@ -672,10 +672,11 @@ What is left here needs an eye, a pointer, or a real browser dialog.
 
 ### 8.1 The tab-close warning as a person meets it — **pending**
 
-§10.2: *"the toggle and navigation warn when dirty (`beforeunload` and an in-app confirm)."* The two
-in-app warnings are checked — the Edit/Preview toggle and "← Back to chat", both with the dialog
-dismissed and accepted (`e2e/browser-write.spec.ts`). `beforeunload` is not: the browser decides
-whether to show its own dialog, and a headless run cannot answer for a real one.
+§10.2, as the Phase 8 close amended it: navigation warns when dirty, and the toggle does not, because
+Preview now shows the draft (Decision 102). The in-app warning is checked — "← Back to chat", with the
+dialog dismissed and accepted, and the typed text still there after the dismissal
+(`e2e/browser-write.spec.ts`). `beforeunload` is not: the browser decides whether to show its own
+dialog, and a headless run cannot answer for a real one.
 
 Steps: open a note, type into the editor without saving, then close the tab (and, separately, press
 reload).
@@ -729,11 +730,15 @@ Decision 93 says would reopen the question.
 ### 8.6 The Files panel's menu at the panel's narrowest — **pending**
 
 The rail's panel is resizable from 240 to 420 px, and the row menu opens to the right of a `⋯` that
-sits at the row's end. At 240 px with a deeply nested path the menu may reach past the panel.
+sits at the row's end. At 240 px with a deeply nested path the menu may reach past the panel. Since the
+Phase 8 close a disabled entry also carries the policy's own sentence under its label (Decision 105),
+which is the widest thing in the menu and wraps at 260 px — so this row now asks two questions.
 
-Steps: narrow the panel to its minimum, expand `knowledge/notes/`, open a row's `⋯`.
+Steps: narrow the panel to its minimum, expand `knowledge/notes/`, open a note's `⋯` (which has the
+longest of the reasons) and a folder's.
 
-Expected: the menu is fully readable and inside the window.
+Expected: the menu is fully readable and inside the window, and a disabled entry reads as one — its
+label and its reason both legible, in both themes.
 
 ---
 

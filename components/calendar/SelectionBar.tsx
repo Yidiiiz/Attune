@@ -13,8 +13,8 @@
 "use client";
 
 import type { Task } from "@/lib/store/tasks";
-import TaskEditForm from "@/components/today/TaskEditForm";
-import { relativeDue } from "@/components/today/format";
+import TaskEditForm from "@/components/tasks/TaskEditForm";
+import { relativeDue } from "@/components/tasks/format";
 import { datePart } from "@/lib/schedule/dates";
 import styles from "./Calendar.module.css";
 

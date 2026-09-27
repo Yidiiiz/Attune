@@ -98,6 +98,7 @@ export default async function Page({ searchParams }: Search) {
             scripted={isScripted()}
             categories={settings.categories}
             distill={query.distill === "1"}
+            ask={query.ask === "1"}
           />
         )}
       </main>

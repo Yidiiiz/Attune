@@ -15,7 +15,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { addDays } from "@/lib/schedule/dates";
-import { describeDate } from "./format";
+import { describeDate } from "@/components/tasks/format";
 import styles from "./DayHeader.module.css";
 
 export interface DayHeaderProps {

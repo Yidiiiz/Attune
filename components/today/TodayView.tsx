@@ -20,16 +20,15 @@ import { useCallback, useEffect, useState } from "react";
 import type { Task } from "@/lib/store/tasks";
 import type { Settings } from "@/lib/store/settings";
 import type { RankedDay } from "@/lib/schedule/rank";
-import { reportNotice, useTaskWrites } from "@/components/tasks/writes";
+import { useTaskActions } from "@/components/tasks/actions";
 import { openComposer } from "@/components/composer/ComposerButton";
-import { clockLabel } from "./format";
+import { clockLabel } from "@/components/tasks/format";
 import DayHeader from "./DayHeader";
 import FirstRunCard from "./FirstRunCard";
 import TaskList from "./TaskList";
 import Timeline from "./Timeline";
 import Weather from "./Weather";
-import type { RowActions } from "./TaskRow";
-import styles from "./TaskList.module.css";
+import styles from "@/components/tasks/TaskList.module.css";
 
 export interface TodayViewProps {
   date: string;
@@ -46,9 +45,9 @@ export interface TodayViewProps {
 const SCHEDULE_KEY = "today.schedule";
 
 export default function TodayView({ date, today, settings, ranked, fixed, errors, nowMs }: TodayViewProps) {
-  const { busyId, run, submit } = useTaskWrites();
+  // §9.6: the sheet opens in Ask mode carrying the task, and Today is a surface that has one.
+  const { actions, run } = useTaskActions({ ask: (task) => openComposer({ mode: "ask", task: { id: task.id, title: task.title } }) });
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Per-device UI state lives in localStorage, not settings.json (Decision 19). Read after mount so
   // the server and the first client render agree.
@@ -71,79 +70,6 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
       return next;
     });
   }, []);
-
-  const actions: RowActions = {
-    editingId,
-    busyId,
-
-    complete: (task) => {
-      void (async () => {
-        const sent = await run(task.id, `Could not complete '${task.title}'`, `/api/tasks/${task.id}/complete`, {
-          method: "POST",
-        });
-        // A repeat materializes its next instance in the same batch (§4.1). It lands on a later day,
-        // so it leaves the screen as it is created; saying so is the only way to know it happened.
-        if (sent.error === null && sent.data.repeated === true) {
-          reportNotice(`'${task.title}' repeats — the next one is scheduled.`);
-        }
-      })();
-    },
-
-    duplicate: (task) => {
-      void run(task.id, `Could not duplicate '${task.title}'`, "/api/tasks", {
-        method: "POST",
-        body: JSON.stringify({
-          items: [
-            {
-              title: task.title,
-              body: task.body,
-              priority: task.priority,
-              estimateMin: task.estimateMin,
-              due: task.due,
-              scheduled: task.scheduled,
-              category: task.category,
-              context: task.context,
-              tags: task.tags,
-              links: task.links,
-              repeat: task.repeat,
-              repeatUntil: task.repeatUntil,
-            },
-          ],
-          source: "manual",
-        }),
-      });
-    },
-
-    reschedule: (task, day) => {
-      void run(task.id, `Could not reschedule '${task.title}'`, `/api/tasks/${task.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ scheduled: day }),
-      });
-    },
-
-    remove: (task) => {
-      void run(task.id, `Could not delete '${task.title}'`, `/api/tasks/${task.id}`, { method: "DELETE" });
-    },
-
-    startEdit: (task) => setEditingId(task.id),
-    cancelEdit: () => setEditingId(null),
-
-    // The write with an on-screen origin, so its failure is shown inline rather than as a toast
-    // (§13.5). The form is still there holding what was typed, and that is where the message belongs.
-    save: async (task, changes) => {
-      const error = await submit(task.id, `/api/tasks/${task.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(changes),
-      });
-      if (error !== null) return error;
-      setEditingId(null);
-      return null;
-    },
-
-    // §9.6: the sheet opens in Ask mode carrying the task. The Phase 3 stub that stood here
-    // said nothing was sent; now the sheet says that itself, inline, if a send is attempted.
-    ask: (task) => openComposer({ mode: "ask", task: { id: task.id, title: task.title } }),
-  };
 
   return (
     <div className={styles.today}>

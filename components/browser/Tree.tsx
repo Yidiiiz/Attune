@@ -6,11 +6,17 @@
 // The expanded set is remembered per tree under `storageKey`, read after mount (`remember.ts`). The
 // open document's row is marked `aria-current`, which is how a reader finds it again in a long tree.
 //
+// **The operations are not this component's.** `menu` and `under` are two slots the Files panel
+// fills — the `⋯` inside a row, and the name form beneath it — and the Knowledge panel leaves empty,
+// because §10.2 gives the context menu to Files alone. A tree that knew about renaming would be a
+// tree the Knowledge panel could not reuse, which is the one thing this component exists for.
+//
 // Failure behavior: none of its own. It draws what it is given; an empty tree says so.
 
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { TreeNode } from "@/lib/store/files";
 import { readStored, writeStored } from "./remember.ts";
@@ -23,9 +29,13 @@ export interface TreeProps {
   /** The path of the open document, if it is in this tree. */
   active: string | null;
   hrefFor: (path: string) => string;
+  /** Drawn at the end of a row: the Files panel's `⋯`. */
+  menu?: (node: TreeNode) => ReactNode;
+  /** Drawn under a row: the form that asks for a name. */
+  under?: (node: TreeNode) => ReactNode;
 }
 
-export default function Tree({ nodes, storageKey, active, hrefFor }: TreeProps) {
+export default function Tree({ nodes, storageKey, active, hrefFor, menu, under }: TreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   useEffect(() => setExpanded(new Set(readStored<string[]>(storageKey, []))), [storageKey]);
 
@@ -67,6 +77,7 @@ export default function Tree({ nodes, storageKey, active, hrefFor }: TreeProps) 
                 <button type="button" className={styles.treeFolder} onClick={() => toggle(node.path)}>
                   {node.name}
                 </button>
+                {menu?.(node)}
               </div>
             ) : (
               <div className={styles.treeRow} style={indent} data-file={node.path}>
@@ -79,8 +90,10 @@ export default function Tree({ nodes, storageKey, active, hrefFor }: TreeProps) 
                 >
                   {node.name}
                 </Link>
+                {menu?.(node)}
               </div>
             )}
+            {under?.(node)}
             {opens && open ? draw(node.children ?? [], depth + 1) : null}
           </li>
         );

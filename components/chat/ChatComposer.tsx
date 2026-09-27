@@ -37,6 +37,12 @@ export interface ChatComposerProps {
   /** An upload that did not stick. It has an on-screen origin, so it shows inline (§13.5). */
   onError: (message: string) => void;
   placeholder?: string;
+  /**
+   * Text put into the box from outside it — today only a handover from the document view whose send
+   * was refused (§10.2). It is a value rather than an event because the box owns its own text: the
+   * effect below adopts each new one, and what someone then types over it is theirs.
+   */
+  handed?: string | null;
   /** The conversation's proposal tray (§9.5), drawn in this bar above the box its turns came from. */
   tray?: ReactNode;
 }
@@ -51,6 +57,7 @@ export default function ChatComposer({
   onDismissError,
   onError,
   placeholder,
+  handed,
   tray,
 }: ChatComposerProps) {
   const [text, setText] = useState("");
@@ -59,6 +66,12 @@ export default function ChatComposer({
   const area = useRef<HTMLTextAreaElement | null>(null);
   // Handed back by `Attachments` so a paste of files reaches the same upload path a drop does.
   const attach = useRef<(chosen: File[]) => void>(() => {});
+
+  // Text handed in from outside the box — a refused handover from the document view, which must
+  // land somewhere visible rather than vanish (§10.2's open call 3).
+  useEffect(() => {
+    if (typeof handed === "string" && handed.length > 0) setText(handed);
+  }, [handed]);
 
   // §9.2's auto-growing box, 1–10 rows: measured rather than counted, so a wrapped line grows it too.
   useEffect(() => {

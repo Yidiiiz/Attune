@@ -8,6 +8,12 @@
 // by which amendment `u`'s stale render reaches the chat pane; the document view is the surface the
 // owner expects a third form of `u` on, and this is why it should not have one.
 //
+// **It re-reads when the window is focused**, which is Decision 20's second half and AGENTS.md
+// amendment `q` (targeted here for the reason recorded with it: "I edited this file in VS Code and
+// came back" is the document view's ordinary Tuesday). It goes through `reload` and never through a
+// server render, so an answer that arrives after a newer one is dropped rather than adopted — the
+// two ways of getting this wrong were both named in advance, and this is the one that is safe.
+//
 // Failure behavior: a read that fails leaves `error` saying why and keeps whatever was shown before,
 // so a hiccup does not blank a document someone is reading.
 
@@ -68,6 +74,12 @@ export function useDocument(path: string, where: Where): DocumentState {
 
   useEffect(() => {
     void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    const onFocus = (): void => void reload();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [reload]);
 
   return { ...state, reload };

@@ -1,5 +1,5 @@
-// Owns: the top bar — the three tab links and the settings gear.
-// Search (PROJECT.md §10.0) arrives with the phase that gives it a backend; the sync indicator is here.
+// Owns: the top bar — the three tab links, the search field, the sync indicator and the settings gear.
+// Search is its own component because it is the only part of this bar with state (§10.0).
 //
 // Failure behavior: usePathname returning nothing leaves no tab highlighted; navigation still works
 // because these are plain links.
@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Search from "./Search";
 import SyncStatus from "./SyncStatus";
 import styles from "./Tabs.module.css";
 
@@ -35,6 +36,7 @@ export default function Tabs() {
         ))}
       </div>
       <div className={styles.spacer} />
+      <Search />
       <SyncStatus />
       <Link href="/settings" className={styles.gear} aria-label="Settings" title="Settings">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

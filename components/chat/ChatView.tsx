@@ -51,6 +51,7 @@ import { useElementRegistry } from "./element-registry";
 import { scrollMessageIntoView, useSidebar } from "./useSidebar";
 import { useConversation } from "./useConversation";
 import { useDistill } from "./useDistill";
+import { useHandover } from "./useHandover";
 import type { ModelChoice } from "./ConversationHeader";
 import type { ConversationState } from "./useConversation";
 import type { Message, MessageId } from "@/lib/chat/types";
@@ -66,9 +67,11 @@ export interface ChatViewProps {
   categories: string[];
   /** Opened by the Chats menu's "Distill to knowledge" (`?distill=1`). */
   distill: boolean;
+  /** `?ask=1`: something was typed under a document and handed over to be sent here (§10.2). */
+  ask: boolean;
 }
 
-export default function ChatView({ initial, models, scripted, categories, distill }: ChatViewProps) {
+export default function ChatView({ initial, models, scripted, categories, distill, ask }: ChatViewProps) {
   const router = useRouter();
   const id = initial.conversation.id;
   // §9.5's tray and §6.3's toast: where a turn's proposals and its auto-applied write go. The toast's
@@ -80,6 +83,16 @@ export default function ChatView({ initial, models, scripted, categories, distil
       onApplied: announceApplied,
     });
   const distilling = useDistill(id, distill, tray);
+  // A message typed under a document arrives here to be sent. Nothing about it may be lost: a
+  // refusal puts the text back in the box, and an empty handover says so above it (§10.2).
+  const [handed, setHanded] = useState<string | null>(null);
+  useHandover(id, ask, send, {
+    onProblem: (message, text) => {
+      setError(message);
+      setHanded(text);
+    },
+    onMissing: setError,
+  });
   const bottom = useRef<HTMLDivElement | null>(null);
 
   // Callback refs rather than `useRef`: the sidebar hook needs to *re-run* when an element arrives,
@@ -135,6 +148,18 @@ export default function ChatView({ initial, models, scripted, categories, distil
     wantGutter: hasNotes || draft !== null,
     collapsed: false,
   });
+
+  // Decision 20's window-focus refetch, the other half of amendment `q`: a message file edited in
+  // another program appears when the tab comes back. It is `reload`, which is ordered by issue
+  // against the sends it must not overtake (Decision 70), and it is skipped outright while a reply
+  // is streaming — the two ways of getting this wrong, both named in the amendment.
+  useEffect(() => {
+    const onFocus = (): void => {
+      if (streamingId === null) void reload(id);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [id, reload, streamingId]);
 
   // §16.0 rule 6: no virtualization, `scrollIntoView` for navigation. The newest message is what
   // someone wants to see, and it moves while a reply streams.
@@ -254,6 +279,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
           error={error}
           onDismissError={() => setError(null)}
           onError={setError}
+          handed={handed}
           tray={<ProposalPanel tray={tray} categories={categories} status={distilling} />}
         />
       </section>

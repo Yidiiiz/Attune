@@ -121,8 +121,10 @@ test("a note opens from the tree with its path, frontmatter and math, and Back r
 
   await expect(page.getByTestId("document-path")).toHaveText(NOTE);
   expect(new URL(page.url()).searchParams.get("c")).toBe(conversation);
-  await expect(page.getByTestId("frontmatter").locator("[data-field='title']")).toContainText("B1 basis");
-  await expect(page.getByTestId("frontmatter").locator("[data-field='tags']")).toContainText("linear-algebra, b1");
+  // B2 made these cells editable, so the value is an input's rather than the row's text. The rows
+  // themselves are unchanged, which is why only the reading of them moved.
+  await expect(page.getByTestId("frontmatter").locator("[data-field='title'] input")).toHaveValue("B1 basis");
+  await expect(page.getByTestId("frontmatter").locator("[data-field='tags'] input")).toHaveValue("linear-algebra, b1");
   await expect(page.getByTestId("document-body").locator(".katex").first()).toBeVisible();
   // The tree marks the open document.
   await expect(panel.locator(`[data-file='${NOTE}'] a`)).toHaveAttribute("aria-current", "page");

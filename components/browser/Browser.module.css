@@ -270,3 +270,149 @@
   color: var(--fg-faint);
   font-size: 12px;
 }
+
+/* The strip's controls: Edit/Preview and Save, and the mark that says something is unsaved. */
+.stripButton {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.stripButton:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+.stripButton:disabled {
+  color: var(--fg-faint);
+  cursor: default;
+}
+
+.stripButton[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.unsaved {
+  color: var(--accent);
+  font-family: var(--font-sans);
+}
+
+/* The editor is the file's bytes and nothing else, so it is monospace and never reformats. */
+.editor {
+  display: block;
+  width: 100%;
+  min-height: 60vh;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.editor:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.fieldInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.fieldInput:hover,
+.fieldInput:focus {
+  border-color: var(--border);
+  background: var(--bg-elevated);
+}
+
+.fieldCheck {
+  cursor: pointer;
+}
+
+/* The Files panel's name form, under the row it belongs to, and the note where a menu would be. */
+.nameForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 8px 6px 30px;
+}
+
+.menuNote {
+  margin: 0;
+  padding: 6px 10px;
+  color: var(--fg-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* A task file's own controls, above its frontmatter (§10.2). */
+.taskBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.taskStatus {
+  color: var(--fg-muted);
+  font-size: 12.5px;
+}
+
+/* §4.5's items under a collection's preview, each with its promote button (amendment `s`). */
+.items {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.itemsTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.itemList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.itemList li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.itemText {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.itemDone {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+  font-size: 12.5px;
+}

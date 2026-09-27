@@ -3,9 +3,15 @@
 // tree under `data/`, or with "Whole repo" on, git's tracked files outside it (`/api/files/tree`,
 // Decision 88). A credential-shaped name is never in either, because the routes leave it out.
 //
-// Each panel reads its tree when it mounts, which is whenever the rail shows it, and that is the whole
-// of its data flow: nothing here writes, and nothing here adopts a server render (Decision 69). Links
-// carry the open conversation (`?c=`), so a document opened from here has a way back to it.
+// Each panel reads its tree when it mounts, which is whenever the rail shows it. Links carry the open
+// conversation (`?c=`), so a document opened from here has a way back to it, and nothing here adopts a
+// server render (Decision 69).
+//
+// **Files writes, and only through the menu on a row** (§10.2): New file, New folder, Rename, Delete,
+// each one batch and each undoable. What is allowed is the builder's to say, so the menu offers the
+// same entries under `data/` everywhere and shows the refusal it gets back; outside `data/` it says
+// the tree is read-only instead. A change that landed re-reads the tree, by the revision below — the
+// tree is client-read, so `router.refresh()` would not touch it.
 //
 // Failure behavior: a tree that cannot be read says why in the panel and leaves the rest of the page
 // alone. The Knowledge tree also names the files the link index could not read, since a map it
@@ -19,8 +25,10 @@ import { send as get } from "@/components/tasks/writes";
 import type { TreeNode } from "@/lib/store/files";
 import { documentHref } from "./href.ts";
 import type { Where } from "./href.ts";
+import FileMenu, { NameForm } from "./FileMenu.tsx";
 import { readStored, useRememberedScroll, writeStored } from "./remember.ts";
 import Tree from "./Tree.tsx";
+import { useFileOps } from "./useFileOps.ts";
 import chat from "@/components/chat/Chat.module.css";
 import styles from "./Browser.module.css";
 
@@ -29,8 +37,8 @@ interface Loaded {
   errors: string[];
 }
 
-/** Read `url` once per change of it; a read that finishes after a newer one started is dropped. */
-function useTree(url: string): { loaded: Loaded | null; error: string | null } {
+/** Read `url` once per change of it or of `revision`; a read that finishes after a newer one is dropped. */
+function useTree(url: string, revision = 0): { loaded: Loaded | null; error: string | null } {
   const [state, setState] = useState<{ url: string; loaded: Loaded | null; error: string | null }>({ url, loaded: null, error: null });
   useEffect(() => {
     let live = true;
@@ -42,7 +50,7 @@ function useTree(url: string): { loaded: Loaded | null; error: string | null } {
     return () => {
       live = false;
     };
-  }, [url]);
+  }, [url, revision]);
   return state.url === url ? state : { loaded: null, error: null };
 }
 
@@ -101,7 +109,10 @@ export function FilesPanel() {
   const [whole, setWhole] = useState(false);
   useEffect(() => setWhole(readStored<boolean>("browser.wholeRepo", false)), []);
   const where: Where = whole ? "repo" : "data";
-  const { loaded, error } = useTree(whole ? "/api/files/tree?all=1" : "/api/files/tree");
+  const [revision, setRevision] = useState(0);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const ops = useFileOps(() => setRevision((n) => n + 1));
+  const { loaded, error } = useTree(whole ? "/api/files/tree?all=1" : "/api/files/tree", revision);
 
   return (
     <div className={chat.panel} data-ui="files-panel">
@@ -126,6 +137,18 @@ export function FilesPanel() {
           storageKey={`browser.expanded.${where === "repo" ? "repo" : "files"}`}
           active={open.where === where ? open.path : null}
           hrefFor={(path) => documentHref(path, where, open.conversation)}
+          menu={(node) => (
+            <FileMenu
+              path={node.path}
+              name={node.name}
+              isFolder={node.type === "dir"}
+              writable={where === "data"}
+              open={menuFor === node.path}
+              onOpen={(on) => setMenuFor(on ? node.path : null)}
+              ops={ops}
+            />
+          )}
+          under={(node) => (ops.asking?.path === node.path ? <NameForm asking={ops.asking} ops={ops} /> : null)}
         />
       </TreeBody>
     </div>

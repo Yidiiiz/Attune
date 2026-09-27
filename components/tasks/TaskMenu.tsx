@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Task } from "@/lib/store/tasks";
-import type { RowActions } from "./TaskRow";
+import type { RowActions } from "./actions.ts";
 import { datePart } from "@/lib/schedule/dates";
 import styles from "./TaskList.module.css";
 
@@ -100,9 +100,12 @@ export default function TaskMenu({ task, actions, busy }: TaskMenuProps) {
             </button>
           )}
 
-          <button type="button" role="menuitem" onClick={run(() => actions.ask(task))}>
-            Ask about this
-          </button>
+          {/* Only where there is a composer to open: the document view's own composer is its Ask. */}
+          {actions.ask === undefined ? null : (
+            <button type="button" role="menuitem" onClick={run(() => actions.ask?.(task))}>
+              Ask about this
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

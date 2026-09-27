@@ -16,7 +16,7 @@ import { useState } from "react";
 import type { Task } from "@/lib/store/tasks";
 import type { Settings } from "@/lib/store/settings";
 import { dayWindow, packDay, unplaced } from "@/lib/schedule/timeline";
-import { clockLabel, durationLabel } from "./format";
+import { clockLabel, durationLabel } from "@/components/tasks/format";
 import styles from "./Timeline.module.css";
 
 /** Pixels per minute. A ten-hour day is 480px, which fits a laptop screen without scrolling. */

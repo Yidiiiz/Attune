@@ -2,31 +2,25 @@
 // subheader, the four metadata chips, and the `⋯` menu. When the row is being edited it hands its
 // whole width to `TaskEditForm` instead, so the form appears where the row was rather than over it.
 //
+// **The title is a link to the task's own document** (§10.1's last sentence, AGENTS.md amendment
+// `l`). It waited for Phase 8 because until then it would have pointed at a page that did not
+// exist; the address comes from `href.ts` so a task opens exactly as a tree row or a backlink opens
+// it, rather than from a second spelling of `/chat?open=`.
+//
 // Failure behavior: every action here is asked of the server and the row shows `busy` until the
 // answer arrives; nothing is written optimistically, so a refused write leaves the row exactly as
 // it was rather than snapping back from a state that never existed.
 
 "use client";
 
+import Link from "next/link";
 import type { Task } from "@/lib/store/tasks";
-import TaskEditForm from "./TaskEditForm";
-import TaskMenu from "./TaskMenu";
-import { PRIORITY_LABEL, durationLabel, relativeDue, showsPriority, subtaskProgress } from "./format";
-import styles from "./TaskList.module.css";
-
-/** What a row can ask the page to do. Held by `TodayView`, which owns the writes. */
-export interface RowActions {
-  editingId: string | null;
-  busyId: string | null;
-  complete: (task: Task) => void;
-  duplicate: (task: Task) => void;
-  reschedule: (task: Task, date: string) => void;
-  remove: (task: Task) => void;
-  startEdit: (task: Task) => void;
-  cancelEdit: () => void;
-  save: (task: Task, changes: Record<string, unknown>) => Promise<string | null>;
-  ask: (task: Task) => void;
-}
+import { documentHref } from "@/components/browser/href";
+import type { RowActions } from "@/components/tasks/actions";
+import TaskEditForm from "@/components/tasks/TaskEditForm";
+import TaskMenu from "@/components/tasks/TaskMenu";
+import { PRIORITY_LABEL, durationLabel, relativeDue, showsPriority, subtaskProgress } from "@/components/tasks/format";
+import styles from "@/components/tasks/TaskList.module.css";
 
 export interface TaskRowProps {
   task: Task;
@@ -72,7 +66,11 @@ export default function TaskRow({ task, viewDate, actions, muted, overdue }: Tas
       />
 
       <div className={styles.main}>
-        <div className={`${styles.title} ${done ? styles.struck : ""}`}>{task.title}</div>
+        <div className={`${styles.title} ${done ? styles.struck : ""}`}>
+          <Link className={styles.titleLink} href={documentHref(task.path, "data", null)} title={task.path}>
+            {task.title}
+          </Link>
+        </div>
         {task.context ? <div className={styles.context}>{task.context}</div> : null}
 
         <div className={styles.chips}>

@@ -324,3 +324,14 @@
   background: var(--accent);
   color: var(--accent-fg);
 }
+
+/* §10.1: the title opens the task in the document view (amendment `l`). It is a link that reads as
+   the title it replaced — the underline is on hover only, so a list of them is still a list. */
+.titleLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.titleLink:hover {
+  text-decoration: underline;
+}

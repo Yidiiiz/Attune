@@ -10,8 +10,9 @@
 import { useState } from "react";
 import type { Task } from "@/lib/store/tasks";
 import type { RankedDay } from "@/lib/schedule/rank";
-import TaskRow, { type RowActions } from "./TaskRow";
-import styles from "./TaskList.module.css";
+import TaskRow from "./TaskRow";
+import type { RowActions } from "@/components/tasks/actions";
+import styles from "@/components/tasks/TaskList.module.css";
 
 export interface TaskListProps {
   ranked: RankedDay;

@@ -2110,6 +2110,36 @@ Idle check:ui twice, then the leftovers, then the data-* refs commit, then the
 rest of B2. If either idle run fails, the evidence folder is the first thing I
 want to see, and that failure comes before anything else."
 
+### Approved conditions — the read-only attribute on the leftovers (rule 9)
+
+The owner's reply to the report that the deletion stopped at its first directory, verbatim:
+
+"Approved: clear the read-only attribute, only inside the 462 directories matched
+by exact name, then remove them. Same script otherwise — counts before and
+after, stop on any other refusal.
+
+This isn't the forcing I ruled out. What I wanted to prevent was a broad match
+deciding the set at deletion time and a failure getting steamrolled. The set is
+still the same explicit list, and the attribute is just how git stores objects
+on Windows — the test suite's own cleanup already clears it. Right call to stop
+and ask rather than assume that.
+
+The partial removal in attune-auto-apply-2qI0BV is fine. It's on the list, it
+was going anyway, and you verified nothing outside it was touched.
+
+If the rerun refuses for any reason other than the read-only attribute, stop and
+report it rather than adding another workaround.
+
+ACCEPTED
+- Both idle runs clean, 55 deciding checks, no retries. The earlier annotation
+  failures were the loaded machine, not your code. Closed.
+- Amendment u: 7 runs, no failure, no new form.
+
+ORDER
+Leftovers, then the data-* refs commit, then the rest of B2. Stop at the end of
+B2 as agreed. If the refs commit turns up any of the seven that's genuinely
+awkward as a ref, report that one rather than forcing it."
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

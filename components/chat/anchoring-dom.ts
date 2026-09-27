@@ -18,6 +18,9 @@
 // top with §16.4's "anchor moved" flag — which is the honest outcome, because a note placed on the
 // wrong words is worse than a note that says it lost its place.
 
+import type { ElementRegistry } from "./element-registry";
+import type { MessageId } from "@/lib/chat/types";
+
 /** Text nodes of a rendered message, in document order, skipping injected UI. */
 function textNodes(root: HTMLElement): Text[] {
   const nodes: Text[] = [];
@@ -166,11 +169,11 @@ function offsetOfNode(index: TextIndex, node: Node, offset: number): number | nu
 
 export interface RememberedSelection {
   /**
-   * The message row the selection was made in. The element, not its id: the caller already knows
-   * which message it is annotating and compares rows, so nothing here reads `data-message` back
-   * (AGENTS.md, Conventions).
+   * The message the selection was made in, as the registry's key. The row is found by walking up
+   * from the selection to the element `MessageRow` registered, so nothing here reads `data-message`
+   * — neither its value nor the attribute (AGENTS.md, Conventions; Decision 99).
    */
-  row: HTMLElement;
+  messageId: MessageId;
   quote: string;
   prefix: string;
   suffix: string;
@@ -193,7 +196,10 @@ export interface RememberedSelection {
  * Failure behavior: returns a disposer and nothing else; a caller that never gets a selection gets
  * `null` and refuses the action with a reason, which is the honest outcome.
  */
-export function rememberSelection(scroller: HTMLElement): {
+export function rememberSelection(
+  scroller: HTMLElement,
+  rows: ElementRegistry<MessageId>,
+): {
   get: () => RememberedSelection | null;
   stop: () => void;
 } {
@@ -204,14 +210,12 @@ export function rememberSelection(scroller: HTMLElement): {
     if (selection === null || selection.isCollapsed || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-    const node = range.commonAncestorContainer;
-    const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
-    const row = element?.closest<HTMLElement>("[data-message]") ?? null;
-    if (row === null || !scroller.contains(row)) return;
+    const owner = rows.owner(range.commonAncestorContainer);
+    if (owner === null || !scroller.contains(owner.element)) return;
 
-    const inside = selectionInside(row);
+    const inside = selectionInside(owner.element);
     if (inside === null) return;
-    last = { row, ...inside };
+    last = { messageId: owner.key, ...inside };
   };
 
   document.addEventListener("selectionchange", capture);

@@ -60,6 +60,36 @@ test("clicking a sidebar entry brings that message into view", async ({ page }) 
   expect(await scroller.evaluate((el) => el.scrollTop)).toBeLessThan(before);
 });
 
+test("the outline scrolls the exchange being read into its own view", async ({ page }) => {
+  // Short, so the outline itself overflows: auto-centring has nothing to do in a list that fits,
+  // and a check whose precondition is marginal is a check that fails for the wrong reason.
+  await page.setViewportSize({ width: 1400, height: 320 });
+  await newConversation(page);
+  // Twelve, measured rather than guessed: an entry is about 29 px and the outline about 268 px at
+  // this height, so eight fit with room to spare and twelve overflow it by roughly 80 px.
+  const asked = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
+  for (const one of asked) await exchange(page, `the ${one} thing said`);
+
+  const outline = page.locator("[data-ui='sidebar']");
+  const entries = page.locator("[data-ui='sidebar-entry']");
+  await expect(entries).toHaveCount(asked.length);
+  expect(await outline.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(0);
+
+  // Parked at the newest exchange (§16.5's bottom exception), the outline has centred it rather
+  // than sitting at its own top with the current entry off screen.
+  await expect(entries.nth(asked.length - 1)).toHaveAttribute("aria-current", "true");
+  await expect(entries.nth(asked.length - 1)).toBeInViewport();
+  const parked = await outline.evaluate((el) => el.scrollTop);
+  expect(parked).toBeGreaterThan(0);
+
+  // The transition this scroll produces: the current exchange changes, and the outline follows it.
+  // A reader scrolling the *outline* pauses centring; scrolling the conversation resumes it.
+  await page.locator("[data-ui='messages']").evaluate((el) => el.scrollTo({ top: 0 }));
+  await expect(entries.nth(0)).toHaveAttribute("aria-current", "true");
+  await expect.poll(() => outline.evaluate((el) => el.scrollTop)).toBeLessThan(parked);
+  await expect(entries.nth(0)).toBeInViewport();
+});
+
 test("a branch point becomes a section, and its alternatives switch the branch", async ({ page }) => {
   await page.setViewportSize(WIDE);
   await newConversation(page);

@@ -25,7 +25,8 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { findAnchorText, findQuote } from "@/lib/chat/anchoring";
 import { indexText, firstLineRect, rangeFromOffsets } from "./anchoring-dom";
-import type { Annotation } from "@/lib/chat/types";
+import type { ElementRegistry } from "./element-registry";
+import type { Annotation, MessageId } from "@/lib/chat/types";
 
 /** §16.4: cards do not overlap, so each is pushed past the bottom of the one above it. */
 const GAP = 8;
@@ -45,6 +46,8 @@ export interface Placed {
 export interface AnnotationsInput {
   /** The message scroller, whose coordinates every `top` here is in. */
   scroller: HTMLElement | null;
+  /** Message rows by id (Decision 99): the row a card is placed against is looked up, not queried. */
+  rows: ElementRegistry<MessageId>;
   /** Annotations whose target is a live message on the active path. */
   onPath: Annotation[];
   /** Bumped by the caller whenever the conversation re-rendered, so placement re-runs. */
@@ -54,7 +57,7 @@ export interface AnnotationsInput {
 /** Card heights, measured once each card exists; unmeasured cards use the assumption above. */
 export type CardHeights = Map<string, number>;
 
-export function useAnnotations({ scroller, onPath, revision }: AnnotationsInput): {
+export function useAnnotations({ scroller, rows, onPath, revision }: AnnotationsInput): {
   placed: Placed[];
   measure: (id: string, height: number) => void;
 } {
@@ -93,9 +96,7 @@ export function useAnnotations({ scroller, onPath, revision }: AnnotationsInput)
     const anchored: Placed[] = [];
 
     for (const annotation of onPath) {
-      const element = scroller.querySelector<HTMLElement>(
-        `[data-message='${CSS.escape(annotation.targetMessageId)}']`,
-      );
+      const element = rows.get(annotation.targetMessageId);
       if (element === null) continue;
 
       // The message's top in the scroller's own coordinates, which is what a card is positioned in.
@@ -147,7 +148,7 @@ export function useAnnotations({ scroller, onPath, revision }: AnnotationsInput)
     }
 
     setPlaced(anchored);
-  }, [scroller, onPath, revision, heights, resizes]);
+  }, [scroller, rows, onPath, revision, heights, resizes]);
 
   return { placed, measure };
 }

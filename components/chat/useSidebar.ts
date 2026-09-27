@@ -6,9 +6,9 @@
 //
 //   - **Available width**, from a `ResizeObserver` on the main pane. §16.5 says the width mode comes
 //     from available space *only* — never from conversation length — so there is nothing to track.
-//   - **Row tops**, from `offsetTop` on the elements carrying `data-message`. Read on scroll,
-//     inside a `requestAnimationFrame`, because a scroll handler that measures synchronously is how
-//     a scroller starts to feel heavy.
+//   - **Row tops**, from `offsetTop` on the message rows, which the view's element registry hands
+//     over by id. Read on scroll, inside a `requestAnimationFrame`, because a scroll handler that
+//     measures synchronously is how a scroller starts to feel heavy.
 //   - **Whether the reader is driving the sidebar.** §16.5 pauses auto-centring when they scroll it
 //     and resumes when the current message changes.
 //
@@ -26,6 +26,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { currentMessage, promptOf } from "@/lib/chat/current-message";
+import type { ElementRegistry } from "./element-registry";
 import type { RowBox } from "@/lib/chat/current-message";
 import type { Pair } from "@/lib/chat/tree";
 import type { MessageId } from "@/lib/chat/types";
@@ -38,6 +39,10 @@ export interface SidebarInput {
   /** The sidebar's own scroller, auto-centred on the current entry. */
   list: HTMLElement | null;
   pairs: Pair[];
+  /** Message rows by id, as `MessageRow` registered them. */
+  rows: ElementRegistry<MessageId>;
+  /** Sidebar entries by prompt id, as `Sidebar` registered them. */
+  entries: ElementRegistry<string>;
 }
 
 export interface SidebarState {
@@ -58,23 +63,31 @@ export interface SidebarState {
  * `Chat.module.css` to *be* that parent. Without it the tops carry the header's height as a
  * constant error, which is not visible in a screenshot and moves the reading margin.
  *
- * The ids come from `pairs`, which is the path the view rendered, in order; the element is found
- * from the id, as `scrollMessageIntoView` below finds it. Reading the id back off the element would
- * make `data-message` state the app depends on (AGENTS.md, Conventions; `components/data-hooks.test.ts`).
+ * The ids come from `pairs`, which is the path the view rendered, in order; the element comes from
+ * the registry the rows filled. Neither the id nor the element is taken from the DOM, because
+ * `data-message` is a test hook and app behaviour must not rest on one — as a read or as a selector
+ * (AGENTS.md, Conventions; Decision 99; `components/data-hooks.test.ts`).
  */
-function measure(scroller: HTMLElement, pairs: Pair[]): RowBox[] {
-  const rows: RowBox[] = [];
+function measure(rows: ElementRegistry<MessageId>, pairs: Pair[]): RowBox[] {
+  const boxes: RowBox[] = [];
   for (const pair of pairs) {
     for (const message of pair.response === null ? [pair.prompt] : [pair.prompt, pair.response]) {
-      const element = scroller.querySelector<HTMLElement>(`[data-message='${CSS.escape(message.id)}']`);
+      const element = rows.get(message.id);
       if (element === null) continue;
-      rows.push({ id: message.id, top: element.offsetTop, height: element.offsetHeight });
+      boxes.push({ id: message.id, top: element.offsetTop, height: element.offsetHeight });
     }
   }
-  return rows;
+  return boxes;
 }
 
-export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): SidebarState {
+export function useSidebar({
+  scroller,
+  pane,
+  list,
+  pairs,
+  rows,
+  entries,
+}: SidebarInput): SidebarState {
   const [available, setAvailable] = useState(0);
   const [reading, setReading] = useState<MessageId | null>(null);
 
@@ -100,7 +113,7 @@ export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): Sideb
     const read = (): void => {
       frame = 0;
       setReading(
-        currentMessage(measure(scroller, pairs), {
+        currentMessage(measure(rows, pairs), {
           scrollTop: scroller.scrollTop,
           clientHeight: scroller.clientHeight,
           scrollHeight: scroller.scrollHeight,
@@ -116,7 +129,7 @@ export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): Sideb
       scroller.removeEventListener("scroll", onScroll);
       if (frame !== 0) cancelAnimationFrame(frame);
     };
-  }, [scroller, pairs]);
+  }, [scroller, pairs, rows]);
 
   const current = useMemo(() => promptOf(pairs, reading), [pairs, reading]);
 
@@ -148,7 +161,7 @@ export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): Sideb
     }
     if (paused.current) return;
 
-    const entry = list.querySelector<HTMLElement>(`[data-pair='${CSS.escape(current)}']`);
+    const entry = entries.get(current);
     if (entry === null) return;
 
     const target = Math.max(
@@ -163,13 +176,12 @@ export function useSidebar({ scroller, pane, list, pairs }: SidebarInput): Sideb
     if (Math.abs(list.scrollTop - target) < 1) return;
     programmatic.current = true;
     list.scrollTo({ top: target });
-  }, [list, current]);
+  }, [list, current, entries]);
 
   return { current, available };
 }
 
 /** Exported for the sidebar's click handler: centring should not fight a jump the reader asked for. */
-export function scrollMessageIntoView(scroller: HTMLElement | null, id: MessageId): void {
-  const target = scroller?.querySelector<HTMLElement>(`[data-message='${CSS.escape(id)}']`);
-  target?.scrollIntoView({ block: "start" });
+export function scrollMessageIntoView(rows: ElementRegistry<MessageId>, id: MessageId): void {
+  rows.get(id)?.scrollIntoView({ block: "start" });
 }

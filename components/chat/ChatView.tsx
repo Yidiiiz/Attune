@@ -47,12 +47,13 @@ import Sidebar from "./Sidebar";
 import AnnotationPane from "./AnnotationPane";
 import QuoteReply from "./QuoteReply";
 import { useAnnotationDraft } from "./useAnnotationDraft";
+import { useElementRegistry } from "./element-registry";
 import { scrollMessageIntoView, useSidebar } from "./useSidebar";
 import { useConversation } from "./useConversation";
 import { useDistill } from "./useDistill";
 import type { ModelChoice } from "./ConversationHeader";
 import type { ConversationState } from "./useConversation";
-import type { Message } from "@/lib/chat/types";
+import type { Message, MessageId } from "@/lib/chat/types";
 import styles from "./Chat.module.css";
 
 export interface ChatViewProps {
@@ -86,6 +87,14 @@ export default function ChatView({ initial, models, scripted, categories, distil
   const [pane, setPane] = useState<HTMLElement | null>(null);
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const [list, setList] = useState<HTMLElement | null>(null);
+
+  // The elements *inside* those three are registries rather than state: a row arriving is not a
+  // reason to re-render the view, and everything that measures one runs after the render that
+  // mounted it. Decision 99 is why they are registries rather than `[data-message='…']` lookups —
+  // a `data-*` attribute is a test hook, and app behaviour resting on one, as a read or as a
+  // selector, is the dependency the convention exists to prevent.
+  const rows = useElementRegistry<MessageId>();
+  const entries = useElementRegistry<string>();
   const [contextOpen, setContextOpen] = useState(false);
 
   const tree = useMemo(() => buildTree(state.messages), [state.messages]);
@@ -118,9 +127,9 @@ export default function ChatView({ initial, models, scripted, categories, distil
   // The hook measures; the cascade is run once, here, with the only `wantGutter` there is — so the
   // sidebar and the gutter can never disagree about how the width was divided. `roomForGutter` asks
   // the counterfactual, because the composer needs somewhere to open before the first note exists.
-  const { current, available } = useSidebar({ scroller, pane, list, pairs });
+  const { current, available } = useSidebar({ scroller, pane, list, pairs, rows, entries });
   const roomForGutter = paneLayout({ available, wantGutter: true, collapsed: false }).gutter > 0;
-  const { draft, clear: clearDraft, annotate } = useAnnotationDraft(scroller, roomForGutter);
+  const { draft, clear: clearDraft, annotate } = useAnnotationDraft(scroller, rows, roomForGutter);
   const layout = paneLayout({
     available,
     wantGutter: hasNotes || draft !== null,
@@ -204,6 +213,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
             path.map((message, index) => (
               <MessageRow
                 key={message.id}
+                rowRef={rows.ref(message.id)}
                 message={message}
                 {...(hasQuoteReplies
                   ? {
@@ -212,7 +222,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
                           message={message}
                           path={path}
                           index={index}
-                          onGoTo={(id) => scrollMessageIntoView(scroller, id)}
+                          onGoTo={(id) => scrollMessageIntoView(rows, id)}
                         />
                       ),
                     }
@@ -256,6 +266,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
             conversationId={state.conversation.id}
             groups={groups}
             scroller={scroller}
+            rows={rows}
             width={layout.gutter}
             // The two things that move a rectangle: the conversation re-rendered, or the column
             // changed width. Deltas live in `messages`, so a streaming reply re-places the cards
@@ -284,8 +295,9 @@ export default function ChatView({ initial, models, scripted, categories, distil
             tree={tree}
             current={current}
             strip={layout.strip}
-            onGoTo={(id) => scrollMessageIntoView(scroller, id)}
+            onGoTo={(id) => scrollMessageIntoView(rows, id)}
             onSwitch={(id) => void switchTo(id)}
+            entries={entries}
           />
         </nav>
       </FeatureBoundary>

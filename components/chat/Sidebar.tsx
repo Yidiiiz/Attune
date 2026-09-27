@@ -24,6 +24,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ElementRegistry } from "./element-registry";
 import type { Message } from "@/lib/chat/types";
 import type { Pair, Tree } from "@/lib/chat/tree";
 import { siblingsOf } from "@/lib/chat/tree";
@@ -39,6 +40,12 @@ export interface SidebarProps {
   onGoTo: (id: string) => void;
   /** Switch to a sibling branch, which moves `activeLeafId` (§16.2). */
   onSwitch: (id: string) => void;
+  /**
+   * The view's registry of sidebar entries, keyed by prompt id. Auto-centring has to measure the
+   * current entry, and it asks the registry rather than the DOM: `data-pair` is a test hook and an
+   * app selector on one is a read of it (Decision 99, `components/data-hooks.test.ts`).
+   */
+  entries: ElementRegistry<string>;
 }
 
 /** §16.5 shows two alternatives and hides the rest; more than that is a list, not a signpost. */
@@ -98,7 +105,15 @@ function Branches({
   );
 }
 
-export default function Sidebar({ pairs, tree, current, strip, onGoTo, onSwitch }: SidebarProps) {
+export default function Sidebar({
+  pairs,
+  tree,
+  current,
+  strip,
+  onGoTo,
+  onSwitch,
+  entries,
+}: SidebarProps) {
   if (strip) {
     return (
       <ol className={styles.strip} data-ui="sidebar-strip">
@@ -107,6 +122,7 @@ export default function Sidebar({ pairs, tree, current, strip, onGoTo, onSwitch 
           return (
             <li key={pair.prompt.id}>
               <button
+                ref={entries.ref(pair.prompt.id)}
                 type="button"
                 className={`${styles.stripMark} ${forked ? styles.stripForked : ""}`}
                 data-pair={pair.prompt.id}
@@ -135,6 +151,7 @@ export default function Sidebar({ pairs, tree, current, strip, onGoTo, onSwitch 
         return (
           <li
             key={pair.prompt.id}
+            ref={entries.ref(pair.prompt.id)}
             className={forked ? styles.sideSection : styles.sideItem}
             data-pair={pair.prompt.id}
           >

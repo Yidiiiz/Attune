@@ -3,9 +3,10 @@
 // controls that fork the conversation at this point (§16.2, §10.2).
 //
 // The `data-message` attribute is the sanctioned test hook (AGENTS.md, Conventions): a noun for
-// what the element *is*, valued with the record's stable identity. Nothing in the app reads its value
-// (`components/data-hooks.test.ts`); the chat does find a row by an id it already holds, as a
-// selector, which that test does not cover.
+// what the element *is*, valued with the record's stable identity, and nothing in the app reads it
+// — not its value and not the attribute (`components/data-hooks.test.ts`). The view finds this row
+// through `rowRef`, the callback ref of `ChatView`'s element registry, so the one direction the
+// attribute travels is outward, to a check.
 //
 // **The open editor is this row's own state**, not the view's. Editing is a property of a message —
 // two rows can be mid-edit at once and neither is more current than the other — and hoisting it
@@ -50,6 +51,8 @@ export interface MessageRowProps {
   onAnnotate?: (message: Message) => void;
   /** §6.3's markers for writes this reply's turn applied by itself, rendered by the caller. */
   applied?: ReactNode;
+  /** The registry's ref for this message, so the view can find the row without a selector. */
+  rowRef?: (element: HTMLElement | null) => void;
 }
 
 /** §16.3's reason, in the words a person would use. */
@@ -71,6 +74,7 @@ export default function MessageRow({
   quoteBar,
   onAnnotate,
   applied,
+  rowRef,
 }: MessageRowProps) {
   const [editing, setEditing] = useState<"edit" | "branch" | null>(null);
   const unfinished = message.status === "failed" || (message.status === "streaming" && !streaming);
@@ -84,6 +88,7 @@ export default function MessageRow({
 
   return (
     <article
+      ref={rowRef}
       className={`${styles.message} ${message.role === "user" ? styles.fromUser : styles.fromAssistant}`}
       data-message={message.id}
       data-role={message.role}

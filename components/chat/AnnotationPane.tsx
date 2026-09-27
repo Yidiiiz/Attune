@@ -19,12 +19,16 @@ import type { Draft } from "./Gutter";
 import { useAnnotations } from "./useAnnotations";
 import { useAnnotationWrites } from "./useAnnotationWrites";
 import { scrollMessageIntoView } from "./useSidebar";
+import type { ElementRegistry } from "./element-registry";
 import type { AnnotationGroups } from "@/lib/chat/annotations";
+import type { MessageId } from "@/lib/chat/types";
 
 export interface AnnotationPaneProps {
   conversationId: string;
   groups: AnnotationGroups;
   scroller: HTMLElement | null;
+  /** The view's message rows by id, which is how a card finds the row it belongs beside. */
+  rows: ElementRegistry<MessageId>;
   width: number;
   /** Bumped by the caller when the conversation re-rendered, so placement re-runs. */
   revision: number;
@@ -37,13 +41,14 @@ export default function AnnotationPane({
   conversationId,
   groups,
   scroller,
+  rows,
   width,
   revision,
   draft,
   onDraftDone,
   reload,
 }: AnnotationPaneProps) {
-  const { placed, measure } = useAnnotations({ scroller, onPath: groups.onPath, revision });
+  const { placed, measure } = useAnnotations({ scroller, rows, onPath: groups.onPath, revision });
   const annotations = useAnnotationWrites(conversationId, reload);
 
   return (
@@ -64,7 +69,7 @@ export default function AnnotationPane({
       onToggleContext={(annotation) => void annotations.toggleContext(annotation)}
       onRemove={(annotation) => void annotations.remove(annotation)}
       onRestore={(annotation) => void annotations.restore(annotation)}
-      onGoTo={(annotation) => scrollMessageIntoView(scroller, annotation.targetMessageId)}
+      onGoTo={(annotation) => scrollMessageIntoView(rows, annotation.targetMessageId)}
     />
   );
 }

@@ -18,11 +18,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { reportFailure } from "@/components/tasks/writes";
 import { rememberSelection } from "./anchoring-dom";
 import type { RememberedSelection } from "./anchoring-dom";
+import type { ElementRegistry } from "./element-registry";
 import type { Draft } from "./Gutter";
-import type { Message } from "@/lib/chat/types";
+import type { Message, MessageId } from "@/lib/chat/types";
 
 export function useAnnotationDraft(
   scroller: HTMLElement | null,
+  rows: ElementRegistry<MessageId>,
   roomForGutter: boolean,
 ): { draft: Draft | null; clear: () => void; annotate: (message: Message) => void } {
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -30,21 +32,20 @@ export function useAnnotationDraft(
 
   useEffect(() => {
     if (scroller === null) return;
-    const remembered = rememberSelection(scroller);
+    const remembered = rememberSelection(scroller, rows);
     memory.current = remembered;
     return () => {
       memory.current = null;
       remembered.stop();
     };
-  }, [scroller]);
+  }, [scroller, rows]);
 
   const annotate = useCallback(
     (message: Message): void => {
-      const element =
-        scroller?.querySelector<HTMLElement>(`[data-message='${CSS.escape(message.id)}']`) ?? null;
+      const element = rows.get(message.id);
       const remembered = memory.current?.get() ?? null;
       // A selection remembered from a different message is not this message's selection.
-      const chosen = element !== null && remembered?.row === element ? remembered : null;
+      const chosen = remembered?.messageId === message.id ? remembered : null;
 
       if (element === null || chosen === null) {
         reportFailure("There is nothing to annotate", "Select some text in the message first.");
@@ -57,10 +58,10 @@ export function useAnnotationDraft(
         return;
       }
 
-      const { row: _row, ...anchor } = chosen;
+      const { messageId: _messageId, ...anchor } = chosen;
       setDraft({ targetMessageId: message.id, top: element.offsetTop, ...anchor });
     },
-    [scroller, roomForGutter],
+    [rows, roomForGutter],
   );
 
   return { draft, clear: () => setDraft(null), annotate };

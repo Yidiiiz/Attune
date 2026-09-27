@@ -2243,6 +2243,68 @@ Leftovers, then the data-* refs commit, then the rest of B2. Stop at the end of
 B2 as agreed. If the refs commit turns up any of the seven that's genuinely
 awkward as a ref, report that one rather than forcing it."
 
+### Approved conditions — the Phase 8 close (rule 9)
+
+The owner's review of B2, verbatim. Phase 8 closes on its three items and the tally it asks for.
+
+"B2 accepted. Phase 8 closes after the three items below. Don't start 8b.
+
+Two things stand out in this report: the React-remount handover defect, which
+nobody reasoning about production would have found, and that two mutations
+passed because the checks were wrong. Mutations exist to test the checks, not
+the code, and this is the first time in the project they've done it visibly.
+Say so in the phase record.
+
+1. EDIT/PREVIEW DISCARDS — TAKE THE ONE-LINE FIX
+Amend §10.2 and preview the draft. A toggle that warns and then discards your
+typing is the same shape as the empty-conversation bug: work that exists and
+isn't shown. A warning doesn't redeem it — people dismiss warnings. Preview is
+what the button means, the draft is already in hand, and it's one line.
+
+If it turns out not to be one line once you're in it, stop and tell me rather
+than growing it.
+
+2. FILES MENU NOT POLICY-AWARE
+Offering Rename and Delete on things Decision 86 forbids means the menu's only
+feedback is a refusal after the fact. Make the menu reflect the policy: disabled
+with the reason, from the same table the builder enforces, not a second copy of
+the rules. Server-side enforcement stays exactly as it is — this is display.
+
+If the table isn't reachable from the component without breaking §3, say so and
+we'll settle it rather than duplicating the policy.
+
+3. THE LOAD
+20 tests' difference between best and worst run is past fragility and into
+unreliable. Right to raise no timeout, and I'm not asking you to now.
+
+Before 8b starts, diagnose it: EBUSY/EEXIST on temp checkouts and `git add -A`
+failures across 15 files that each pass alone is contention, not slowness, and
+the fix is probably serialising git-touching files or giving each its own
+tmpdir root — not bigger numbers. Report what you find; don't implement yet.
+
+Note the dev server at 15-40s in the evidence folders as part of the same
+picture. Both idle runs were clean, so this is environmental, but 8b builds a
+canvas view and I don't want to debug rendering on a machine that does this.
+
+ACCEPTED AS REPORTED
+- base as the version the editor opened, not the latest read. That's what makes
+  409 mean anything, and it's the detail I asked you to verify in Stage A.
+- Checkbox inert while a draft is open: correct, a click is a save.
+- sessionStorage handover, text out of the URL, with the render wait.
+- Amendments s, l, q, m landed. p correctly didn't fire.
+- The B1 check that changed its reading, not the row. Good that you flagged the
+  distinction.
+- TaskList.module.css at 337 lines: recorded, no action.
+- 75 deciding checks, up from 56. 19 new in browser-write.spec.ts.
+
+AMENDMENT u
+No mention in this report. Give me the tally — runs this stage, failures, any
+new form. B2 put editing and saving on the document view, which is where I said
+I'd expect a third form. Silence isn't a clean result; I want the number.
+
+PHASE 8 CLOSES on 1, 2, the u tally, and the load diagnosis reported. Then
+we plan 8b in a fresh session."
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

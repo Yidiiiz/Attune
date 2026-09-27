@@ -8,10 +8,12 @@
 // server render (Decision 69).
 //
 // **Files writes, and only through the menu on a row** (§10.2): New file, New folder, Rename, Delete,
-// each one batch and each undoable. What is allowed is the builder's to say, so the menu offers the
-// same entries under `data/` everywhere and shows the refusal it gets back; outside `data/` it says
-// the tree is read-only instead. A change that landed re-reads the tree, by the revision below — the
-// tree is client-read, so `router.refresh()` would not touch it.
+// each one batch and each undoable. What is allowed is still the builder's to say, and the route now
+// says it for each row as well, so the menu disables what will not work and shows the policy's own
+// reason (Decision 105); outside `data/` it says the tree is read-only instead. A refusal that
+// arrives anyway is still shown — a policy read when the tree was drawn is a moment old, and it does
+// not cover the link check a rename makes. A change that landed re-reads the tree, by the revision
+// below — the tree is client-read, so `router.refresh()` would not touch it.
 //
 // Failure behavior: a tree that cannot be read says why in the panel and leaves the rest of the page
 // alone. The Knowledge tree also names the files the link index could not read, since a map it
@@ -26,6 +28,7 @@ import type { TreeNode } from "@/lib/store/files";
 import { documentHref } from "./href.ts";
 import type { Where } from "./href.ts";
 import FileMenu, { NameForm } from "./FileMenu.tsx";
+import type { RowPolicy } from "./FileMenu.tsx";
 import { readStored, useRememberedScroll, writeStored } from "./remember.ts";
 import Tree from "./Tree.tsx";
 import { useFileOps } from "./useFileOps.ts";
@@ -35,6 +38,8 @@ import styles from "./Browser.module.css";
 interface Loaded {
   tree: TreeNode[];
   errors: string[];
+  /** What each row may do, by path — the data tree only (Decision 105). */
+  policies: Record<string, RowPolicy>;
 }
 
 /** Read `url` once per change of it or of `revision`; a read that finishes after a newer one is dropped. */
@@ -45,7 +50,16 @@ function useTree(url: string, revision = 0): { loaded: Loaded | null; error: str
     void get(url, { method: "GET" }).then((answer) => {
       if (!live) return;
       if (answer.error !== null) setState({ url, loaded: null, error: answer.error });
-      else setState({ url, loaded: { tree: answer.data.tree as TreeNode[], errors: (answer.data.errors as string[] | undefined) ?? [] }, error: null });
+      else
+        setState({
+          url,
+          loaded: {
+            tree: answer.data.tree as TreeNode[],
+            errors: (answer.data.errors as string[] | undefined) ?? [],
+            policies: (answer.data.policies as Record<string, RowPolicy> | undefined) ?? {},
+          },
+          error: null,
+        });
     });
     return () => {
       live = false;
@@ -142,7 +156,7 @@ export function FilesPanel() {
               path={node.path}
               name={node.name}
               isFolder={node.type === "dir"}
-              writable={where === "data"}
+              policy={loaded?.policies[node.path] ?? null}
               open={menuFor === node.path}
               onOpen={(on) => setMenuFor(on ? node.path : null)}
               ops={ops}

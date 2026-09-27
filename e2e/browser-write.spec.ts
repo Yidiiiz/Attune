@@ -345,15 +345,65 @@ test("Rename moves a file inside its folder, and refuses a note with the reason"
   expect(() => read("files/b2-before.txt")).toThrow();
   expect(read("files/b2-after.txt")).toBe("");
 
-  // A note always has a map linking it (§6.3), so a rename would leave that link pointing at
-  // nothing. The refusal says so where the name was typed, and the file is untouched.
+  // A refusal the policy cannot know about still arrives as a sentence: renaming a map is allowed by
+  // the table, and refused by the link check inside the batch because two notes link to it.
+  await expand(panel, "knowledge");
+  await expand(panel, "knowledge/maps");
+  await panel.locator("[data-file='knowledge/maps/b2-map.md']").getByTestId("file-menu-button").click();
+  await expect(page.getByTestId("rename")).toBeEnabled();
+  await page.getByTestId("rename").click();
+  await page.getByTestId("name-input").fill("b2-map-renamed.md");
+  await page.getByTestId("name-input").press("Enter");
+  await expect(page.getByTestId("name-error")).toContainText("cannot be renamed while");
+  expect(read("knowledge/maps/b2-map.md")).toContain("B2 map");
+});
+
+test("the row menu disables what the policy forbids, with the policy's own reason", async ({ page }) => {
+  const panel = await filesPanel(page);
   await expand(panel, "knowledge");
   await expand(panel, "knowledge/notes");
+
+  // A note can never be renamed (§6.3 keeps a map linking it), so the entry does not wait to refuse.
   await panel.locator(`[data-file='${NOTE}']`).getByTestId("file-menu-button").click();
-  await page.getByTestId("rename").click();
-  await page.getByTestId("name-input").fill("b2-renamed.md");
+  await expect(page.getByTestId("rename")).toBeDisabled();
+  await expect(page.getByTestId("rename")).toContainText("A note cannot be renamed here");
+  await expect(page.getByTestId("delete")).toBeEnabled();
+
+  // A folder is never renamed, and knowledge/ is not a place new folders go.
+  await panel.locator("[data-folder='knowledge']").getByTestId("file-menu-button").click();
+  await expect(page.getByTestId("rename")).toBeDisabled();
+  await expect(page.getByTestId("new-folder")).toBeDisabled();
+  await expect(page.getByTestId("new-folder")).toContainText("New folders go under files/");
+
+  // A generated file is read-only, so Delete is off with the reason the document view gives.
+  await panel.locator("[data-file='knowledge/index.md']").getByTestId("file-menu-button").click();
+  await expect(page.getByTestId("delete")).toBeDisabled();
+  await expect(page.getByTestId("delete")).toContainText("generated from the maps");
+
+  // Under files/ the two creates are on, which is what makes the disabled cases above mean
+  // something — and Delete is off on `files` itself, because it is one of the folders the app keeps.
+  await expand(panel, "files");
+  await panel.locator("[data-folder='files']").getByTestId("file-menu-button").click();
+  await expect(page.getByTestId("new-file")).toBeEnabled();
+  await expect(page.getByTestId("new-folder")).toBeEnabled();
+  await expect(page.getByTestId("delete")).toBeDisabled();
+  await expect(page.getByTestId("delete")).toContainText("folders the app itself keeps");
+
+  // A file under it has both, which is the row the panel's operations are actually for.
+  await page.getByTestId("new-file").click();
+  await page.getByTestId("name-input").fill("b2-menu.txt");
   await page.getByTestId("name-input").press("Enter");
-  await expect(page.getByTestId("name-error")).toContainText("cannot be renamed");
+  await expect(panel.locator("[data-file='files/b2-menu.txt']")).toBeVisible();
+  await panel.locator("[data-file='files/b2-menu.txt']").getByTestId("file-menu-button").click();
+  await expect(page.getByTestId("rename")).toBeEnabled();
+  await expect(page.getByTestId("delete")).toBeEnabled();
+
+  // The menu is display. The route refuses the same rename to a request that never saw a menu.
+  const answer = await page.request.post("/api/files/op", {
+    data: { op: "rename", path: NOTE, name: "b2-renamed.md" },
+  });
+  expect(answer.status()).toBe(403);
+  expect(await answer.text()).toContain("A note cannot be renamed here");
   expect(read(NOTE)).toContain("The first line.");
 });
 

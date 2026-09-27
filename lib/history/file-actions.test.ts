@@ -13,6 +13,7 @@ const checkout = await createCheckout("file-actions");
 
 const { runBatch } = await import("./batch.ts");
 const { addFile, deleteAction, folderAction, renameAction } = await import("./file-actions.ts");
+const { folderPolicy } = await import("./write-policy.ts");
 const { undoBatch } = await import("./undo.ts");
 
 type ActionSpec = import("./batch.ts").ActionSpec;
@@ -50,6 +51,14 @@ describe("New folder", () => {
 });
 
 describe("Rename", () => {
+  // The menu disables this one now (Decision 105), and the builder is what makes that display rather
+  // than the rule: the sentence is `folderPolicy`'s, so both sides say the same thing or this fails.
+  it("refuses a folder, with the sentence the menu shows for it", async () => {
+    await run(folderAction("files/holiday"));
+    await expect(run(renameAction("files/holiday", "trip"))).rejects.toThrow(folderPolicy("files/holiday").rename);
+    expect(existsSync(abs("files/holiday"))).toBe(true);
+  });
+
   it("moves a map only the generated index links to, regenerates the index, and undoes both byte for byte", async () => {
     expect(await readFile(abs("knowledge/index.md"), "utf8")).toContain(MAP);
     const index = await sha("knowledge/index.md");

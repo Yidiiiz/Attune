@@ -18,9 +18,17 @@
 // "If nothing links" is checked against the link index when the rename runs, not here: this module
 // is pure and knows only the path.
 //
+// **`rowPolicy` is the same table read for a tree row**, so the Files panel's `⋯` can disable what
+// will not work and show the reason instead of offering it and refusing afterwards (Decision 105).
+// It is not a second set of rules: every answer it gives comes from `policyFor` or `folderPolicy`
+// below, and the two entries that ask about a file that does not exist yet — New file, New folder —
+// ask about the path such a file would have, which is the same question the builder answers when the
+// name arrives. The view still decides only what to *show*; the builder decides what is allowed.
+//
 // Failure behavior: none. Every answer is either null (allowed) or the sentence the refusal shows.
 
 import { credentialPath, credentialRefusal } from "../security/credential-paths.ts";
+import type { TreeNode } from "../store/files.ts";
 
 export type DocKind = "task" | "note" | "map" | "collection" | "profile" | "session" | "file" | "readonly";
 
@@ -89,19 +97,23 @@ export function commitPrefixFor(rel: string): "task" | "knowledge" | "file" {
   return rel.startsWith("tasks/") ? "task" : rel.startsWith("knowledge/") ? "knowledge" : "file";
 }
 
-/** Folders the app may create or delete: under `files/` both; under `knowledge/notes/`, create only. */
-export function folderPolicy(rel: string): { create: string | null; remove: string | null } {
+/**
+ * Folders the app may create or delete: under `files/` both; under `knowledge/notes/`, create only.
+ * No folder is renamed, which is one rule and lives here rather than in the builder that throws it.
+ */
+export function folderPolicy(rel: string): { create: string | null; rename: string; remove: string | null } {
+  const rename = "A folder is not renamed here; rename the files in it, or the folder in a file manager.";
   const credential = credentialPath(rel);
   if (credential) {
     const why = credentialRefusal(rel, credential);
-    return { create: why, remove: why };
+    return { create: why, rename, remove: why };
   }
-  if (/^files\/.+/.test(rel)) return { create: null, remove: null };
+  if (/^files\/.+/.test(rel)) return { create: null, rename, remove: null };
   if (/^knowledge\/notes\/.+/.test(rel)) {
-    return { create: null, remove: "A folder of notes is emptied one note at a time, so no note's map link is lost unseen." };
+    return { create: null, rename, remove: "A folder of notes is emptied one note at a time, so no note's map link is lost unseen." };
   }
   const why = `New folders go under files/ or knowledge/notes/; ${rel} is not one of those.`;
-  return { create: why, remove: `${rel} is one of the folders the app itself keeps, so it is not deleted here.` };
+  return { create: why, rename, remove: `${rel} is one of the folders the app itself keeps, so it is not deleted here.` };
 }
 
 /** Why `name` cannot be one file or folder name, or null: one segment, no leading dot, nothing credential-shaped. */
@@ -127,4 +139,52 @@ export function renameTarget(from: string, name: string): string | null {
     return `${from} has to keep its ${ext(from) || "missing"} extension; only the part before it can change.`;
   }
   return null;
+}
+
+/** What a row of the Files tree may offer. Null is allowed; a string is the reason it is not. */
+export interface RowPolicy {
+  rename: string | null;
+  remove: string | null;
+  /** Folders only: the two things that can be made inside one. */
+  newFile: string | null;
+  newFolder: string | null;
+}
+
+/**
+ * The name a create is asked about before one has been typed. Every rule above is keyed on the
+ * folder and the extension and none of them on the name itself, so the answer for this name is the
+ * answer for any name the panel would accept — and `nameProblem` checks the real one when it arrives.
+ */
+const A_NEW_FILE = "a-new-file.md";
+const A_NEW_FOLDER = "a-new-folder";
+
+/** The four menu entries for one tree row, each answered by the table the builder enforces. */
+export function rowPolicy(rel: string, isFolder: boolean): RowPolicy {
+  if (isFolder) {
+    const folder = folderPolicy(rel);
+    return {
+      rename: folder.rename,
+      remove: folder.remove,
+      // `text` does not reach rename or remove for any path, and a new file's is decided by the
+      // builder from its bytes; markdown is what the panel's New file makes.
+      newFile: policyFor(`${rel}/${A_NEW_FILE}`, { text: true }).create,
+      newFolder: folderPolicy(`${rel}/${A_NEW_FOLDER}`).create,
+    };
+  }
+  const policy = policyFor(rel, { text: true });
+  const beside = `${rel} is a file; New file and New folder are offered on the folder it is in.`;
+  return { rename: policy.rename, remove: policy.remove, newFile: beside, newFolder: beside };
+}
+
+/** Every row of a tree, by path, for a route to hand the panel in one answer. */
+export function rowPolicies(nodes: TreeNode[]): Record<string, RowPolicy> {
+  const out: Record<string, RowPolicy> = {};
+  const walk = (list: TreeNode[]): void => {
+    for (const node of list) {
+      out[node.path] = rowPolicy(node.path, node.type === "dir");
+      if (node.children) walk(node.children);
+    }
+  };
+  walk(nodes);
+  return out;
 }

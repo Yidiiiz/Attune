@@ -100,7 +100,7 @@ export function renameAction(from: string, name: string): ActionSpec {
     apply: async (store: Store) => {
       const node = await nodeAt(store, from);
       if (node === null) throw new StoreError("not_found", `${from} does not exist.`);
-      if (node.type === "dir") throw new StoreError("invalid", "A folder is not renamed here; rename the files in it, or the folder in a file manager.");
+      if (node.type === "dir") throw new StoreError("invalid", folderPolicy(from).rename);
       const policy = policyFor(from, { text: looksLikeText(await store.files.readBinary(from)) });
       refuse(policy.rename);
       const bad = renameTarget(from, name);

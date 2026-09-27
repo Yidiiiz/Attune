@@ -6,6 +6,11 @@
 // menu says why there is nothing in it**, which §10.2 asks for by name — a tree row with no menu at
 // all would read as an oversight rather than as a rule.
 //
+// **An entry the write policy forbids for this row is disabled and says why** (Decision 105). The
+// reasons are the policy's own sentences, handed down with the tree by `/api/files/tree`, so this
+// component holds no rule of its own and cannot drift from the builder that enforces them. It is
+// display: the server refuses the same things whether or not a menu was ever drawn.
+//
 // "Reveal in graph" is not here. §10.2 lists it, Phase 8b builds the view, and Decision 96 already
 // settled what to do in the meantime: an affordance that opens nothing is a dead end drawn on
 // purpose, so it arrives with the thing it reveals.
@@ -19,18 +24,40 @@ import type { Asking, FileOps, OpKind } from "./useFileOps.ts";
 import chat from "@/components/chat/Chat.module.css";
 import styles from "./Browser.module.css";
 
+/**
+ * What `/api/files/tree` says this row may do, straight from `lib/history/write-policy.ts`. Null is
+ * allowed; a string is the policy's own reason it is not. Declared here because §3 keeps
+ * `lib/history/` closed to components, value and type alike: this is the wire shape, not the rules.
+ */
+export interface RowPolicy {
+  rename: string | null;
+  remove: string | null;
+  newFile: string | null;
+  newFolder: string | null;
+}
+
 export interface FileMenuProps {
   path: string;
   name: string;
   isFolder: boolean;
-  /** False outside `data/`, where the tree is read-only until Build mode exists (§10.2). */
-  writable: boolean;
+  /** The policy for this row, or null outside `data/`, where nothing is written at all (§10.2). */
+  policy: RowPolicy | null;
   open: boolean;
   onOpen: (open: boolean) => void;
   ops: FileOps;
 }
 
-export default function FileMenu({ path, name, isFolder, writable, open, onOpen, ops }: FileMenuProps) {
+/** One entry: the action when the policy allows it, the reason when it does not. */
+function Entry({ id, label, why, run }: { id: string; label: string; why: string | null; run: () => void }) {
+  return (
+    <button type="button" data-ui={id} disabled={why !== null} title={why ?? undefined} onClick={run}>
+      {label}
+      {why === null ? null : <span className={styles.menuWhy}>{why}</span>}
+    </button>
+  );
+}
+
+export default function FileMenu({ path, name, isFolder, policy, open, onOpen, ops }: FileMenuProps) {
   const choose = (kind: OpKind, initial = ""): void => {
     onOpen(false);
     ops.start(kind, path, initial);
@@ -49,7 +76,7 @@ export default function FileMenu({ path, name, isFolder, writable, open, onOpen,
       </button>
       {open ? (
         <div className={chat.rowMenu} data-ui="file-menu">
-          {!writable ? (
+          {policy === null ? (
             <p className={styles.menuNote} data-ui="file-menu-note">
               Outside data/ the tree is read-only.
             </p>
@@ -57,20 +84,12 @@ export default function FileMenu({ path, name, isFolder, writable, open, onOpen,
             <>
               {isFolder ? (
                 <>
-                  <button type="button" data-ui="new-file" onClick={() => choose("new-file")}>
-                    New file
-                  </button>
-                  <button type="button" data-ui="new-folder" onClick={() => choose("new-folder")}>
-                    New folder
-                  </button>
+                  <Entry id="new-file" label="New file" why={policy.newFile} run={() => choose("new-file")} />
+                  <Entry id="new-folder" label="New folder" why={policy.newFolder} run={() => choose("new-folder")} />
                 </>
               ) : null}
-              <button type="button" data-ui="rename" onClick={() => choose("rename", name)}>
-                Rename
-              </button>
-              <button type="button" data-ui="delete" onClick={() => void ops.remove(path)}>
-                Delete
-              </button>
+              <Entry id="rename" label="Rename" why={policy.rename} run={() => choose("rename", name)} />
+              <Entry id="delete" label="Delete" why={policy.remove} run={() => void ops.remove(path)} />
             </>
           )}
         </div>

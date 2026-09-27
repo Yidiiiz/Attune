@@ -361,6 +361,17 @@
   white-space: nowrap;
 }
 
+/* Why a menu entry is disabled, under its label: the policy's own sentence, so it wraps (Decision 105). */
+.menuWhy {
+  display: block;
+  max-width: 260px;
+  margin-top: 2px;
+  color: var(--fg-muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
 /* A task file's own controls, above its frontmatter (§10.2). */
 .taskBar {
   position: relative;

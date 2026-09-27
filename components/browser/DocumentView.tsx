@@ -3,15 +3,17 @@
 // table whose values are editable; the body rendered with its links opening in place, images and
 // checkboxes a click saves; and "Linked from".
 //
-// **Three things guard unsaved work**, all of them §10.2's sentence taken literally: `beforeunload`
-// for the tab, an in-app confirm on "← Back to chat", and the same confirm on the toggle — which
-// discards, because the preview is of the file rather than of the draft. That makes the warning
-// accurate rather than decorative; previewing the draft instead is the alternative, and it is
-// reported rather than taken, because it would leave §10.2 describing something the code does not do.
+// **The toggle shows the draft, so it warns about nothing** (§10.2). Preview renders what has been
+// typed, not what is on disk, which makes Edit and Preview two views of one draft rather than two
+// documents: switching between them cannot lose a character, so there is nothing to ask about. Only
+// leaving loses work, so only leaving warns — `beforeunload` for the tab, and an in-app confirm on
+// "← Back to chat".
 //
-// A checkbox is not clickable while there are unsaved changes: the click saves immediately, against
-// the file, so it would land on bytes the draft no longer matches and turn the next Save into a
-// conflict nobody caused. The reason says so, in the same place every other one does.
+// **What is inert while a draft is unsaved is everything that writes the file by another route** — a
+// checkbox, a task's Complete and `⋯` menu, and "Make this a task". Each writes immediately and
+// against the file, so it would land on bytes the draft no longer matches and turn the next Save
+// into a conflict nobody caused. One reason, `draftOpen`, is given to all of them, in the same place
+// every other refusal appears.
 //
 // What each file is shown as follows the read route's `kind`: markdown is rendered; other text is shown
 // as written; an image the raw route shows inline is shown; anything else is a download link
@@ -84,10 +86,15 @@ export default function DocumentView({ path, where, conversation }: DocumentView
   const editable = doc !== null && readOnly === null && (doc.body !== undefined || doc.text !== undefined);
   const name = path.split("/").pop() ?? path;
 
-  /** Every way out of a draft asks the same question, so the answer never depends on the route. */
+  /** Leaving is the one way a draft is lost, so it is the one thing that asks. */
   const mayLose = (): boolean => !draft.dirty || window.confirm(`Discard the unsaved changes to ${name}?`);
 
-  const boxesBlocked = draft.dirty ? "there are unsaved changes in this file" : readOnly;
+  /** Why a write through another route is refused while a draft is open, or null. */
+  const draftOpen = draft.dirty ? "there are unsaved changes in this file" : null;
+  const boxesBlocked = draftOpen ?? readOnly;
+  /** What is on screen is the draft where there is one, in both Edit and Preview. */
+  const shownBody = draft.draft?.body ?? doc?.body;
+  const shownText = draft.draft?.text ?? doc?.text;
 
   return (
     <section className={styles.document} data-ui="document" aria-label={path}>
@@ -119,11 +126,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
               className={styles.stripButton}
               data-ui="edit-toggle"
               aria-pressed={draft.editing}
-              onClick={() => {
-                if (draft.editing && !mayLose()) return;
-                if (draft.editing) draft.discard();
-                draft.setEditing(!draft.editing);
-              }}
+              onClick={() => draft.setEditing(!draft.editing)}
             >
               {draft.editing ? "Preview" : "Edit"}
             </button>
@@ -169,7 +172,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
         ) : doc.kind === "markdown" && doc.body !== undefined ? (
           <>
             {doc.policy.kind === "task" && typeof doc.fields?.id === "string" ? (
-              <TaskDocument id={doc.fields.id} onChanged={() => void reload()} />
+              <TaskDocument id={doc.fields.id} blocked={draftOpen} onChanged={() => void reload()} />
             ) : null}
             <FrontmatterTable
               fields={doc.fields ?? {}}
@@ -179,7 +182,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
             />
             {draft.editing ? (
               <DocumentEditor
-                value={draft.draft?.body ?? doc.body}
+                value={shownBody ?? doc.body}
                 onChange={draft.setBody}
                 onSave={() => void draft.save()}
                 busy={draft.saving}
@@ -188,7 +191,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
               <DocumentBody
                 path={path}
                 where={where}
-                body={doc.body}
+                body={shownBody ?? doc.body}
                 conversation={conversation}
                 readOnly={boxesBlocked}
                 busy={busy}
@@ -196,7 +199,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
               />
             )}
             {doc.policy.kind === "collection" && !draft.editing ? (
-              <CollectionItems path={path} body={doc.body} onChanged={() => void reload()} />
+              <CollectionItems path={path} body={shownBody ?? doc.body} blocked={draftOpen} onChanged={() => void reload()} />
             ) : null}
           </>
         ) : doc.kind === "markdown" || doc.kind === "text" ? (
@@ -208,14 +211,14 @@ export default function DocumentView({ path, where, conversation }: DocumentView
             ) : null}
             {draft.editing ? (
               <DocumentEditor
-                value={draft.draft?.text ?? doc.text ?? ""}
+                value={shownText ?? ""}
                 onChange={draft.setBody}
                 onSave={() => void draft.save()}
                 busy={draft.saving}
               />
             ) : (
               <pre className={styles.plain} data-ui="document-text">
-                {doc.text}
+                {shownText}
               </pre>
             )}
           </>

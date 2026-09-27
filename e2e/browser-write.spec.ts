@@ -165,36 +165,48 @@ test("a text file with no frontmatter is edited as itself", async ({ page }) => 
   await open(page, TEXT);
   await page.getByTestId("edit-toggle").click();
   await editor(page).fill("one\ntwo\nthree\n");
+
+  // Preview shows the draft here too — a file with no frontmatter is the other half of the view, and
+  // it would be the same defect twice if only the rendered half followed what was typed.
+  await page.getByTestId("edit-toggle").click();
+  await expect(page.getByTestId("document-text")).toHaveText("one\ntwo\nthree");
+  expect(read(TEXT)).toBe("one\ntwo\n");
+  await page.getByTestId("edit-toggle").click();
+
   await page.getByTestId("save").click();
   await expect(page.getByTestId("unsaved")).toHaveCount(0);
   expect(read(TEXT)).toBe("one\ntwo\nthree\n");
 });
 
-test("unsaved changes are guarded: the toggle asks, Back asks, and the boxes stop taking clicks", async ({ page }) => {
+test("the toggle previews the draft and asks nothing; only leaving asks, and the boxes stop taking clicks", async ({ page }) => {
   await open(page, NOTE);
   await page.getByTestId("edit-toggle").click();
   await editor(page).fill("Changed, and not saved.\n\n- [ ] a box\n");
 
-  // Cancelled: the toggle leaves the editor where it is, with every character still in it.
-  page.once("dialog", (dialog) => void dialog.dismiss());
+  // Preview, and no dialog: `page.once` is not armed, so a confirm here would hang the click.
+  await page.getByTestId("edit-toggle").click();
+  await expect(editor(page)).toHaveCount(0);
+  // What is rendered is the draft. The file still says what it said, and is not read to find out.
+  await expect(page.getByTestId("document-body")).toContainText("Changed, and not saved.");
+  await expect(page.getByTestId("document-body")).not.toContainText("The first line.");
+  expect(read(NOTE)).toContain("The first line.");
+  // Still dirty, and the draft's own box is inert: a click would save against the file.
+  await expect(page.getByTestId("unsaved")).toBeVisible();
+  await expect(page.getByTestId("checkbox-notice")).toContainText("unsaved changes");
+  await expect(page.locator("[data-ui='document-body'] input[type='checkbox']")).toBeDisabled();
+
+  // Back to Edit, again with no dialog, and every character is still there.
   await page.getByTestId("edit-toggle").click();
   await expect(editor(page)).toHaveValue("Changed, and not saved.\n\n- [ ] a box\n");
 
-  // Accepted: the draft goes, so the preview is the file and its box is clickable again.
-  page.once("dialog", (dialog) => void dialog.accept());
+  // Dirty from the table as well, which is editable in preview.
   await page.getByTestId("edit-toggle").click();
-  await expect(editor(page)).toHaveCount(0);
-  await expect(page.getByTestId("unsaved")).toHaveCount(0);
-  expect(read(NOTE)).toContain("The first line.");
-
-  // Dirty again, this time from the table, which is editable in preview.
   await page.locator("[data-field='title'] input").fill("B2 half-typed");
-  await expect(page.getByTestId("checkbox-notice")).toContainText("unsaved changes");
-  await expect(page.locator("[data-ui='document-body'] input[type='checkbox']")).toBeDisabled();
 
   page.once("dialog", (dialog) => void dialog.dismiss());
   await page.getByTestId("back-to-chat").click();
   await expect(page.getByTestId("document")).toBeVisible();
+  await expect(page.locator("[data-field='title'] input")).toHaveValue("B2 half-typed");
 
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByTestId("back-to-chat").click();
@@ -214,8 +226,20 @@ test("a save against a file edited elsewhere is refused, keeps the typed text, a
   // And the view re-reads it, which is what makes "the bytes the editor opened" different from "the
   // bytes last read". Without this step the check passes just as well against a version taken at
   // save time — and that version is the one that would overwrite the other program's edit silently.
+  //
+  // The re-read is waited for as the response itself. It used to be waited for as the other
+  // program's text appearing in the preview, and that stopped being true when the preview started
+  // showing the draft (Decision 102): what is on screen is now what was typed, whatever the file
+  // says. A response that arrives after the event was dispatched cannot be one that had already
+  // happened, which is what this wait has to rule out (AGENTS.md Conventions).
+  const reread = page.waitForResponse(
+    (answer) => answer.url().includes("/api/files/read") && answer.url().includes(encodeURIComponent(NOTE)),
+  );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.getByTestId("document-body")).toContainText("What the other program wrote.");
+  await reread;
+  // The draft is still what is shown, which is the point of it: the typed title is not overwritten
+  // by the re-read, and neither is the body it was started from.
+  await expect(page.getByTestId("document-body")).toContainText("The first line.");
 
   await page.getByTestId("save").click();
   await expect(page.getByTestId("save-refused")).toContainText("changed on disk");
@@ -398,7 +422,14 @@ test("a collection's items become tasks from the row list under the preview", as
   await expect(row.getByTestId("already-a-task")).toBeVisible();
   expect(read(LIST)).toMatch(/- \[ \] Dune — the 2021 one first → \[\[t_\d{8}_[0-9a-f]{4}\]\]/);
   expect(read(LIST)).toContain("tasks:");
-  await expect(page.locator("[data-item='arrival']").getByTestId("make-task")).toBeVisible();
+  const arrival = page.locator("[data-item='arrival']").getByTestId("make-task");
+  await expect(arrival).toBeVisible();
+
+  // A promote writes the item's own line, so it is inert while a draft of this file is unsaved — the
+  // same rule as the checkbox, reachable here because the preview now shows the draft (Decision 102).
+  await page.locator("[data-field='title'] input").fill("B2 list, half-renamed");
+  await expect(page.getByTestId("items-blocked")).toContainText("unsaved changes");
+  await expect(arrival).toBeDisabled();
 });
 
 test("a task's document view completes it, and the menu is Today's", async ({ page, request }) => {
@@ -422,6 +453,15 @@ test("a task's document view completes it, and the menu is Today's", async ({ pa
   await page.getByTestId("task-bar").getByRole("button", { name: /^Actions for/ }).click();
   await expect(page.getByRole("menuitem", { name: "Duplicate" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Ask about this" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // Every one of these rewrites the file the editor is holding, so an unsaved draft puts them out of
+  // reach with the reason — the menu button included, which is what closes the whole menu off.
+  await page.getByTestId("edit-toggle").click();
+  await editor(page).fill("A body nobody saved.\n");
+  await expect(page.getByTestId("task-blocked")).toContainText("unsaved changes");
+  await expect(page.getByTestId("task-complete")).toBeDisabled();
+  await expect(page.getByTestId("task-bar").getByRole("button", { name: /^Actions for/ })).toBeDisabled();
 });
 
 test("clicking a task's title on Today opens it in the document view", async ({ page, request }) => {

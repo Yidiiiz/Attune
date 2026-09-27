@@ -14,6 +14,10 @@
 // There is no "Ask about this" here, and that is deliberate rather than missing: the composer docked
 // under the document is the Ask, and it already carries this file as its context (§16.9).
 //
+// **Every control here is inert while the document has an unsaved draft.** Each of them rewrites the
+// very file the editor is holding, so a Complete pressed over a draft would make the next Save a
+// conflict nobody caused — the same reason a checkbox stops taking clicks (§10.2).
+//
 // Failure behavior: a task that cannot be read leaves the document itself readable and says why in
 // this strip alone. Every write routes its own failure per §13.5 — the menu's to a toast, the edit
 // form's inline — and the document is re-read after each one, so what is on screen is the file.
@@ -31,11 +35,13 @@ import styles from "./Browser.module.css";
 export interface TaskDocumentProps {
   /** The task's id, from the document's own frontmatter. */
   id: string;
+  /** Why these controls are inert, or null: an unsaved draft of this very file (§10.2). */
+  blocked: string | null;
   /** Re-read the document, because every one of these writes rewrites the file under it. */
   onChanged: () => void;
 }
 
-export default function TaskDocument({ id, onChanged }: TaskDocumentProps) {
+export default function TaskDocument({ id, blocked, onChanged }: TaskDocumentProps) {
   const [task, setTask] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +75,7 @@ export default function TaskDocument({ id, onChanged }: TaskDocumentProps) {
   }
   if (task === null) return null;
 
-  const busy = actions.busyId === task.id;
+  const busy = actions.busyId === task.id || blocked !== null;
   const done = task.status === "done";
 
   if (actions.editingId === task.id) {
@@ -95,6 +101,11 @@ export default function TaskDocument({ id, onChanged }: TaskDocumentProps) {
         {task.status}
       </span>
       <TaskMenu task={task} actions={actions} busy={busy} />
+      {blocked === null ? null : (
+        <span className={styles.taskStatus} data-ui="task-blocked">
+          not while {blocked}
+        </span>
+      )}
     </div>
   );
 }

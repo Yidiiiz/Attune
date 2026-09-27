@@ -11,6 +11,11 @@
 // An item that has been promoted says so and offers nothing: the link is in the file, and a second
 // task for one item is the broken backlink Decision 47's review refused.
 //
+// **The rows are the draft's items while there is a draft**, because they are read from the body the
+// page is showing — and every button is inert while that draft is unsaved, for the reason a checkbox
+// is: a promote appends to the item's own line, so it would land on bytes the draft no longer
+// matches and turn the next Save into a conflict nobody caused (§10.2).
+//
 // Failure behavior: promote is fired from a row with no text of its own to keep, so a refusal names
 // the item in a toast (§13.5) and nothing on screen changes until the document has been re-read.
 
@@ -25,11 +30,13 @@ export interface CollectionItemsProps {
   /** The collection's path, whose file name is the slug the promote route takes. */
   path: string;
   body: string;
+  /** Why the buttons are inert, or null: an unsaved draft of this very file (§10.2). */
+  blocked: string | null;
   /** Re-read the document: a promote appends ` → [[t_…]]` to the item's own line. */
   onChanged: () => void;
 }
 
-export default function CollectionItems({ path, body, onChanged }: CollectionItemsProps) {
+export default function CollectionItems({ path, body, blocked, onChanged }: CollectionItemsProps) {
   const [busy, setBusy] = useState<string | null>(null);
   const items = itemsOf(body);
   if (items.length === 0) return null;
@@ -50,6 +57,11 @@ export default function CollectionItems({ path, body, onChanged }: CollectionIte
   return (
     <section className={styles.items} data-ui="collection-items" aria-label="Items">
       <h2 className={styles.itemsTitle}>Items</h2>
+      {blocked === null ? null : (
+        <p className={styles.panelNote} role="note" data-ui="items-blocked">
+          An item cannot become a task while {blocked}: save or discard first.
+        </p>
+      )}
       <ul className={styles.itemList}>
         {items.map((item) => (
           <li key={item.slug} data-item={item.slug}>
@@ -59,7 +71,8 @@ export default function CollectionItems({ path, body, onChanged }: CollectionIte
                 type="button"
                 className={styles.stripButton}
                 data-ui="make-task"
-                disabled={busy !== null}
+                disabled={busy !== null || blocked !== null}
+                title={blocked === null ? undefined : `Not while ${blocked}.`}
                 onClick={() => void promote(item.slug, item.title)}
               >
                 Make this a task

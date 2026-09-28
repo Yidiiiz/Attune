@@ -2463,6 +2463,75 @@ I'd expect a third form. Silence isn't a clean result; I want the number.
 PHASE 8 CLOSES on 1, 2, the u tally, and the load diagnosis reported. Then
 we plan 8b in a fresh session."
 
+### Approved conditions — publishing, the four items before a remote (rule 9)
+
+Verbatim from the owner's instruction, given after the read-only readiness audit was reported. It
+is recorded here rather than only in the chat because items 3, 4 and the README are a build, and
+items 1 and 2 are reports whose conclusions later work rests on. Rule 9's own case: an approval
+that lives in a chat does not survive a compaction.
+
+"Publishing. Four things before any remote exists, in this order.
+
+1. DATA/ IN HISTORY — THE REAL BLOCKER
+Your publish tree drops data/, which fixes the working tree and not the commits.
+Every batch in this project commits under data/, so the history contains my
+notes, my chats, my tasks and my profile files.
+
+Report before doing anything: how many commits touch data/, what file types
+appear there across history, and specifically whether knowledge/profile/ and
+chats/ appear. I want to know what would have gone public.
+
+Then the plan, not the execution: git filter-repo removing data/ from all
+history, keeping everything else. I want the commit history kept — it's the
+most substantial thing in this repo. Tell me what it costs and what could go
+wrong, and include how you'd verify afterward that no data/ blob remains
+reachable anywhere, including unreachable objects.
+
+If you think a fresh single-commit repo is the safer call, say so and why.
+
+2. THE FOUR BLOCKERS
+Restate them. My paste of your report cut off before the list and I've only seen
+the three findings you added beyond them.
+
+3. LICENSE
+Add MIT, with my name. Note in the report if any dependency's license conflicts.
+
+4. TEST DETERMINISM BEFORE PUBLISHING
+Do the serial/parallel change from the Phase 8 close prompt now rather than at
+8b: twelve Checkout.reset() files serial, the rest parallel, split config with
+singleFork if vitest 3.2 needs it, plus the retries on reset()'s rm and cp.
+Anyone who clones this will run npm test, and 727-738/740 at random is a worse
+first impression than a slower suite. 741/741 in 111s is the number I want a
+stranger to see.
+
+The check:ui runtime item can wait for 8b.
+
+ALSO
+- README: assume the reader has thirty seconds and no context. What it is, what
+  it does, how to run it, what's built and what isn't. Phases 7 and 8 closed,
+  8b not started — say so plainly rather than implying it's finished.
+- sk-ant count of 8: all prose, including §15's own sentence describing the
+  pattern it tells you to count. Amend §15 so the check excludes prose in docs,
+  and record it next to amendment r as the same self-scan problem in a second
+  place.
+- The ten data/ literals: leave them. You're right that it's a call for whoever
+  writes the command, and editing code to satisfy a check that doesn't exist is
+  the wrong order.
+- The regex-vs-tokenizer correction: noted, and correcting your own number
+  unprompted is the right instinct.
+
+Nothing gets pushed and no remote gets created until I've seen 1 and 2."
+
+**Items 1 and 2 were reported before anything was built, and item 1's answer changed the shape of
+its own question.** The numbers are in the narrative section below. The part worth carrying here is
+the finding that made the plan different from the one the instruction assumed: **this repository
+cannot have `data/` removed from its own history**, because the app commits `data/` on every batch
+(§8), undo restores a `{ git: true }` snapshot by checking out a recorded commit (§7.2), and
+Decision 47 backfills commit hashes into `actions.jsonl`. A rewrite in place breaks undo. So
+publication is a *derived* repository — filter-repo run against a clone, this repo never opened for
+writing — and §12's `publish`, which makes a single orphan commit, is not an implementation of that
+but an alternative to it. Choosing to keep the history is a redesign of §12, not a task under it.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

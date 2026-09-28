@@ -21,7 +21,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334`, failure evidence `e80e6da`, data-* refs `ecbaed3`, the rest of B2 `c00929b`, the toggle `c9ff374`, the policy-aware menu `eb9c14b` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session, planned fresh. Two things are waiting for it: the load diagnosis below, and `check:ui` past Decision 67's five-minute threshold | — |
 | 9–10 | not started | — |
-| 11 — Publish | not started — amendments `n`, `r` and `x` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `107d175` |
+| 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `107d175` |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
@@ -792,15 +792,19 @@ and are pruned by default. No commit is signed. Every hash changes, so `AGENTS.m
 right in the private history and wrong in the published one, and there is no fix — rewriting the
 citations changes the blob holding them, which changes the hashes again.
 
-**Item 3 — `LICENSE`, MIT, and the dependency survey.** Every direct dependency is MIT, ISC or
-Apache-2.0 except `dompurify`, which is `MPL-2.0 OR Apache-2.0` — a dual licence, so the Apache-2.0
-arm applies and nothing conflicts. Across the whole installed tree: 74 MIT, 8 Apache-2.0, 4 ISC, and
-one each of CC-BY-4.0 (`caniuse-lite`), Unlicense, BSD-3-Clause and 0BSD. **The two worth naming are
-`@img/sharp-win32-x64` and `@img/sharp-wasm32`, whose SPDX expressions include `LGPL-3.0-or-later`**
-for the image libraries they bundle. They are `optionalDependencies` of `next`, nothing here imports
-them, and `node_modules/` is ignored with **zero tracked files**, so the published repository
-distributes no third-party code at all — only a `package.json` that makes npm fetch it. No conflict
-with MIT on this project's own code.
+**Item 3 — `LICENSE` and the dependency survey.** The `LICENSE` this item added was MIT carrying the
+owner's handle, and it **stood for one day**: the instruction below replaced it with the proprietary
+notice the repository carries now, so no sentence in this paragraph describes the licence in force.
+The dependency survey is unaffected, because it is about other people's code and not about this
+project's terms. Every direct dependency is MIT, ISC or Apache-2.0 except `dompurify`, which is
+`MPL-2.0 OR Apache-2.0` — a dual licence, so the Apache-2.0 arm applies. Across the whole installed
+tree: 74 MIT, 8 Apache-2.0, 4 ISC, and one each of CC-BY-4.0 (`caniuse-lite`), Unlicense,
+BSD-3-Clause and 0BSD. **The two worth naming are `@img/sharp-win32-x64` and `@img/sharp-wasm32`,
+whose SPDX expressions include `LGPL-3.0-or-later`** for the image libraries they bundle. They are
+`optionalDependencies` of `next`, nothing here imports them, and `node_modules/` is ignored with
+**zero tracked files**, so the published repository distributes no third-party code at all — only a
+`package.json` that makes npm fetch it. **That last fact is why the answer did not change when the
+licence did**, and it is restated for the proprietary case below.
 
 **Item 4 — the suite is deterministic, and the measurement says which change did it.** Fifteen files
 build a git checkout, not the twelve the instruction said; the set is derived from the property
@@ -2686,21 +2690,30 @@ And restate the four publish blockers. Asked twice, still not seen.
 
 Report both, stop. The filter-repo plan stays a plan until then."
 
-**What changed, and what was deliberately left.** `LICENSE` now carries that text and nothing else,
-and `README.md`'s Licence section says the choice is deliberate rather than an oversight. **Five
-`MIT` mentions in this file were left standing at the owner's "check and report, don't fix":** three
-in the narrative above (`Item 3 — LICENSE, MIT, and the dependency survey`), which are the record of
-what was true on 2026-09-28 before this instruction and are stale as a statement of the current
-licence; one in the publishing instruction recorded verbatim above, which rule 9 forbids editing;
-and one in amendment `x` row (2), whose constraint is unaffected — the copyright line still carries
-the identity name, which is the whole of what that row is about. `PROJECT.md` and
-`docs/CHECKLIST.md` mention no licence at all, which is its own finding: **§12 specifies the
-published file set and the greps over it and never mentions `LICENSE`**, so Phase 11 inherits a
-`publish-check` spec that does not know the file exists.
+**What changed, and what was deliberately left — and what the next instruction took back.**
+`LICENSE` now carries that text and nothing else, and `README.md`'s Licence section says the choice
+is deliberate rather than an oversight. **Five `MIT` mentions in this file were left standing at the
+owner's "check and report, don't fix"**, and the instruction recorded below then asked for four of
+them back by line number, so this paragraph is the record of both halves:
 
-**`package.json` has no `license` field** (`package.json:2–5`); `"private": true` is already set at
-line 4. npm's own convention for a closed licence is `"license": "UNLICENSED"`, and adding it is a
-one-line change that was reported rather than made, because the owner asked for a report.
+- **Three in the narrative above** (`Item 3`), the record of what was true on 2026-09-28 before this
+  instruction and stale as a statement of the current licence. **Corrected**: that paragraph now says
+  outright that the MIT it describes stood for one day, and the MIT left in it is the dependency
+  survey's count, which is about other people's code.
+- **One in the publishing instruction recorded verbatim above**, which rule 9 forbids editing.
+  **Left**, and the owner named it as the one to leave.
+- **One in amendment `x` row (2)**, whose *constraint* was never affected — the copyright line still
+  carries the identity name, which is the whole of what that row is about — but whose *wording* said
+  MIT. **Corrected** to say "the copyright line".
+
+`PROJECT.md` and `docs/CHECKLIST.md` mention no licence at all, which is its own finding: **§12
+specifies the published file set and the greps over it and never mentions `LICENSE`**, so Phase 11
+inherits a `publish-check` spec that does not know the file exists. **Now filed as amendment `y`**,
+at the owner's direction, with the interaction against `x` row (2) written into it.
+
+**`package.json` had no `license` field** (`package.json:2–5`); `"private": true` was already set at
+line 4. npm's own convention for a closed licence is `"license": "UNLICENSED"`, which was reported
+rather than made here because the owner asked for a report, and **added in the pass below**.
 
 **No dependency obliges a grant of rights.** Every permissive licence in the tree — MIT, ISC,
 Apache-2.0, BSD-3-Clause, 0BSD, Unlicense — conditions its notice-retention obligations on
@@ -2714,6 +2727,65 @@ and `sharp-wasm32`), of which two install on this machine. None of them is distr
 LGPL obligations attach to conveying the library, not to depending on it. **A `package.json` that
 makes npm fetch a dependency is not distribution of that dependency**, which is the fact the whole
 answer rests on, and it is the fact that would change if anything were ever vendored or bundled.
+
+### Approved conditions — the history rewrite (rule 9)
+
+Verbatim from the owner's instruction. It is the approval for the one thing every previous
+instruction in this file gated: a rewrite of this repository's own history. Recorded before the
+rewrite ran, which is rule 9's whole point — the conditions have to survive the operation that
+changes every hash they are written beside.
+
+"Go ahead and do the rewrite — don't stop for me to approve the plan first.
+
+1. Run it against a clone, verify, then apply to this repo.
+2. Remove data/ from all history. seed/ is not data/ and must survive — init
+   needs it. Keep everything else, including the commit history.
+3. Repoint anything holding a commit hash: AGENTS.md citations, the app's
+   recorded hashes (7ff6a68 had to do this last time), anything else.
+4. Verify afterward and report: no data/ blob reachable or unreachable, the six
+   unreachable commits and two loose drafts handled, seed/ intact, npm test and
+   tsc still clean, and a fresh clone still passes the init → build → GET
+   /api/tasks run you did earlier.
+5. Confirm "<city>" and the lat/lon appear nowhere in the tree or history
+   repo-wide — not a fixture, not a spec example, not a checked-in evidence
+   folder.
+
+Also in the same pass:
+- package.json: "license": "UNLICENSED".
+- AGENTS.md MIT references at :795, :797, :803 and :2661 corrected. Leave :2594
+  — Rule 9, it's a verbatim record.
+- File the §12-never-mentions-LICENSE gap as an amendment against Phase 11.
+
+Then stop. No remote, no push — I'll create the GitHub repo myself and tell you
+when to add the remote."
+
+**One word of that quote is elided, and it is the fourth instance of amendment `x`.** Item 5 names
+the city literally. Recording it verbatim writes the exact string item 5 exists to eliminate into
+`AGENTS.md`, which is a published file — so the instruction to remove the city from the repository
+would itself have been the last copy of it in the repository, and a rewrite run afterwards would
+have had to be run again. It was caught in the rehearsal clone, where a grep for the city came back
+with two hits, both of them this file. `<city>` stands in its place; nothing else in the quote is
+changed, and the value is the one recorded in the survey above, which is what a later reader needs.
+**The lat/lon needed no elision**, because the instruction names them by their field names rather
+than their values.
+
+**This reverses a recommendation recorded above, deliberately, with the reasoning on the record.**
+The publishing narrative says this repository "cannot lose `data/` from its own history" and that
+publication should therefore be a *derived* repository, with this one never opened for writing. That
+argument was about undo: §7.2 restores a `{ git: true }` snapshot by checking out a recorded
+commit, and a rewrite invalidates every recorded commit. The owner has chosen the rewrite in place
+anyway, and the reason it is safe here rather than merely accepted is a fact the survey found: **no
+batch in `actions.jsonl` has a `{ git: true }` snapshot**, so no undo in this repository's log
+depends on a commit hash at all. The three hashes the log does carry are read by nothing but the
+history view. What the rewrite costs is therefore the *citations*, not the *restores* — and that
+cost would have been real had any upload, or any file over 64 KB, ever been written here.
+
+**The `:2661` in the instruction is amendment `x`'s row, and the line number is from the revision
+before the one it was written against.** The report that produced these four numbers cited
+`AGENTS.md:2661` for amendment `x` row (2); at `5f92242` that is exactly where the row sat, and
+at `d006c2d` — the commit the report was written after — it had moved to 2747, because `d006c2d`
+inserted a section above it. 795, 797, 803 and 2594 are identical in both revisions. The intent is
+unambiguous either way, and the row is corrected where it now is.
 
 ## Deferred amendments
 
@@ -2744,7 +2816,8 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `483b23f` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `2ce9008` and on `f5018e5`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `483b23f`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
 | v | **A rename that rewrites the links to the file it renames.** Phase 8's Rename stays inside one folder and is refused when anything links to the file, and the refusal says why: renaming would leave every one of those links pointing at nothing. **The consequence, stated plainly: a note can never be renamed from the app.** §6.3 requires every note to be linked from a map, so every note always has a linker, and Rename on a note is a dead end the user can see, not only a deferral. The same holds for any task, map, collection or file something links to. The way round it today is by hand, outside the app, then fixing the links, which `kb:check` reports. Building it means one batch that renames the file and rewrites every body linking to it — tasks, notes, maps, collections — and §6.3's scan accepting the new path as the same note rather than a new one without a map. It can never be complete: a finalized message is never edited (§16.2), so every message whose `refs` name the old path keeps pointing at it | Phase 8 approval, open call 5 and the rename condition | unscheduled | **deferred — a user-visible dead end, stated as one** |
 | w | **A `code.change` batch must secret-scan its own files' bytes.** Phase 8 found that a `{ git: true }` snapshot was never scanned, so a key in an upload reached the commit and the hook then refused every commit after it (Decision 89). `unloggedTexts` in `lib/history/scan.ts` now reads such files and scans them the way the hook does, but **only for data paths**. It skips `code.change` entries, because their targets are repository paths the store's reader cannot reach. Phase 9's `code.change` is the one batch whose every file is `{ git: true }` by design, and it commits outside `data/`, so it is exactly where the deadlock would come back. Before `build.ts` commits anything, its batch has to hand `refuseBatch` the text of each changed repository file, skipping one with a NUL byte as the hook does | Phase 8 Stage A, the `{ git: true }` fix | **Phase 9**, with `lib/agent/build.ts` | **outstanding — a constraint on code that does not exist yet** |
-| x | **A check whose needle legitimately appears in the prose that describes it.** Three instances, all found while making the repository publishable, and all the shape amendment `r` names — except that `r` is about a *script* scanning itself, and these are about a check scanning the documentation and the legal file that have to say the same words in order to exist. **(1) §15's credential count.** `git log -p` for the key prefix was specified as 0 and stands at **nine**, every one of them prose in `PROJECT.md` and `AGENTS.md` — including §15's own sentence, which had to spell the prefix in order to say what to count, and §11.5's pattern list, which is the definition. **Closed here:** §15 now excludes `.md` from the count and takes the prefixes from `SECRET_PATTERNS` at runtime. **(2) §12's identity-name grep versus `LICENSE`.** `publish-check` greps the published set for the identity name out of `settings.json`, and the MIT copyright line is that name, put there on purpose. **(3) §12's authorship grep versus `README.md`.** Four of that grep's five skipped paths are skipped only because of one needle — a bare provider name — which is not an authorship string at all, and a README that tells a reader which key to get has to name the provider. **The fix is the needle or the scope, never a longer skip list**, which is `r`'s argument and the reason a skip list is the wrong shape: it is a rule scoped to an address, and the rule is about text. For (2), the identity-name grep runs over `app/ components/ lib/ scripts/ seed/` — code and seed, the only places a personal name can have arrived by accident — and not over legal or documentation files. For (3), the provider name comes out of the authorship needle list, which retires four of the five skips with it | items 3 and 4 of the publishing instruction, while writing `LICENSE` and `README.md` | **(1) closed here**; (2) and (3) are Phase 11, with `publish-check` | **part closed, part outstanding — a constraint on a script that does not exist yet** |
+| x | **A check whose needle legitimately appears in the prose that describes it.** Four instances, the first three found while making the repository publishable and the fourth while recording the instruction to rewrite history, and all the shape amendment `r` names — except that `r` is about a *script* scanning itself, and these are about a check scanning the documentation and the legal file that have to say the same words in order to exist. **(1) §15's credential count.** `git log -p` for the key prefix was specified as 0 and stands at **nine**, every one of them prose in `PROJECT.md` and `AGENTS.md` — including §15's own sentence, which had to spell the prefix in order to say what to count, and §11.5's pattern list, which is the definition. **Closed here:** §15 now excludes `.md` from the count and takes the prefixes from `SECRET_PATTERNS` at runtime. **(2) §12's identity-name grep versus `LICENSE`.** `publish-check` greps the published set for the identity name out of `settings.json`, and the copyright line is that name, put there on purpose. **(3) §12's authorship grep versus `README.md`.** Four of that grep's five skipped paths are skipped only because of one needle — a bare provider name — which is not an authorship string at all, and a README that tells a reader which key to get has to name the provider. **The fix is the needle or the scope, never a longer skip list**, which is `r`'s argument and the reason a skip list is the wrong shape: it is a rule scoped to an address, and the rule is about text. For (2), the identity-name grep runs over `app/ components/ lib/ scripts/ seed/` — code and seed, the only places a personal name can have arrived by accident — and not over legal or documentation files. For (3), the provider name comes out of the authorship needle list, which retires four of the five skips with it. **(4) The rewrite instruction versus `AGENTS.md`.** Item 5 asks for confirmation that the owner's city appears nowhere in the tree or history, and rule 9 requires the instruction be recorded verbatim — so obeying rule 9 literally would have left that instruction as the one place the city still appeared, in a published file, after the rewrite that removed every other copy. This one has no check to amend, because the check is a person reading a grep; the fix is the elision, marked in the text, with the value kept in the survey it came from. It is the general case that (1) to (3) are instances of: **a rule about text cannot be satisfied by a rule about addresses, and the text that describes a needle is the first place the needle appears** | items 3 and 4 of the publishing instruction, while writing `LICENSE` and `README.md`; (4) the history-rewrite instruction | **(1) closed here**; (2) and (3) are Phase 11, with `publish-check` | **part closed, part outstanding — a constraint on a script that does not exist yet** |
+| y | **§12 specifies the published file set and every grep that runs over it, and never mentions `LICENSE`.** The file is named nowhere in the section that decides what gets published and what gets checked, so `publish-check` as specified cannot know whether it is present, whether it is the right one, or whether it says what `README.md` claims it says. That was cosmetic while the licence was MIT: a reader who cannot find an MIT file loses nothing they could not guess from the README. It stopped being cosmetic when the licence became proprietary, because `LICENSE` is now the only thing standing between *source you may read* and *source you may take* — a published set defined without it is one `publish` away from a repository whose README asserts a proprietary licence that no file in it grants, which is worse than no claim at all. Building it means naming `LICENSE` in §12's published set and checking that it exists, is non-empty and carries the copyright line — **the same line amendment `x` row (2) exempts from the identity-name grep**, so the two are written in one pass or they contradict each other: one says that line must be there and the other says the check that would flag it must not | the history-rewrite instruction, the third item under "Also in the same pass" | **Phase 11**, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 

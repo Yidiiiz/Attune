@@ -78,4 +78,6 @@ npm run kb:check # orphaned notes, broken links, size caps
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+**Proprietary — see [LICENSE](LICENSE), and that is deliberate rather than an oversight:** the
+source is here to be read, and any reuse needs written permission first. GitHub shows a repository
+with no open licence as unlicensed, which is this sentence said less clearly.

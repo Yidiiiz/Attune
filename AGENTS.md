@@ -2629,6 +2629,92 @@ publication is a *derived* repository — filter-repo run against a clone, this 
 writing — and §12's `publish`, which makes a single orphan commit, is not an implementation of that
 but an alternative to it. Choosing to keep the history is a redesign of §12, not a task under it.
 
+### Approved conditions — the licence becomes proprietary (rule 9)
+
+Verbatim from the owner's instruction, given after the four items were reported. Recorded here
+because it replaces a decision this file already records as made: the narrative above says the
+project is MIT, and a reader who finds only that paragraph would be reading a licence the repository
+no longer carries.
+
+"Two changes, then the survey. Still no remote, no push.
+
+1. LICENSE — REPLACE MIT WITH PROPRIETARY
+Replace LICENSE with exactly this:
+
+Copyright (c) 2026 Yidiiiz
+All rights reserved.
+
+This software and associated documentation files are proprietary. Except as
+permitted by applicable law, no part may be used, copied, reproduced, modified,
+distributed, sublicensed, or sold without the prior written permission of the
+copyright holder. No license or other rights are granted by this notice.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Keep the handle, not my legal name — your reasoning on new exposure stands.
+
+Check and report, don't fix:
+- Anything in package.json, the README or the docs that still says MIT.
+- Whether package.json has a "license" field, and what it should be
+  ("UNLICENSED", per npm's own convention, plus "private": true if it isn't set).
+- Whether any dependency's license obliges me to grant rights I'm now not
+  granting. The earlier survey said MIT/ISC/Apache-2.0 with one dual MPL and the
+  sharp LGPL optionals — restate whether proprietary distribution changes
+  anything, given the repo ships package.json and no third-party code.
+
+2. README — ONE LINE
+Say the license is deliberate: readable source, reuse by permission only.
+GitHub will show this repo as unlicensed and I don't want that read as an
+oversight.
+
+3. THE DATA/ SURVEY — THE THING I'M ACTUALLY WAITING ON
+Asked twice, still not seen. Nothing touches history until I've read it:
+- How many commits touch data/.
+- What file types appear under data/ across history.
+- Whether knowledge/profile/ and chats/ appear, explicitly.
+- Anything in there that would need rotating rather than deleting — keys,
+  tokens, .env content. Same reasoning as the home-folder repo: I need to know
+  what was exposed, not just that it's gone afterward.
+
+And restate the four publish blockers. Asked twice, still not seen.
+
+Report both, stop. The filter-repo plan stays a plan until then."
+
+**What changed, and what was deliberately left.** `LICENSE` now carries that text and nothing else,
+and `README.md`'s Licence section says the choice is deliberate rather than an oversight. **Five
+`MIT` mentions in this file were left standing at the owner's "check and report, don't fix":** three
+in the narrative above (`Item 3 — LICENSE, MIT, and the dependency survey`), which are the record of
+what was true on 2026-09-28 before this instruction and are stale as a statement of the current
+licence; one in the publishing instruction recorded verbatim above, which rule 9 forbids editing;
+and one in amendment `x` row (2), whose constraint is unaffected — the copyright line still carries
+the identity name, which is the whole of what that row is about. `PROJECT.md` and
+`docs/CHECKLIST.md` mention no licence at all, which is its own finding: **§12 specifies the
+published file set and the greps over it and never mentions `LICENSE`**, so Phase 11 inherits a
+`publish-check` spec that does not know the file exists.
+
+**`package.json` has no `license` field** (`package.json:2–5`); `"private": true` is already set at
+line 4. npm's own convention for a closed licence is `"license": "UNLICENSED"`, and adding it is a
+one-line change that was reported rather than made, because the owner asked for a report.
+
+**No dependency obliges a grant of rights.** Every permissive licence in the tree — MIT, ISC,
+Apache-2.0, BSD-3-Clause, 0BSD, Unlicense — conditions its notice-retention obligations on
+*distributing the licensed code*, and this repository distributes none: `node_modules/` is
+`.gitignore`d and the only licence-shaped file among the 357 tracked is `LICENSE` itself. The two
+reciprocal ones are scoped the same way and are not reached. `dompurify` is `MPL-2.0 OR Apache-2.0`,
+so the Apache arm applies and the MPL's file-level copyleft never engages. The `@img/sharp-*`
+packages that carry `LGPL-3.0-or-later` are `optionalDependencies` of `next` that nobody here
+imports; fourteen of them appear in `package-lock.json` (ten `sharp-libvips-*`, three `sharp-win32-*`
+and `sharp-wasm32`), of which two install on this machine. None of them is distributed either, and
+LGPL obligations attach to conveying the library, not to depending on it. **A `package.json` that
+makes npm fetch a dependency is not distribution of that dependency**, which is the fact the whole
+answer rests on, and it is the fact that would change if anything were ever vendored or bundled.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

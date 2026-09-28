@@ -54,6 +54,34 @@ export const REGISTRY_KEY = "tempRegistry";
 export const REMOVE = { recursive: true, force: true, maxRetries: 30, retryDelay: 200 } as const;
 
 /**
+ * The codes a directory under contention answers with, which are also the ones Node's own `rm`
+ * retries when it is asked to. `cp` takes no such option, so `retrying` gives it the same treatment.
+ */
+const CONTENDED = new Set(["EBUSY", "EEXIST", "EMFILE", "ENOTEMPTY", "EPERM"]);
+
+/**
+ * Run `attempt` again while it fails with a contention code, on `REMOVE`'s backoff.
+ *
+ * `reset()` runs once per test in fifteen files, and each run removes a `data/` tree and copies
+ * `seed/` over it. The Phase 8 close measured what happens when twenty forks do that at once: the
+ * remove fails with `ENOTEMPTY` because something still holds a handle inside the tree, and the copy
+ * that follows fails with `EEXIST` because the remove did not finish. Serialising those files
+ * (`lib/testing/git-files.ts`) is what removes the contention; this is what keeps a single stray
+ * handle — a scanner, an indexer — from failing a test on a machine that has one.
+ */
+async function retrying<T>(attempt: () => Promise<T>): Promise<T> {
+  for (let tries = 0; ; tries += 1) {
+    try {
+      return await attempt();
+    } catch (err) {
+      const { code } = err as NodeJS.ErrnoException;
+      if (tries >= REMOVE.maxRetries || code === undefined || !CONTENDED.has(code)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, REMOVE.retryDelay));
+    }
+  }
+}
+
+/**
  * A fresh directory under the system temp directory, removed when the calling test file finishes
  * — after its own `afterAll` hooks, since vitest runs those in reverse order and this one is
  * registered first, at the top of the file.
@@ -109,8 +137,8 @@ export async function createCheckout(name: string): Promise<Checkout> {
   await assertOwnRepository();
 
   const reset: Checkout["reset"] = async ({ from = "seed", setup } = {}) => {
-    await rm(data, { recursive: true, force: true });
-    if (from === "seed") await cp(path.join(ROOT, "seed"), data, { recursive: true });
+    await rm(data, REMOVE);
+    if (from === "seed") await retrying(() => cp(path.join(ROOT, "seed"), data, { recursive: true }));
     else await mkdir(data, { recursive: true });
     await setup?.();
     git("add", "-A");

@@ -19,7 +19,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 6b — Chat: branching, sidebar, annotations | complete | `c9bcd9a`, `e6a31a3`, `2ec1119`, `e3284e3`, `538152d`, `664526b`, `cee5aa3`, `02111ca`, `1de00b9`, `45c2b78`, `27655f4`, `b373be0`, `2d09a71`, `a4f5a4e` |
 | 7 — Knowledge base and collections | complete | splits `1191dab`, streaming-commit fix `f3dbdc6`, git containment `30f43ad`, ownership `9e0c387`, Stage A `d002555`, validation fix `d5ff378`, Stage B `72dfbd4`, toast fix `0ffeb36`, close `f4bdd61`, `69de221` |
 | 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `df8b710`, Step 0 `38509df`, `{ git: true }` fix `a17ca6a`, Stage A `6115d7a`, review items `066d562`, B1 `56feb52`, B2 first commit `48079c3`, failure evidence `1f3fa64`, data-* refs `877b5d0`, the rest of B2 `b8466ef`, the toggle `dac2c60`, the policy-aware menu `e2ad28b` |
-| 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session, planned fresh. Two things are waiting for it: the load diagnosis below, and `check:ui` past Decision 67's five-minute threshold | — |
+| 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session, planned fresh. Three things are waiting for it: **amendment `z`'s blob store, which is its first task and not a design session**, the load diagnosis below, and `check:ui` past Decision 67's five-minute threshold | — |
 | 9–10 | not started | — |
 | 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `b09a7a2` |
 
@@ -2866,6 +2866,145 @@ including the city, and it is under `%TEMP%` — which is the same neighbourhood
 checkouts Phase 8 had to survey. It is kept only until the owner is satisfied, and then it should
 go.
 
+### Approved conditions — `data/` stops being committed (rule 9)
+
+Verbatim from the owner's instruction, which chose option X out of the five reported for the re-add
+problem. Recorded here because it changes the sentence §8 was built around, and because two of its
+items — the unowned backup and the deferred blob store — are obligations with no code to carry them.
+
+**Read as input to every check this repository runs before being written down, which is what the
+rule 9 trap above now requires.** It names `data/`, `settings.json`, `about-me.md` and two line
+numbers of `README.md`, and no credential, identity value or location. Nothing is elided.
+
+"Take X, with the pre-push hook over it. Your analysis is right and I'd missed
+the two things that settle it:
+
+- The leak isn't settings.json, it's about-me.md and everything after it.
+  Options 1 and 2 would have produced a repo that looks handled and isn't,
+  which is worse than one that doesn't.
+- README:31-32 already promises X. A public document that's been false for the
+  project's life and was accidentally made true four commits ago is not a design
+  question any more. §8 is the thing that disagrees with the spec, not X.
+
+Also right that adding the remote is what starts the 30-second timer. Good that
+you dated it.
+
+ORDER — THE FIRST THREE BEFORE THE REMOTE
+1. .gitignore gains data/.
+2. willCommit false when every target is under data/, routing to the existing
+   commit: false path. No empty commits, no commitFailed, no lie in the log.
+3. Pre-push hook refusing any tracked data/ path. Pre-push, not pre-commit —
+   your correction is right and a pre-commit hook would refuse every batch.
+   Fail-closed is the correct failure here.
+
+Then stop. That makes the remote safe and I'll send push instructions.
+
+4. The blob store follows after the push, not before. Zero {git: true}
+   snapshots have ever existed here and applySnapshot throws a named error
+   rather than failing quietly, so the gap is real but not reachable. Don't let
+   it sit long though — file it with a named owner so it doesn't become
+   permanent.
+
+CHECKS I WANT ON 1-3
+- A batch writing only data/ paths: no commit, log entry reads noCommit rather
+  than pending or failed, and schedulePush never fires.
+- A batch writing a repository path still commits and still pushes.
+- A mixed batch — confirm what it does today and whether it can happen. If a
+  batch can span data/ and a code path, say what X makes of it rather than
+  leaving it to the predicate.
+- The hook: mutate it off and prove a tracked data/ path would have gone out.
+- git status clean after running the app through a few batches.
+
+NOTED, NOT ASKED FOR
+X ends off-machine backup for data/, since §8's push was it. I accept that and
+I'll sort backup separately — don't build one. Put a line in AGENTS.md saying
+the backup story is now unowned, so it's on the record rather than in my head.
+
+Y stays available if I ever want data/ versioned, and it needs publish and a
+§12 redesign. Record that, don't build it.
+
+BACKUP AND REMOTE
+scratchpad/rw/backup/ stays until I confirm the push. Still no remote — I'll
+say when."
+
+**What the predicate actually is, because "every target is under `data/`" is true by
+construction.** A batch's `targets` are `data/`-relative in every builder there is — `runBatch` maps
+them to `data/<rel>` itself — so the only thing that can put a path outside `data/` into a batch is
+`BatchSpec.repoPaths`, which §7.1 says only `code.change` sets. The predicate is therefore
+`spec.commit !== false && repoPaths.length > 0` (`lib/history/batch.ts:259`), and it is **structural
+rather than a question put to git**: a checkout whose `.gitignore` lost the line does not quietly
+start committing `data/` again, and the suite exercises the same path the app takes. That second
+half is why `lib/testing/checkout.ts` and `e2e/setup.ts` now write `data/` into their sandboxes'
+`.gitignore` too — a sandbox that tracked `data/` would let every check about committing pass
+against a world the app does not run in, which is the convention above about a check measuring the
+run's history rather than its own action.
+
+**The mixed batch, which is the owner's third check.** It cannot happen today: nothing in the app
+sets `repoPaths`, so the one intended caller is Phase 9's `code.change` — and such a batch is
+*always* mixed, because it writes the action log under `data/` as well as the repository files it
+changed. So it is unreachable now and unavoidable then, and what X makes of it is pinned rather than
+left to the predicate (`lib/history/batch-commit.test.ts`, "commits only the repository half"): the
+repository paths are committed and pushed, the data half is logged, mirrored and undoable and stays
+outside git, and the entries carry the commit hash all the same, because the batch did commit — just
+not the part that would have leaked.
+
+**A measurement that corrected the report this instruction answers.** That report said a `data/`
+batch under a blanket ignore "stages nothing, so `commitPaths` returns null" and lands in
+`markCommitFailed`. The outcome was right and the mechanism was a guess. Run against a sandbox:
+`git add -A -- data` with `data/` ignored **exits 1** with "The following paths are ignored by one of
+your .gitignore files", and the commit after it fails outright on `pathspec 'data' did not match any
+file(s) known to git` — which `commitPaths` does not match against its "nothing to commit" regex, so
+it throws. A hard failure on every batch, not an empty commit and not a null. Nothing rests on the
+difference, because the predicate means git is never asked; it is recorded because the argument for
+item 1 was made on a mechanism nobody had run.
+
+**Two things the change forced that the instruction does not name.**
+
+- **The repository assertion moved off `willCommit`.** `runBatch` asserted the checkout is its own
+  repository only for a batch that would commit; with X that is almost no batch, and the invariant
+  that caught 232 commits landing in a repository in the home folder would have stopped running
+  altogether. It is now keyed to §8's streaming bypass instead — every batch that is not
+  `commit: false` asserts, whether or not it reaches git (`lib/history/batch.ts:266`). One
+  `rev-parse` per batch, and `lib/history/repository.test.ts` keeps both halves.
+- **`commitExclusions` still runs for every such batch**, though what it returns now protects
+  nothing: it is also what ends a finalizing batch's hold on its own turn's files, and that lifetime
+  must not start depending on whether the batch happened to have a repository path
+  (`lib/history/batch.ts:329`, `lib/history/in-flight.ts`).
+
+**Three things it costs, each named rather than discovered later.**
+
+1. **`data/` is not version-controlled, and has no off-machine backup, because §8's push was it.**
+   Accepted by the owner, who is arranging backup separately and asked for no code. **The backup
+   story for `data/` is unowned. Nothing in this repository provides one, nothing is scheduled to,
+   and no phase has it.** That sentence is here so it is on the record rather than in one person's
+   head, which is the whole reason this file exists.
+2. **A data path's `{ git: true }` snapshot is unrestorable** until the blob store lands — filed as
+   amendment `z` below, with the reachability corrected: it is not merely historical.
+3. **Half of `in-flight.ts` is retired and half is load-bearing.** The exclusion itself protected
+   `data/` commits, and there are none, so the defect `f3dbdc6` fixed cannot recur by construction.
+   What still does something is the **ownership** refusal — a batch that does not own a held path is
+   refused before anything is logged, which stops two writers on one message file — and the
+   registry's **lifetime**, where a stale entry would sit in the bookkeeping for the life of the
+   process. `lib/history/batch-commit.test.ts` says which is which. **And `compareStaged`'s *staged
+   but not declared* arm is gone with it**, because that arm only ever existed for the `data`
+   directory pathspec: `repoPaths` is a list of named files, so the staged set is a subset of the
+   declared set by construction. Over-staging was the recoverable direction and it is no longer
+   available for repository paths — which is a constraint on Phase 9 rather than a loss now, and it
+   sits beside amendment `w`.
+
+**What it does not cost, checked rather than assumed.** Undo of `{ content }`, `{ fields }` and
+`null` snapshots, which is every snapshot in this repository's log and all but three tests in the
+suite. Rollback of a `{ git: true }` snapshot, which reads bytes held in memory and never git
+(Decision 89). The write-path secret scan, which reads the file on disk. Five real batches were run
+through `runBatch` against a throwaway checkout and one was undone from the CLI; `data/` came back.
+
+**Y, recorded and not built, at the owner's direction.** Keeping `data/` version-controlled needs
+the *other* end-state: the history that contains it never meets the remote, which is what §12
+already half-specifies with its separate `public` remote. It needs `publish` built and §12
+redesigned to preserve history rather than force-push a single orphan commit — which `AGENTS.md`
+already records as a redesign of §12 rather than a task under it. Nothing here forecloses it; the
+`.gitignore` line and the predicate are the only two things that would have to come out.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.
@@ -2897,8 +3036,11 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | w | **A `code.change` batch must secret-scan its own files' bytes.** Phase 8 found that a `{ git: true }` snapshot was never scanned, so a key in an upload reached the commit and the hook then refused every commit after it (Decision 89). `unloggedTexts` in `lib/history/scan.ts` now reads such files and scans them the way the hook does, but **only for data paths**. It skips `code.change` entries, because their targets are repository paths the store's reader cannot reach. Phase 9's `code.change` is the one batch whose every file is `{ git: true }` by design, and it commits outside `data/`, so it is exactly where the deadlock would come back. Before `build.ts` commits anything, its batch has to hand `refuseBatch` the text of each changed repository file, skipping one with a NUL byte as the hook does | Phase 8 Stage A, the `{ git: true }` fix | **Phase 9**, with `lib/agent/build.ts` | **outstanding — a constraint on code that does not exist yet** |
 | x | **A check whose needle legitimately appears in the prose that describes it.** Four instances, the first three found while making the repository publishable and the fourth while recording the instruction to rewrite history, and all the shape amendment `r` names — except that `r` is about a *script* scanning itself, and these are about a check scanning the documentation and the legal file that have to say the same words in order to exist. **(1) §15's credential count.** `git log -p` for the key prefix was specified as 0 and stands at **nine**, every one of them prose in `PROJECT.md` and `AGENTS.md` — including §15's own sentence, which had to spell the prefix in order to say what to count, and §11.5's pattern list, which is the definition. **Closed here:** §15 now excludes `.md` from the count and takes the prefixes from `SECRET_PATTERNS` at runtime. **(2) §12's identity-name grep versus `LICENSE`.** `publish-check` greps the published set for the identity name out of `settings.json`, and the copyright line is that name, put there on purpose. **(3) §12's authorship grep versus `README.md`.** Four of that grep's five skipped paths are skipped only because of one needle — a bare provider name — which is not an authorship string at all, and a README that tells a reader which key to get has to name the provider. **The fix is the needle or the scope, never a longer skip list**, which is `r`'s argument and the reason a skip list is the wrong shape: it is a rule scoped to an address, and the rule is about text. For (2), the identity-name grep runs over `app/ components/ lib/ scripts/ seed/` — code and seed, the only places a personal name can have arrived by accident — and not over legal or documentation files. For (3), the provider name comes out of the authorship needle list, which retires four of the five skips with it. **(4) The rewrite instruction versus `AGENTS.md`.** Item 5 asks for confirmation that the owner's city appears nowhere in the tree or history, and rule 9 requires the instruction be recorded verbatim — so obeying rule 9 literally would have left that instruction as the one place the city still appeared, in a published file, after the rewrite that removed every other copy. This one has no check to amend, because the check is a person reading a grep; the fix is the elision, marked in the text, with the value kept in the survey it came from. It is the general case that (1) to (3) are instances of: **a rule about text cannot be satisfied by a rule about addresses, and the text that describes a needle is the first place the needle appears** | items 3 and 4 of the publishing instruction, while writing `LICENSE` and `README.md`; (4) the history-rewrite instruction | **(1) closed here**; (2) and (3) are Phase 11, with `publish-check` | **part closed, part outstanding — a constraint on a script that does not exist yet** |
 | y | **§12 specifies the published file set and every grep that runs over it, and never mentions `LICENSE`.** The file is named nowhere in the section that decides what gets published and what gets checked, so `publish-check` as specified cannot know whether it is present, whether it is the right one, or whether it says what `README.md` claims it says. That was cosmetic while the licence was MIT: a reader who cannot find an MIT file loses nothing they could not guess from the README. It stopped being cosmetic when the licence became proprietary, because `LICENSE` is now the only thing standing between *source you may read* and *source you may take* — a published set defined without it is one `publish` away from a repository whose README asserts a proprietary licence that no file in it grants, which is worse than no claim at all. Building it means naming `LICENSE` in §12's published set and checking that it exists, is non-empty and carries the copyright line — **the same line amendment `x` row (2) exempts from the identity-name grep**, so the two are written in one pass or they contradict each other: one says that line must be there and the other says the check that would flag it must not | the history-rewrite instruction, the third item under "Also in the same pass" | **Phase 11**, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
+| z | **A data path's `{ git: true }` snapshot has nothing left to restore from.** `snapshotContent` returns `{ git: true }` for any binary at any size and any text file over 64 KB (`lib/history/batch.ts:123`), and undo of one checks those bytes out of the batch's own commit — but `data/` is ignored now and a data batch has no commit, so `applySnapshot` throws naming the file and the reason, and `resolveCommit` will not substitute HEAD because the entry says `noCommit` rather than pending. **Reachable rather than historical**, which corrects the premise it was deferred on: zero such snapshots exist in this repository's log, and the first image anyone attaches makes one. Undoing the *upload* is unaffected, because its `before` is `null`; what is broken is **undo of a delete of an upload, and undo of an edit to a text file over 64 KB**, both of which refuse loudly and leave the file as it was. The fix is a content-addressed blob store under `data/history/blobs/`, inside the ignored tree: `snapshotContent` already holds those bytes in memory so a refused batch can roll back (Decision 89), so it persists them there instead of returning `{ git: true }`, and `applySnapshot`'s git branch narrows to `code.change`'s repository paths — the one case where reading them from a commit is honest, because those paths really are committed. Four checks are skipped against it and turn back on with it | the X instruction, item 4 | **Phase 8b, as its first task, before the graph** — the shape Phase 7's three splits had | **outstanding — given a phase at the owner's direction, so it does not become permanent** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
+
+`z` is the newest and is the table used as the owner asked: a gap with a phase against it, so that "after the push" does not turn into never.
 
 `q` is the odd one out and is filed here anyway: it is not a deferral of work anyone chose to skip but a **gap between the spec and the code found by checking a claim rather than assuming it**, and this table is the only place in the repo where "known, unbuilt, with the reason" is a recognised state. It is written down so that the next person to read Decision 20 does not take the second half of it for something that runs.
 
@@ -2985,6 +3127,7 @@ npm run check:ui       # Playwright, chromium, dev server + throwaway checkout �
 npm run history -- list [--n 20] | undo <batch> [--force] | redo <batch>
 npm run kb:check       # orphans, broken links, size caps — exit 1 violations, 2 could not evaluate (Decision 73)
 npm run check-secrets  # also runs from .githooks/pre-commit
+npm run check-push     # refuses a push carrying a data/ path; also runs from .githooks/pre-push
 npm run check-lib-imports   # every lib/**/*.ts must load in plain Node (PROJECT.md Decision 44)
 npm run publish-check  # readiness for the public remote
 ```

@@ -2851,13 +2851,20 @@ into a temp directory: `npm ci`, `npm run init` (21 files from `seed/`), `npm ru
 start`, and `GET /api/tasks` answered **200** with the four §10.1 sections empty, with `/` and
 `/calendar` also 200. The clone carries no `data/` at all, which is what a stranger gets.
 
-**The one consequence that is now live, and is the owner's call.** `data/` is **untracked**. §8 has
-the app commit `data/` on every batch, so **the next batch the app runs re-adds it to history** — as
-a new file, in a new commit, with the identity name and the city in `settings.json` again. Nothing
-here prevents that, because the two obvious preventions each break something the owner asked to
-keep: adding `data/` to `.gitignore` makes every app commit empty and `git add -A -- data` a no-op,
-and it also removes the tracking that §7.2's `{ git: true }` restore needs. So the repository is
-clean right now and does not stay clean by itself. This is stated rather than decided.
+**The one consequence left live here, since closed — and one of the two things this paragraph said
+about it was wrong.** `data/` was **untracked** rather than ignored, and §8 had the app commit it on
+every batch, so **the next batch would have re-added it to history**: a new file, a new commit, the
+identity name and the city in `settings.json` again. That much was right, and it was reported rather
+than decided. But the mechanism given here for the obvious prevention was a guess, and it is wrong.
+**Measured afterwards against a sandbox: adding `data/` to `.gitignore` does not make `git add -A --
+data` a no-op and does not make the commit empty.** The add **exits 1** — "The following paths are
+ignored by one of your .gitignore files" — and the commit after it dies on `pathspec 'data' did not
+match any file(s) known to git`, which `commitPaths` does not recognise as "nothing to commit", so it
+throws and the batch is logged `meta.commitFailed`. A hard failure on every batch, which is worse
+than what was predicted, not better. The second half of the sentence was right: ignoring `data/` does
+take away the tracking §7.2's `{ git: true }` restore needs, and that is amendment `z`. **Closed by
+the X decision recorded below**, which ignores `data/` and stops `runBatch` reaching git at all for a
+batch with nothing outside it — so nothing is ever staged, and nothing is there to fail.
 
 **The rollback.** filter-repo expires the reflog, so this repository holds no route back. A full
 copy of the pre-rewrite `.git`, the pre-rewrite `data/`, and the sha256 manifest are in the session

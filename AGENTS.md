@@ -3005,6 +3005,96 @@ redesigned to preserve history rather than force-push a single orphan commit —
 already records as a redesign of §12 rather than a task under it. Nothing here forecloses it; the
 `.gitignore` line and the predicate are the only two things that would have to come out.
 
+### What was built and checked
+
+Three `code:` changes and this record, with the spec corrected ahead of them per rule 1.
+
+- **`.gitignore` gains `data/`**, with the reason in a comment beside it, because a bare entry
+  invites removal and removing it does not put the data back in history — it makes every
+  `code.change` commit fail on the pathspec instead.
+- **`lib/history/batch.ts`** — the predicate above, `paths` reduced to `repoPaths` alone, and the
+  two forced moves. `LOG_PATH` and `MIRROR_PATH` left the imports with the `declared` set that only
+  the `data` pathspec needed.
+- **`.githooks/pre-push` → `scripts/check-push.mjs`**, also `npm run check-push [rev]` so the same
+  question can be asked by hand before a remote exists. `core.hooksPath` is already `.githooks` on
+  every machine (`scripts/postinstall.mjs`), so the hook installs itself. It asks **two** questions
+  per ref, because neither answers the other: `ls-tree` on the tip finds a tree carrying `data/`
+  however it got there, and `git log --name-only` over the range finds a commit that adds, changes or
+  removes one where the tip is clean. A remote oid of all zeroes — a ref the remote does not have,
+  which is exactly a new GitHub repository — makes the range the whole history. It reports paths and
+  never contents, and it is the second line rather than the first: `git push --no-verify` skips every
+  hook, which is git's design and not a hole to plug here.
+
+**Checked, and how.** `tsc` clean. `check-lib-imports`: 69 modules load. `npm test` **743 passed,
+4 skipped, 63 files** — 747 against the 744 before, which is five new checks, four skipped, and one
+old check the change merged away. The full **`check:ui` exits 0: 76 checks decide the result**, the
+same 76 as at the Phase 8 close, in 3.4 minutes rather than the 5.8 and 7.0 measured there; the
+known flake passed and is reported apart (evidence `check-ui-evidence/2026-09-28T08-29-37-648Z`,
+0 failing checks). **Amendment `u`: one run, no failure, no new form.**
+
+One browser check changed with the rule rather than around it. `e2e/branching.spec.ts` asserted
+§15's "three branches produce one commit per finalized turn" out of `git log`; the unit of a
+finished turn is the batch and always was (§16.3 says "one `chat.message` batch"), so it now counts
+distinct `chat.message` batches in the action log **and** asserts the commit count is zero. Both
+halves, because three batches alone would still pass if the writes had also gone into a commit.
+
+The owner's five, each with what answered it:
+
+| Check | Result |
+|---|---|
+| a data-only batch: no commit, `noCommit` not pending or failed, no push | `batch-commit.test.ts`, "makes no commit and schedules no push" — `commit` null, `rev-list` 0, `schedulePush` spied and never called, every entry `meta.noCommit`, no `commitSubject`, no `commitFailed`, `nullReason` `never` |
+| a repository path still commits and still pushes | same file, "commits a repository path and schedules the push" — one commit containing only that path, `schedulePush` called once with 30000, entries carry `commitSubject` and no `noCommit` |
+| the mixed batch | same file, "commits only the repository half" — and the answer to *whether it can happen* is above |
+| the hook mutated off | three mutations, below |
+| `git status` clean after a few batches | five batches through `runBatch` against a throwaway checkout (`ATTUNE_REPO_DIR`): all five `commit: null`, `git status --porcelain` **0 lines**, **0** commits made, **0** paths tracked under `data/`, all five still `[undo]` in `npm run history -- list`, and an undo of the settings batch put `theme` back with the tree still clean |
+
+**The hook, proven by breaking it.** A clone of this repository with a local bare remote, the three
+new files committed into it, and two `data/` files forced into a commit with `git add -f` — which is
+the only way one can arrive now, and which `check-secrets` passes, since it looks for credentials and
+not for paths. Against that commit:
+
+| Run | Result |
+|---|---|
+| baseline, hook active | **refused**, naming both paths and where each was found; remote unchanged at 0 paths under `data/` |
+| **mutation A** — `.githooks/pre-push` removed | **pushed**; the remote then held both files, and `git show main:data/settings/settings.json` read them back |
+| **mutation B** — hook kept, `offendingPaths` returned early | **pushed**, printing "1 ref clean"; the remote held both files. The check is load-bearing, not just the hook file |
+| **mutation C** — nothing mutated, `git push --no-verify` | **pushed**; the documented limit, demonstrated rather than asserted |
+| baseline again | **refused**; remote back to 0 paths under `data/` and both files restored byte for byte |
+
+Before all of that, the hook let a clean push through: 126 commits and 337 files onto the bare
+remote, **0** of them under `data/`.
+
+**Four checks are skipped, not deleted**, and a fifth pins what happens instead. The three
+`{ git: true }` undo/redo cases in `lib/history/git-snapshot.test.ts` and the upload-delete round
+trip in `lib/history/file-actions.test.ts` need a commit holding bytes that no longer reaches one.
+The new case beside them asserts the refusal by name — `applySnapshot` throws "can only be restored
+from its commit", `resolveCommit` will not invent one from HEAD because the entry says `noCommit`
+rather than pending — so the gap is **checked** rather than only described, and the four turn back on
+with amendment `z`. The other four cases in that file still pass and are the ones that matter most:
+the secret scan still reads a `{ git: true }` target's bytes off disk, and rollback still restores
+one from memory.
+
+**Two things reported and not fixed.**
+
+1. **Every batch the app makes now lists as `uncommitted`.** `scripts/history.mjs:40` renders
+   `batch.commit ?? "uncommitted"` and never consults `nullReason`, whose three states — `pending`,
+   `never`, `failed` — exist precisely to tell these apart (`lib/history/log.ts:78`). The word is not
+   wrong, but it reads as *not yet* when the answer is now *never, by design*, for every batch
+   forever rather than for the three historical nulls the owner accepted as a known imprecision. One
+   line, in a CLI, and outside the three items asked for.
+2. **The blob store gap is more reachable than the deferral assumed, and the correction is in the
+   owner's favour to know.** "Zero `{ git: true }` snapshots have ever existed here" is true of this
+   repository's log and says nothing about the app going forward: `snapshotContent` returns
+   `{ git: true }` for any binary at any size and any text file over 64 KB
+   (`lib/history/batch.ts:123`), so **the first image anyone attaches produces one**. Undoing the
+   *upload* is still fine — its `before` is `null`, a delete. What is broken is **undo of a delete of
+   an upload, and undo of an edit to a text file over 64 KB**: both throw, by name, with the file
+   left as it was. Nothing is lost silently and nothing is corrupted; a real operation refuses. That
+   is the argument for amendment `z` landing soon rather than for having done it now.
+
+**Not done, deliberately.** No remote, no push, no blob store. `scratchpad/rw/backup/` is untouched
+and stays until the owner confirms the push, at which point it is deleted and they are told.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

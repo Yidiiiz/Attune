@@ -37,7 +37,12 @@ async function list() {
     const { date, time } = splitLocalIso(batch.ts);
     const state = undoState(batches, batch.batch);
     const available = state.undoable ? "undo" : state.redoable ? "redo" : "-";
-    const commit = batch.commit ?? "uncommitted";
+    // `commitState` rather than a bare word for every null: `groupBatches` already worked out
+    // which of the three it is, and its own comment says it exists so a reader can be told
+    // instead of inferring it (`lib/history/log.ts`). Since `data/` stopped being committed that
+    // is not an edge case — every batch the app makes is `never`, and `uncommitted` read as
+    // *not yet* for all of them.
+    const commit = batch.commit ?? batch.commitState;
     console.log(
       `${batch.batch}  ${date} ${time}  ${batch.type.padEnd(14)} ${commit.padEnd(11)} [${available}] ${batch.summary}`,
     );

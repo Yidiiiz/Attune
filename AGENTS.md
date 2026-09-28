@@ -21,7 +21,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334`, failure evidence `e80e6da`, data-* refs `ecbaed3`, the rest of B2 `c00929b`, the toggle `c9ff374`, the policy-aware menu `eb9c14b` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session, planned fresh. Two things are waiting for it: the load diagnosis below, and `check:ui` past Decision 67's five-minute threshold | — |
 | 9–10 | not started | — |
-| 11 — Publish | not started — amendments `n` and `r` are constraints on `publish-check` and are binding before a line of it is written | — |
+| 11 — Publish | not started — amendments `n`, `r` and `x` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `107d175` |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
@@ -757,6 +757,103 @@ runs — 6.2 and 7.4 minutes of wall clock with the flake run after them — whi
 five-minute threshold Decision 67 named for itself. The rule there says to shard across workers — which needs a sandbox per
 worker first, because `fullyParallel: false` is there for the one data directory and one git
 repository — or to run by spec file. Not taken here; reported, because 8b adds a canvas spec to it.
+
+### Publishing, the four items before a remote — reported, and two of them built
+
+Out of phase and at the owner's direction: `LICENSE`, `README.md` and a deterministic test suite are
+Phase 11's by §17, and they landed now because a stranger cloning this repository meets them first.
+Nothing was pushed, no remote was created, and no history was rewritten. `LICENSE` was swept into the
+`code:` commit `107d175` by a `git add -A`, and that message does not mention it. Recorded rather
+than amended.
+
+**Item 1 — what is actually in history.** 120 commits, 117 carrying a `data/` tree, **six that ever
+change it**. 23 distinct paths, 25 distinct blobs, 18,662 bytes: twelve `.md`, one `.json`, one
+`.jsonl`, nine empty `.gitkeep`, no binaries and no uploads. `knowledge/profile/` is there in every
+commit since the skeleton and is **byte-identical to `seed/`** — the three templates, never written
+into. `chats/` is there as two `conversation.md` shells with an empty title, and **no `messages/`
+directory has ever existed in any tree**, so there is no conversation content in history at all.
+Fifteen of the 25 blobs are the seed unchanged.
+
+**The personal payload is three blobs**, found by searching every historical blob for the five values
+in `settings.json`: `data/settings/settings.json` @`3d047978`, and `data/history/actions.jsonl`
+@`a93224a4` and @`c84244a6`, where the log entry's `after` snapshot holds the whole file. They enter
+at `bcb7929` and sit in the tree of **38 reachable commits**. `action-history.md` carries the summary
+line and no values. `git fsck` finds six unreachable commits — all dropped stashes — and **all six
+carry the same two blobs**.
+
+**The finding that changed the plan: this repository cannot lose `data/` from its own history.** The
+app commits `data/` on every batch (§8), undo restores a `{ git: true }` snapshot by checking out a
+recorded commit (§7.2), and Decision 47 backfills commit hashes into `actions.jsonl`. A rewrite in
+place breaks undo. So publication is a **derived** repository — filter-repo run against a clone, this
+repo never opened for writing — and **§12's `publish`, which makes a single orphan commit, is not an
+implementation of that but an alternative to it.** Keeping the history is a redesign of §12, not a
+task under it. Filtering keeps **116 of 120 commits**: the four that touch only `data/` become empty
+and are pruned by default. No commit is signed. Every hash changes, so `AGENTS.md`'s citations are
+right in the private history and wrong in the published one, and there is no fix — rewriting the
+citations changes the blob holding them, which changes the hashes again.
+
+**Item 3 — `LICENSE`, MIT, and the dependency survey.** Every direct dependency is MIT, ISC or
+Apache-2.0 except `dompurify`, which is `MPL-2.0 OR Apache-2.0` — a dual licence, so the Apache-2.0
+arm applies and nothing conflicts. Across the whole installed tree: 74 MIT, 8 Apache-2.0, 4 ISC, and
+one each of CC-BY-4.0 (`caniuse-lite`), Unlicense, BSD-3-Clause and 0BSD. **The two worth naming are
+`@img/sharp-win32-x64` and `@img/sharp-wasm32`, whose SPDX expressions include `LGPL-3.0-or-later`**
+for the image libraries they bundle. They are `optionalDependencies` of `next`, nothing here imports
+them, and `node_modules/` is ignored with **zero tracked files**, so the published repository
+distributes no third-party code at all — only a `package.json` that makes npm fetch it. No conflict
+with MIT on this project's own code.
+
+**Item 4 — the suite is deterministic, and the measurement says which change did it.** Fifteen files
+build a git checkout, not the twelve the instruction said; the set is derived from the property
+(`lib/testing/git-files.ts`, with `git-files.test.ts` failing if a file calls `createCheckout` and is
+not named there). They run in one fork through `poolOptions.forks.singleFork`, because vitest 3.2
+puts `fileParallelism` in `NonProjectOptions` and it cannot be set for one project; the other
+forty-eight files stay parallel. `reset()`'s `rm` now uses the `REMOVE` constant and its `cp` goes
+through `retrying`, which repeats on `EBUSY`, `EEXIST`, `EMFILE`, `ENOTEMPTY` and `EPERM` — the codes
+Node's own `rm` retries when it is asked to.
+
+| Configuration | Machine | Result |
+|---|---|---|
+| before — one project, 20 forks | idle | **742/744 twice**, exit 1; 5 s timeouts in `auto-apply.test.ts` and `turn.test.ts` |
+| after | idle | **744/744 three times**, exit 0, **88–91 s** |
+| after, with `singleFork: false` | idle | 744/744 in 33 s — **the mutation did not kill** |
+| after, with `singleFork: false` | 10 competing disk processes | 743/744 — one 5 s timeout, `auto-apply.test.ts` |
+| after | the same 10 | 743/744 — one 5 s timeout, `sweep.test.ts` |
+
+**Three honest negatives in that table.** The `singleFork: false` mutation **passed on an idle
+machine**, so the two-project split alone accounts for part of the gain and today's runs do not
+isolate `singleFork` as the cause; what isolates the change as a whole is the first row, where the
+pre-change configuration fails twice on the same idle machine within minutes of the after rows.
+**Serialising does not make the suite immune to a saturated machine**: under ten competing processes
+both configurations still lose one test to the 5-second default. No timeout was raised, in the config
+or on any command line that counts. And **the filesystem-error class could not be reproduced today in
+either configuration** — both load runs show zero `ENOTEMPTY`, `EEXIST`, `EBUSY` or failing `git add`
+— so **the retries on `rm` and `cp` have no demonstration and are recorded as unproven.** They are
+the belt to serialisation's braces, put in because the Phase 8 close measured that class at length;
+nothing today shows them firing.
+
+**Mutations, each against a tree restored byte for byte.** Dropping `lib/history/sweep.test.ts` from
+the list fails the completeness test naming that file; adding `lib/store/chats.test.ts`, which builds
+no checkout, fails it naming that one. The name the scan looks for is assembled at runtime, for
+amendment `r`'s reason: this file is inside its own scan.
+
+**`README.md`, and the third thing it found.** Written for someone with thirty seconds and no
+context, and plain about the four holes — 8b's graph, 9's Build mode, 10's settings beyond the
+API-key section, and 11's publish machinery — with the phase numbers named as the order the work
+happened in rather than a roadmap. Writing it produced the third instance of **amendment `x`**:
+`README.md` has to name the provider to tell a reader which key to get, and a bare provider name is
+one of §12's four authorship needles. `LICENSE` produced the second — §12 greps the published set for
+the identity name, and the copyright line is that name on purpose. §15's credential count is the
+first and is **closed here**: it was **nine when it was measured, every one of them prose in `PROJECT.md` and
+`AGENTS.md`**, including §15's own sentence, which had to spell the prefix in order to say what to
+count.
+
+**Checked, and how.** `tsc` clean; `check-lib-imports` 69 modules; `npm test` 744/744 three times,
+with the temp-directory count unchanged across each run. `check:ui` was not re-run: nothing outside
+the test harness changed and no file it loads was touched.
+
+**Not done, deliberately.** No remote, no push, no history rewrite — the owner gated those on seeing
+items 1 and 2. `publish-check` and `publish` still do not exist, and the ten `data/` string literals
+were left alone at the owner's direction.
 
 ### Approved conditions — Phase 2 follow-up (rule 9)
 
@@ -2561,6 +2658,7 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 | u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `483b23f` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `2ce9008` and on `f5018e5`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `483b23f`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
 | v | **A rename that rewrites the links to the file it renames.** Phase 8's Rename stays inside one folder and is refused when anything links to the file, and the refusal says why: renaming would leave every one of those links pointing at nothing. **The consequence, stated plainly: a note can never be renamed from the app.** §6.3 requires every note to be linked from a map, so every note always has a linker, and Rename on a note is a dead end the user can see, not only a deferral. The same holds for any task, map, collection or file something links to. The way round it today is by hand, outside the app, then fixing the links, which `kb:check` reports. Building it means one batch that renames the file and rewrites every body linking to it — tasks, notes, maps, collections — and §6.3's scan accepting the new path as the same note rather than a new one without a map. It can never be complete: a finalized message is never edited (§16.2), so every message whose `refs` name the old path keeps pointing at it | Phase 8 approval, open call 5 and the rename condition | unscheduled | **deferred — a user-visible dead end, stated as one** |
 | w | **A `code.change` batch must secret-scan its own files' bytes.** Phase 8 found that a `{ git: true }` snapshot was never scanned, so a key in an upload reached the commit and the hook then refused every commit after it (Decision 89). `unloggedTexts` in `lib/history/scan.ts` now reads such files and scans them the way the hook does, but **only for data paths**. It skips `code.change` entries, because their targets are repository paths the store's reader cannot reach. Phase 9's `code.change` is the one batch whose every file is `{ git: true }` by design, and it commits outside `data/`, so it is exactly where the deadlock would come back. Before `build.ts` commits anything, its batch has to hand `refuseBatch` the text of each changed repository file, skipping one with a NUL byte as the hook does | Phase 8 Stage A, the `{ git: true }` fix | **Phase 9**, with `lib/agent/build.ts` | **outstanding — a constraint on code that does not exist yet** |
+| x | **A check whose needle legitimately appears in the prose that describes it.** Three instances, all found while making the repository publishable, and all the shape amendment `r` names — except that `r` is about a *script* scanning itself, and these are about a check scanning the documentation and the legal file that have to say the same words in order to exist. **(1) §15's credential count.** `git log -p` for the key prefix was specified as 0 and stands at **nine**, every one of them prose in `PROJECT.md` and `AGENTS.md` — including §15's own sentence, which had to spell the prefix in order to say what to count, and §11.5's pattern list, which is the definition. **Closed here:** §15 now excludes `.md` from the count and takes the prefixes from `SECRET_PATTERNS` at runtime. **(2) §12's identity-name grep versus `LICENSE`.** `publish-check` greps the published set for the identity name out of `settings.json`, and the MIT copyright line is that name, put there on purpose. **(3) §12's authorship grep versus `README.md`.** Four of that grep's five skipped paths are skipped only because of one needle — a bare provider name — which is not an authorship string at all, and a README that tells a reader which key to get has to name the provider. **The fix is the needle or the scope, never a longer skip list**, which is `r`'s argument and the reason a skip list is the wrong shape: it is a rule scoped to an address, and the rule is about text. For (2), the identity-name grep runs over `app/ components/ lib/ scripts/ seed/` — code and seed, the only places a personal name can have arrived by accident — and not over legal or documentation files. For (3), the provider name comes out of the authorship needle list, which retires four of the five skips with it | items 3 and 4 of the publishing instruction, while writing `LICENSE` and `README.md` | **(1) closed here**; (2) and (3) are Phase 11, with `publish-check` | **part closed, part outstanding — a constraint on a script that does not exist yet** |
 
 `n` and `o` are Phase 6a's. `n` is a constraint rather than a task — a thing Phase 11 must not do. `o` was untargeted when it was written and was given its phase at the Phase 6a close: it is half a feature, not an optional one, and 6b was the last chat phase there is. `o` closed in Phase 6b, which was the phase it had been given. `c`–`f` were agreed for Phase 2, did not land there, and closed in the Phase 2 follow-up. `g` and `j` closed in Phase 3, with the functions and the surface each was about. `i` stays deferred whole-or-nothing, and `k` joins it: its semantics are now written down, so a future session either builds exactly that or leaves it alone. `l` is waiting only for the phase that owns its target, and `m` and `p` are triggers rather than tasks: nobody builds them, the third importer trips them. `p` is `m`'s pattern showing up a second time, which is the argument for writing the trigger down rather than for moving the file: the same two-importers-and-waiting shape has now appeared in two different component folders without either one ever reaching three.
 

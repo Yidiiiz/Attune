@@ -1238,7 +1238,15 @@ All of these pass before the project is called finished; each is also an accepta
 - The + button is absent on Chat, present on Today and Calendar.
 - `Ctrl+C` on `npm run dev` leaves `git rev-list --count @{u}..HEAD` at 0 when a remote is configured and no orphaned `node` process behind. Verified on Windows.
 - Every tracked text file checks out with LF (`git ls-files --eol` shows `w/lf` throughout), and no file written by the app contains a CR byte.
-- `git log -p | grep -c sk-ant` is 0; `check-secrets --all` passes.
+- **No credential appears anywhere in history, and the count that establishes it excludes prose.**
+  `check-secrets --all` passes over every tracked file, and a scan of `git log -p` for the key
+  prefixes in `SECRET_PATTERNS` returns nothing **outside `.md` files**. The exclusion is not a
+  courtesy: §11.5's pattern list, §17's Phase 1 check and this line all have to name a prefix in
+  order to describe the check, so a count over documentation counts the specification describing
+  itself and can never reach zero, and every occurrence of it is prose in this file
+  and in `AGENTS.md`. The prefixes come from `lib/security/secrets.ts` at runtime rather than being
+  written into the script, the same fix and for the same reason as `AGENTS.md` amendment `r`;
+  amendment `x` is this instance and the two others that came with it.
 - `grep -ri` for `co-authored-by`, `generated with`, and assistant names over the published file set returns nothing outside `lib/agent/`, lockfiles, and model-id strings.
 
 ---

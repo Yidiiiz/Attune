@@ -762,7 +762,9 @@ repository — or to run by spec file. Not taken here; reported, because 8b adds
 
 Out of phase and at the owner's direction: `LICENSE`, `README.md` and a deterministic test suite are
 Phase 11's by §17, and they landed now because a stranger cloning this repository meets them first.
-Nothing was pushed, no remote was created, and no history was rewritten. `LICENSE` was swept into the
+Nothing was pushed and no remote was created. No history was rewritten *at the time this was
+written*; the rewrite the owner ordered afterwards is recorded below, and it changed every hash
+cited in this file. `LICENSE` was swept into the
 `code:` commit `b09a7a2` by a `git add -A`, and that message does not mention it. Recorded rather
 than amended.
 
@@ -2790,6 +2792,75 @@ before the one it was written against.** The report that produced these four num
 at `b88ffdf` — the commit the report was written after — it had moved to 2747, because `b88ffdf`
 inserted a section above it. 795, 797, 803 and 2594 are identical in both revisions. The intent is
 unambiguous either way, and the row is corrected where it now is.
+
+**What the rewrite did.** `git filter-repo --path data/ --invert-paths`, rehearsed twice against a
+throwaway clone and then run here. **126 commits became 122**; the repointing commit after it makes
+123. **Four commits were pruned** because `data/` was the only thing they touched, which is
+filter-repo's default and what the plan said would happen: the settings change that carried the
+personal payload, and three chat batches. **357 tracked files became 335.** Every other commit kept
+its author, its dates and its message, and filter-repo rewrote the hashes that commit messages cite
+on its own.
+
+**What was verified afterwards, and how.**
+
+| Claim | How it was checked | Result |
+|---|---|---|
+| No `data/` blob reachable | every tree of every commit, by path | **0** |
+| No `data/` blob unreachable | `git fsck --unreachable --dangling` | **silent** |
+| Nothing named `data` survives | every tree entry name in the whole object store | **0 of 352** |
+| The three personal blobs are gone | `git cat-file -t` on each | **not a valid object name** ×3 |
+| No personal content in any blob | **all 762 blobs in the store**, read and grepped | **0** city, **0** log lines |
+| No personal content in any message | every commit message | **0** |
+| `seed/` intact | `git ls-files -s seed` hashed | **21 files, byte-identical index** |
+| The owner's `data/` intact | sha256 of all 22 files against the pre-run manifest | **identical** |
+
+**The six unreachable commits and the two loose drafts are gone**, which took no separate step:
+filter-repo expires the reflog and repacks, and `git fsck` now reports nothing unreachable and
+nothing dangling. The `files.ts` and `PROJECT.md` drafts went with them.
+
+**`data/` had to be put back by hand, and this is the part worth knowing before anyone repeats it.**
+filter-repo ends with a `git reset --hard`, and `data/` is not in the new HEAD, so the run **deletes
+the owner's live data directory**. It was copied out first and copied back, and all 22 files match
+their pre-run sha256 exactly. A rehearsal that skipped the copy would have lost the working tree.
+
+**The citations.** 148 hashes across `AGENTS.md` and `PROJECT.md` were repointed from the
+commit-map, every new abbreviation checked to be unambiguous at seven characters. Four kinds of hex
+string were left alone after being read: UUIDv7 fragments and a placeholder commit in `PROJECT.md`'s
+file-format examples, the throwaway-checkout hashes in the Phase 8 probe narrative, and `e13d640`,
+which a previous rewrite had already annotated. **One real citation had no successor** — `bcb7929`
+was pruned, so the two passages naming it, and the three blob names beside them, say so in place
+rather than pointing at nothing.
+
+**The app's own recorded hashes could not be repointed either, for the same reason.** All three
+hashes in `actions.jsonl` named commits the filter pruned, so each is now `null` and the mirror is
+what `log.ts:270` renders for a null commit. The visible consequence is that `npm run history --
+list` shows all four batches as `uncommitted`, where three used to show a hash. That is imprecise —
+the log has no state for "committed, then the commit was removed", and `null` reads as *pending* —
+but it is the only available value that does not name a commit which no longer exists. **Nothing
+depends on it**: no batch in this log has a `{ git: true }` snapshot, which is the only kind of
+restore that reads the field, so undo is unaffected either way.
+
+**Checked, and how.** `tsc` clean. `npm test` **744/744 across 63 files** in 98.7 s — the number the
+deterministic-suite work was done to make reproducible, unchanged by the rewrite. `npm run kb:check`
+on the owner's own `data/`, read-only: clean. And a **fresh clone**, cloned from this repository
+into a temp directory: `npm ci`, `npm run init` (21 files from `seed/`), `npm run build`, `next
+start`, and `GET /api/tasks` answered **200** with the four §10.1 sections empty, with `/` and
+`/calendar` also 200. The clone carries no `data/` at all, which is what a stranger gets.
+
+**The one consequence that is now live, and is the owner's call.** `data/` is **untracked**. §8 has
+the app commit `data/` on every batch, so **the next batch the app runs re-adds it to history** — as
+a new file, in a new commit, with the identity name and the city in `settings.json` again. Nothing
+here prevents that, because the two obvious preventions each break something the owner asked to
+keep: adding `data/` to `.gitignore` makes every app commit empty and `git add -A -- data` a no-op,
+and it also removes the tracking that §7.2's `{ git: true }` restore needs. So the repository is
+clean right now and does not stay clean by itself. This is stated rather than decided.
+
+**The rollback.** filter-repo expires the reflog, so this repository holds no route back. A full
+copy of the pre-rewrite `.git`, the pre-rewrite `data/`, and the sha256 manifest are in the session
+scratchpad at `scratchpad/rw/backup/`. **That copy contains everything the rewrite removed**,
+including the city, and it is under `%TEMP%` — which is the same neighbourhood as the 462 leftover
+checkouts Phase 8 had to survey. It is kept only until the owner is satisfied, and then it should
+go.
 
 ## Deferred amendments
 

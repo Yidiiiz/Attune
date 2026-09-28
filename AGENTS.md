@@ -8,32 +8,32 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 
 | Phase | State | Commit |
 |---|---|---|
-| 1 — Skeleton | complete | `47be387` |
-| 2 — Store, history, git | complete | `b931994` |
-| 2 follow-up — Decision 47 + amendments `c`–`f` | complete | `4ff884a`, `2cf20cf`, `492c035` |
-| 2 follow-up — amendment `h`, the write-path secret scan | complete | `4682fab` |
-| 3 — Today | complete | `ec54cd4`, `9c1939a`, `78bd6b9` |
-| 4 — Calendar | complete | `91b0f70` |
-| 5 — Composer | complete | `03e2b4b`, `5470063`, `5b812a7`, `6111b28` |
-| 6a — Chat: tree, store, linear chat | complete | `58ac40d`, `c79d151`, `a63cb8d`, `ff4b277`, `475298e` |
-| 6b — Chat: branching, sidebar, annotations | complete | `8b27de1`, `fcc5ad6`, `747cb52`, `b2c89e1`, `8c638ea`, `2dca761`, `4bd7578`, `2825980`, `fa3a853`, `54f7b1a`, `c2fde54`, `688cd17`, `2cfea96`, `93c9782` |
-| 7 — Knowledge base and collections | complete | splits `309b6bf`, streaming-commit fix `5d8efb6`, git containment `131b5a2`, ownership `0f88cea`, Stage A `22ce5ec`, validation fix `3d879bb`, Stage B `12d3cd1`, toast fix `f5018e5`, close `594f705`, `7e1f569` |
-| 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `a2a84e4`, Step 0 `61676db`, `{ git: true }` fix `103c6f4`, Stage A `2ec0219`, review items `6dfdb8a`, B1 `0e55c3c`, B2 first commit `1c18334`, failure evidence `e80e6da`, data-* refs `ecbaed3`, the rest of B2 `c00929b`, the toggle `c9ff374`, the policy-aware menu `eb9c14b` |
+| 1 — Skeleton | complete | `9086ba7` |
+| 2 — Store, history, git | complete | `5634a46` |
+| 2 follow-up — Decision 47 + amendments `c`–`f` | complete | `4f9a72e`, `e6db526`, `79be872` |
+| 2 follow-up — amendment `h`, the write-path secret scan | complete | `810bfec` |
+| 3 — Today | complete | `b843d53`, `88b1890`, `8c460e8` |
+| 4 — Calendar | complete | `86236dc` |
+| 5 — Composer | complete | `d11c906`, `4339f48`, `85d6d8f`, `462d200` |
+| 6a — Chat: tree, store, linear chat | complete | `f38d007`, `e4fd33a`, `9cafe80`, `f8d1e74`, `ef502d2` |
+| 6b — Chat: branching, sidebar, annotations | complete | `c9bcd9a`, `e6a31a3`, `2ec1119`, `e3284e3`, `538152d`, `664526b`, `cee5aa3`, `02111ca`, `1de00b9`, `45c2b78`, `27655f4`, `b373be0`, `2d09a71`, `a4f5a4e` |
+| 7 — Knowledge base and collections | complete | splits `1191dab`, streaming-commit fix `f3dbdc6`, git containment `30f43ad`, ownership `9e0c387`, Stage A `d002555`, validation fix `d5ff378`, Stage B `72dfbd4`, toast fix `0ffeb36`, close `f4bdd61`, `69de221` |
+| 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `df8b710`, Step 0 `38509df`, `{ git: true }` fix `a17ca6a`, Stage A `6115d7a`, review items `066d562`, B1 `56feb52`, B2 first commit `48079c3`, failure evidence `1f3fa64`, data-* refs `877b5d0`, the rest of B2 `b8466ef`, the toggle `dac2c60`, the policy-aware menu `e2ad28b` |
 | 8b — Graph view | not started — split out of Phase 8 at the plan's approval, its own session, planned fresh. Two things are waiting for it: the load diagnosis below, and `check:ui` past Decision 67's five-minute threshold | — |
 | 9–10 | not started | — |
-| 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `107d175` |
+| 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `b09a7a2` |
 
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
-Phase 3 carries three for the same reason — Stage A (`ec54cd4`), the three corrections its review asked for (`9c1939a`), and Stages B and C together (`78bd6b9`) — each preceded by the `docs:` commit recording what was approved. Its closing review added a fourth round, spec-only apart from two comments: §10.1's edge-drag semantics corrected, §13.5's inline-versus-toast rule generalised, and `docs/CHECKLIST.md` started.
+Phase 3 carries three for the same reason — Stage A (`b843d53`), the three corrections its review asked for (`88b1890`), and Stages B and C together (`8c460e8`) — each preceded by the `docs:` commit recording what was approved. Its closing review added a fourth round, spec-only apart from two comments: §10.1's edge-drag semantics corrected, §13.5's inline-versus-toast rule generalised, and `docs/CHECKLIST.md` started.
 
-Phase 5 carries four `code:` commits and four `docs:`, and the shape is rule 4's stage clause plus two rounds of review. `f38c809` recorded the approval's six answers; `03e2b4b` built Stage A — the agent layer and its routes, with nothing rendering — and stopped for review; `032d36f` and `5470063` carried that review's six items; `5b812a7` built Stage B, the composer itself; `74a5ffd` recorded the phase result; `f5c59a4` and `6111b28` carried the closing review's two, correcting the `messages.parse` drift across Decision 27, §13.2 and §11.3 and adding the split rule to Conventions. Spec and source were kept in separate commits at each of those points, which is rule 4's prefix rule taken literally: a comment-only change to a `.ts` file is still `code:`.
+Phase 5 carries four `code:` commits and four `docs:`, and the shape is rule 4's stage clause plus two rounds of review. `c509f42` recorded the approval's six answers; `d11c906` built Stage A — the agent layer and its routes, with nothing rendering — and stopped for review; `66be46c` and `4339f48` carried that review's six items; `85d6d8f` built Stage B, the composer itself; `d2688fa` recorded the phase result; `1b20718` and `462d200` carried the closing review's two, correcting the `messages.parse` drift across Decision 27, §13.2 and §11.3 and adding the split rule to Conventions. Spec and source were kept in separate commits at each of those points, which is rule 4's prefix rule taken literally: a comment-only change to a `.ts` file is still `code:`.
 
 **What Phase 5 leaves unverified.** The four provider-dependent checks of §17 — a prompt becoming six drafts, a follow-up revising the preview in place, a collection proposal, and "read Dune" returning a question — need an API key, and none is set in this checkout. They are `docs/CHECKLIST.md` row 5.5, named there as blocked rather than left to be discovered. Both halves of the fifth check *are* done: no key set, and a key the provider rejected, both answer 401 `code: "auth"` with no file, no log line and no commit. Rows 5.2, 5.4, 5.6, 5.9 and 5.10 need a pointer or a microphone; 5.1, 5.3, 5.7 and 5.8 are settled by construction — checked over HTTP with the visual half outstanding. Per the headless-browser paragraph below, Phase 5 did not open that question; Phase 6's plan weighs it against this backlog, which is now ten rows longer.
 
 **Three things Phase 5 changed that later phases inherit.** `BatchResult` carries `targets`, and `lib/history/batch.ts` sits at 330 with its split named in advance (Decision 56). `messages.parse` is not usable at §13.2's `max_tokens`: the SDK refuses a non-streaming request client-side above 128000/6 ≈ 21333, so structured output runs over `messages.stream` — Decision 27, §13.2 and §11.3 were corrected in the closing review, because the code and the spec had drifted apart and the spec was the one that read like the truth. It was found only by running a request against the live API with a deliberately bad key; every offline check passed while it was broken. And the split rule in Conventions below was written from this phase's own composer, which is the first file the cap and rule 7 pulled in opposite directions on.
 
-Phase 4 is one build commit, `91b0f70`: the approval collapsed the two proposed stages into one pass, because `calendar.ts` is a leaf and rule 5's default checkpoint is about foundational risk. Around it, the two `docs:` commits rule 4 now names outright — `7cf66a7` carrying the approval's conditions and its three spec consequences ahead of the code, and `004d5a4` carrying the result. Rule 4 described two commits while rules 4 and 9 together required three; its closing review amended the text rather than leaving each phase to explain the third.
+Phase 4 is one build commit, `86236dc`: the approval collapsed the two proposed stages into one pass, because `calendar.ts` is a leaf and rule 5's default checkpoint is about foundational risk. Around it, the two `docs:` commits rule 4 now names outright — `4e7b059` carrying the approval's conditions and its three spec consequences ahead of the code, and `d725bbf` carrying the result. Rule 4 described two commits while rules 4 and 9 together required three; its closing review amended the text rather than leaving each phase to explain the third.
 
 That review made two other amendments, both spec-only. Hard rule 5's ~300 line cap is now about coupling, so it applies to modules containing logic and not to CSS modules or test files, which are bounded by their subject (Decision 56) — this resolves `TaskList.module.css` at 360, which had been a standing violation, as well as Phase 4's two long files; `batch.ts` at 317 stays in scope and stays watched. And `data-*` test hooks are now a sanctioned pattern with a naming convention in Conventions, settled here so Phase 6's message rows and Phase 8's graph nodes do not each invent one or fall back to fragile selectors.
 
@@ -44,9 +44,9 @@ Left unverified by Phase 3, and now written down where they can actually be run:
 **Whether to add a headless browser is a decision for Phase 6's plan, not before.** Phase 3 wanted one and did not add it: jsdom was refused by the owner for having no layout engine, and Playwright or Puppeteer is a real dependency — a browser download, a second test runner, and a CI story — which is not something a phase adds mid-build to close three checklist rows. Phase 6 is where the question is actually forced: it is the largest phase, its checks are streaming, stop, retry, and branch-switching, and none of those can be observed over HTTP either, so its backlog is the one that makes the trade legible. Deciding it at plan time means it is weighed against `docs/CHECKLIST.md` as it stands then, in the open, rather than being reached for by whichever phase next finds itself unable to verify something. Phases 4 and 5 add their unverifiable checks to the checklist and do not open this; a phase that thinks it cannot wait says so in its plan and asks. Phase 4 did exactly that: rows `4.1`–`4.5` in `docs/CHECKLIST.md`, all pending, all needing a pointer or a rendering engine — the drag, the Shift hint that has to change while the key is held, the `+N more` expansion, the ↑/↓ keys, and the toolbar including a refused edit landing inline on a second surface. Phase 5 adds to the same list. **Phase 6a's plan decided it: yes, Playwright, landing in Stage B with the first UI.** The question is closed and is not reopened by a later phase; the terms are the first of the Phase 6a conditions below. What tipped it was not the backlog's size but Stage D: §16.4's gutter cards are collision-pushed and aligned to `getClientRects()[0]`, and there is no price at which that is verifiable without a layout engine.
 
 **Phase 6b carries four `code:` commits and three `docs:`, which is rule 4's stage clause plus one
-review.** `8b27de1` recorded the approval's five answers and the three spec calls they settle;
-`fcc5ad6` built Stage A and stopped for review; `747cb52` and `b2c89e1` carried that review's three
-items; `8c638ea`, `2dca761` and `4bd7578` built Stages B, C and D, which the review pre-approved to
+review.** `c9bcd9a` recorded the approval's five answers and the three spec calls they settle;
+`e6a31a3` built Stage A and stopped for review; `2ec1119` and `e3284e3` carried that review's three
+items; `538152d`, `664526b` and `cee5aa3` built Stages B, C and D, which the review pre-approved to
 run together.
 
 **Six defects the browser checks found, five of them in code that was already committed.** Three
@@ -106,7 +106,7 @@ and is the fourth if it moves: by domain — task builders, file builders, setti
 layer, because it is a flat list of independent closures that never call one another (Decision 56).
 Do these first, in their own `code:` commit, before Phase 7 writes a line of its own.
 
-**Done in `309b6bf`**, as motion: `--color-moved` marks every line of every moved body, and the 72
+**Done in `1191dab`**, as motion: `--color-moved` marks every line of every moved body, and the 72
 lines it does not mark are the three the approval allowed, three new-file headers, imports, `export`
 on five moved declarations, and the two-line hook wrapper. `git diff -M` cannot show an extraction —
 a third of a file never pairs as a rename — which the owner accepted.
@@ -114,17 +114,17 @@ a third of a file never pairs as a rename — which the owner accepted.
 **Phase 7 Stage A — built, checked, stopped for review.** Five `code:` commits and three `docs:` so
 far, which is rule 4's stage clause plus two fixes the build found before its own work began:
 
-- `5d8efb6` — **a batch committed mid-turn swept the streaming reply into its commit.** Reproduced as a
+- `f3dbdc6` — **a batch committed mid-turn swept the streaming reply into its commit.** Reproduced as a
   failing test first (`lib/history/batch-commit.test.ts`); fixed by excluding held paths from every
   commit (Decision 76).
-- `131b5a2` — **git's discovery could climb out of `REPO_DIR`**, which is how `chat-actions.test.ts`
+- `30f43ad` — **git's discovery could climb out of `REPO_DIR`**, which is how `chat-actions.test.ts`
   put 232 commits into a repository in the home folder. A ceiling, a positive check on both the
   work-tree top and the git directory, a throw outside production, one sandbox helper for every
   committing test (Decision 75). The home repository was left untouched, held at 232 commits
   across every suite run after the fix, and is the owner's to handle outside this project.
-- `0f88cea` — the streaming exclusion **keyed to ownership, not declaration**, per the approval's
+- `9e0c387` — the streaming exclusion **keyed to ownership, not declaration**, per the approval's
   question: a batch declaring a held path it does not own is refused (Decision 76).
-- `22ce5ec` — Stage A: `lib/store/knowledge.ts`, `lib/knowledge/{links,items,index,check}.ts`,
+- `d002555` — Stage A: `lib/store/knowledge.ts`, `lib/knowledge/{links,items,index,check}.ts`,
   `scripts/kb-check.mjs` and `npm run kb:check`, `lib/history/knowledge-actions.ts`, §6.3's rule in
   `scan.ts`, `lib/agent/memory.ts`, the filter in `tools.ts`, `/api/agent/apply` for all three kinds,
   and `POST /api/collections/[slug]/promote`. Nothing renders yet.
@@ -155,14 +155,14 @@ are swept into the next committing batch as "staged but not declared". That is t
 condition asked for, and it says staging only declared targets would leave those writes uncommitted.
 
 **The review's answers.** (1) Amendment `u` deferred with conditions, below. (2) Taken before Stage B
-and closed in `3d879bb`: a request failing its schema is a 400 with a fixed message, the dump goes to
+and closed in `d5ff378`: a request failing its schema is a 400 with a fixed message, the dump goes to
 the server's console and never the body, and a `ZodError` from the store is a 500 (Decision 78).
 `npm test` 510/510, `tsc` clean; `check:ui` could not start, because the owner's own `npm run dev`
 held port 3000. Once the port was free it ran on that tree: 31/32, the one failure amendment `u`'s own
 Stop check, whose disk state was checked and is recorded in the amendment. (3) Accepted as reported.
 
-**Phase 7 Stage B — built, checked, stopped for review.** Two `code:` commits — the stage, `12d3cd1`,
-and a toast fix it found, `f5018e5` — and the `docs:` commit after them (Decisions 79–81,
+**Phase 7 Stage B — built, checked, stopped for review.** Two `code:` commits — the stage, `72dfbd4`,
+and a toast fix it found, `0ffeb36` — and the `docs:` commit after them (Decisions 79–81,
 `docs/CHECKLIST.md`'s Phase 7 rows, amendment `u`).
 
 - **Auto-apply, its toast, its Undo and the marker all landed**, which is the one story the approval
@@ -180,7 +180,7 @@ and a toast fix it found, `f5018e5` — and the `docs:` commit after them (Decis
   distillation request past 150 lines in the uncached Instructions block.
 
 **Checked, and how.** `npm test` 526/526 across 42 files; `tsc` clean; `check:ui` 39/39 in 2.5 minutes,
-twice on `12d3cd1`, and 38/39 on `f5018e5`, where the one failure was amendment `u`'s Stop check with its
+twice on `72dfbd4`, and 38/39 on `0ffeb36`, where the one failure was amendment `u`'s Stop check with its
 disk state verified again. Seven of the 39 are new in `e2e/knowledge.spec.ts` — the toast's Undo restoring `habits.md` by SHA-256, the
 marker surviving a reload with its own Undo, a note's Add writing note and map link and the same note
 again arriving as an append, the map refusal on the card with the text kept, a collection's Add,
@@ -191,7 +191,7 @@ that ignores undo fails two.
 **What a look at the screen found that the checks did not.** A screenshot pass left the pointer
 resting on the toast, and the next Send click never landed. Stage B had made toasts pause on hover.
 A pause that lands in the fade-out holds the toast at zero opacity, an invisible layer over the chat
-composer's Send button that never leaves while the pointer stays. `f5018e5` removes the pause. The
+composer's Send button that never leaves while the pointer stays. `0ffeb36` removes the pause. The
 toast keeps its seven seconds, and the transcript marker is where Undo has no time limit. The
 screenshots show the marker, the rewritten card and the inline refusal reading cleanly in both themes.
 
@@ -227,11 +227,11 @@ commits after that, and one history rewrite before them.
   the five snapshots after it that carried it; nothing else changed. Each rewritten tree differs from
   its original by exactly that paragraph, and HEAD's tree is byte-identical to what it was. Authors,
   dates and every other message were kept. The old objects were expired and pruned, along with ten
-  superseded leftovers: amend drafts, two probes, and a dropped stash. `7ff6a68` repointed every
+  superseded leftovers: amend drafts, two probes, and a dropped stash. `28befe0` repointed every
   citation of a rewritten hash in this file. It did the same for the three chat batches in
   `data/history/`, whose commit fields undo reads only for a `{ git: true }` snapshot, and none of
   them has one.
-- **Item 1, the toast over Send** (`7e1f569`, Decision 84). `pointer-events: none` went in as asked,
+- **Item 1, the toast over Send** (`69de221`, Decision 84). `pointer-events: none` went in as asked,
   and the hit-testing check went in with it. Its first run found that `pointer-events` could not
   finish the job: at 800–1100 px the toast's own Undo sat on Send. That went to the owner as the
   corner question, with a survey showing no corner clear on every page. The answer was that toasts
@@ -239,7 +239,7 @@ commits after that, and one history rewrite before them.
   because otherwise an auto-apply from the sheet could be undone only by finding the conversation in
   Chat. With `pointer-events` removed, every point on Send fails at every size, so the check would
   have caught the dead-Send bug.
-- **Item 2, amendment `u`'s check quarantined** (`594f705`, Decision 83). It is tagged
+- **Item 2, amendment `u`'s check quarantined** (`f4bdd61`, Decision 83). It is tagged
   `@known-flake`, runs after the rest under its own heading, and never sets the exit code. Two
   deliberate breaks confirmed both ways: with `u` alone broken the run is clean and exits 0, and with
   gating checks broken it exits 1 and `u` is still reported apart.
@@ -267,11 +267,11 @@ refuses. Rows 7.1–7.4 stay blocked on a key. Rows 7.5 and 7.6 are visual. A to
 visually for its seven seconds; clicks pass through it. One more, in the runner itself, which Phase
 8 fixed before its own work: `check:ui`'s arguments went through a shell on Windows. A `-g` pattern
 with a space was split in two, and one with `|` or `&` ran what followed as a command. They now reach
-Playwright with no shell on any platform (`61676db`, Decision 91), and any pattern works as typed.
+Playwright with no shell on any platform (`38509df`, Decision 91), and any pattern works as typed.
 
 **Phase 8 Stage A — built, checked, stopped for review.** Five commits so far, three `code:` and two
-`docs:` before this one. `a2a84e4` recorded the approval. `61676db` is Step 0. `56c6f43` recorded a
-question the stage had to ask, and `103c6f4` is its answer. `2ec0219` is the stage itself.
+`docs:` before this one. `df8b710` recorded the approval. `38509df` is Step 0. `93ee1cf` recorded a
+question the stage had to ask, and `a17ca6a` is its answer. `6115d7a` is the stage itself.
 
 - **Step 0.** `check:ui` runs `process.execPath` with `@playwright/test`'s own CLI, resolved from its
   `exports`, and never a shell. The runner moved to `scripts/playwright-run.ts` so a fake CLI can
@@ -499,8 +499,8 @@ here. `FrontmatterTable` shows values and does not take them back yet. The check
 
 **Phase 8 B2 — built, checked, stopped for review.** Four `code:` commits and four `docs:` across
 the whole of B2, which is rule 4's stage clause plus the three the owner split out by name: the B1
-review's three items (`1c18334`), the failure-evidence runner (`e80e6da`), the `data-*` refs
-(`ecbaed3`), and the rest of B2 (`c00929b`).
+review's three items (`48079c3`), the failure-evidence runner (`1f3fa64`), the `data-*` refs
+(`877b5d0`), and the rest of B2 (`b8466ef`).
 
 - **The document view writes** (Decision 102). An Edit/Preview toggle over a monospace textarea
   holding the file's bytes, a frontmatter table whose values are editable in the shape they came in
@@ -601,9 +601,9 @@ narrowest. Each needs an eye, a pointer, or a dialog a headless run cannot answe
    237 lines and `Search.tsx` at 144, both under the cap, and `Browser.module.css` is at 418.
 
 **Phase 8 closes — the two items taken, the tally given, the load diagnosed.** Two `code:` commits and
-two `docs:`: the conditions (`50fa624`), the toggle (`c9ff374`), the menu (`eb9c14b`), and this one.
+two `docs:`: the conditions (`949ea66`), the toggle (`dac2c60`), the menu (`e2ad28b`), and this one.
 
-**1. The Edit/Preview toggle shows the draft** (`c9ff374`, Decision 102 rewritten). Preview renders
+**1. The Edit/Preview toggle shows the draft** (`dac2c60`, Decision 102 rewritten). Preview renders
 what was typed rather than what is on disk, so Edit and Preview are two views of one draft and
 switching between them cannot lose a character — which is why the toggle now asks nothing. Only
 leaving warns: `beforeunload` and the confirm on "← Back to chat". §10.2 says this now.
@@ -615,7 +615,7 @@ menu and to a collection item's "Make this a task". Both were reachable in a dir
 well, because the frontmatter table has always been editable there; previewing the draft made it
 visible rather than made it true. All three now take one reason, `draftOpen`, and say it.
 
-**2. The Files panel's menu shows the policy** (`eb9c14b`, Decision 105). `rowPolicy` reads the same
+**2. The Files panel's menu shows the policy** (`e2ad28b`, Decision 105). `rowPolicy` reads the same
 table the builders enforce and `GET /api/files/tree` calls it per node, so the menu disables what
 will not work and shows the policy's own sentence. The table was reachable without breaking §3
 because the *route* can import `lib/history/` — the component never does; it gets four nullable
@@ -763,7 +763,7 @@ repository — or to run by spec file. Not taken here; reported, because 8b adds
 Out of phase and at the owner's direction: `LICENSE`, `README.md` and a deterministic test suite are
 Phase 11's by §17, and they landed now because a stranger cloning this repository meets them first.
 Nothing was pushed, no remote was created, and no history was rewritten. `LICENSE` was swept into the
-`code:` commit `107d175` by a `git add -A`, and that message does not mention it. Recorded rather
+`code:` commit `b09a7a2` by a `git add -A`, and that message does not mention it. Recorded rather
 than amended.
 
 **Item 1 — what is actually in history.** 120 commits, 117 carrying a `data/` tree, **six that ever
@@ -774,12 +774,15 @@ into. `chats/` is there as two `conversation.md` shells with an empty title, and
 directory has ever existed in any tree**, so there is no conversation content in history at all.
 Fifteen of the 25 blobs are the seed unchanged.
 
-**The personal payload is three blobs**, found by searching every historical blob for the five values
-in `settings.json`: `data/settings/settings.json` @`3d047978`, and `data/history/actions.jsonl`
-@`a93224a4` and @`c84244a6`, where the log entry's `after` snapshot holds the whole file. They enter
-at `bcb7929` and sit in the tree of **38 reachable commits**. `action-history.md` carries the summary
-line and no values. `git fsck` finds six unreachable commits — all dropped stashes — and **all six
-carry the same two blobs**.
+**The personal payload was three blobs**, found by searching every historical blob for the five
+values in `settings.json`: `data/settings/settings.json` @`3d047978`, and `data/history/actions.jsonl`
+@`a93224a4` and @`c84244a6`, where the log entry's `after` snapshot held the whole file. They entered
+at `bcb7929` and sat in the tree of **38 reachable commits**. `action-history.md` carried the summary
+line and no values. `git fsck` found six unreachable commits — all dropped stashes — and **all six
+carried the same two blobs**. **None of those four object names resolves any more**, and they are
+kept as the record of what the survey found, which is the only thing they can still be: the rewrite
+recorded below removed every `data/` blob from this repository, and `bcb7929` touched nothing but
+`data/`, so it was pruned rather than rewritten and has no successor hash to be repointed to.
 
 **The finding that changed the plan: this repository cannot lose `data/` from its own history.** The
 app commits `data/` on every batch (§8), undo restores a `{ git: true }` snapshot by checking out a
@@ -1101,7 +1104,7 @@ not open that question.
 
 ### Approved conditions — Phase 5 Stage A review (rule 9)
 
-Stage A approved at `03e2b4b`. Six items before Stage B, verbatim.
+Stage A approved at `d11c906`. Six items before Stage B, verbatim.
 
 **1. §13.1 CACHE PREFIX** — fix it, and the fix is a spec change I'm making. Split the settings
 preamble in two: stable settings (name, timezone, day shape) stay in position 1 and remain
@@ -1218,10 +1221,10 @@ linear conversation; §9.6's Ask mode replacing Phase 5's inline refusal; Playwr
 `ATTUNE_FAKE_PROVIDER` on the terms above; and the Phase 6a rows in `docs/CHECKLIST.md`.
 
 **Phase 6a's build carries three `code:` commits and three `docs:`**; the two rounds after it, which
-take the totals to five and four, are the paragraphs below. `c06ed47` recorded the approval's
-nine conditions; `58ac40d` built Stage A — the pure layer, the conversation store, the chat builders
-and §8's streaming bypass, with nothing rendering — and stopped for review; `27e5e7f` and `c79d151`
-carried that review's two items, Decisions 61 and 62 and the cross-references to them; `a63cb8d`
+take the totals to five and four, are the paragraphs below. `d0f3f7d` recorded the approval's
+nine conditions; `f38d007` built Stage A — the pure layer, the conversation store, the chat builders
+and §8's streaming bypass, with nothing rendering — and stopped for review; `83a6f5c` and `e4fd33a`
+carried that review's two items, Decisions 61 and 62 and the cross-references to them; `9cafe80`
 built Stage B; and this commit records the result. Rule 4's stage clause, plus one review round.
 
 **What Stage A found.** The UUIDv7 ported from the handoff was not ordered within a millisecond,
@@ -1240,7 +1243,7 @@ by writing that check. Second: a failure routed to a toast returned "no error" t
 which cleared the box — losing the text §15 says a rejected send keeps. Third: an empty conversation
 title round-tripped through YAML as `null` and failed its own schema on the first send.
 
-**The Phase 6a close added a fourth `code:` commit, `ff4b277`, for the orphan sweep** (Decision 64).
+**The Phase 6a close added a fourth `code:` commit, `f8d1e74`, for the orphan sweep** (Decision 64).
 Draining on client disconnect closed the case the browser checks found; process death is the same
 wound with no in-flight fix available, and Decision 63's invariant is what makes the result
 invisible — a `streaming` message reads exactly like a live one. `sweepInterruptedMessages()` in
@@ -1259,7 +1262,7 @@ one startup, and afterwards `status: complete` and `status: failed` with the rea
 `chat.update` entries, one commit `chat: recover 2 messages left by an interrupted run`, a clean
 `git status --porcelain -- data`, and a second run reporting nothing.
 
-**Two additions after that, a fifth `code:` commit and a fourth `docs:` — `f235db1` and `475298e`.**
+**Two additions after that, a fifth `code:` commit and a fourth `docs:` — `4e60e50` and `ef502d2`.**
 The first promotes the finding above from one function's comment to a rule in Conventions: a reader
 that tolerates malformed input is safe for display and unsafe as an authority, so anything making a
 destructive or repairing decision counts what it parsed against what is there and refuses on a
@@ -1505,7 +1508,7 @@ call added to `files.ts` outside `renameAtomic` fails the third test by line num
 in the pattern list were assembled from fragments for exactly this reason; a comment spelling the
 same forms out in prose was not, and it passed every run before the commit — because `git ls-files`
 is what "the project" means here, so a file enters its own scan only once it is in the repository.
-The first green run after `c2fde54` was the first honest one. Fixed in `2cfea96`; the comment now
+The first green run after `27655f4` was the first honest one. Fixed in `2d09a71`; the comment now
 describes the forms instead of quoting them.
 
 **One thing it does not do**, named rather than left to be discovered: it reads text, so a rename
@@ -1892,7 +1895,7 @@ ACCEPTED AS REPORTED
 - PreviewPanel's collection Add unchecked in-browser: accepted, since the same
   card is checked in the tray. Note it as a known gap in the phase record so it
   isn't mistaken for coverage.
-- e13d640's *[now `118503d`]* "three" vs two: leave it. AGENTS.md is the record and it's right.
+- e13d640's *[now `57ccf7f`]* "three" vs two: leave it. AGENTS.md is the record and it's right.
 
 *[One section is omitted here on the terms above. It has been carried out.]*
 
@@ -2066,7 +2069,7 @@ code costs.
 
 ### Approved conditions — Phase 8, the `{ git: true }` snapshot defects (rule 9)
 
-Found in Stage A, after Step 0 (`61676db`) and before any Stage A code, while checking whether the
+Found in Stage A, after Step 0 (`38509df`) and before any Stage A code, while checking whether the
 document view's saves could produce a `{ git: true }` snapshot. Three probes in a throwaway checkout:
 redo of an upload threw (`git checkout 59417a8^ -- files/images/2026-09/cdf3cefe-x.png`); undo of a
 task-body edit over 64 KB threw (`git checkout 6c95ef6^ -- tasks/2026-09-14-big.md`) and left the
@@ -2173,8 +2176,9 @@ help, but watch for it specifically."
   not, over the index and over the working tree, found nothing. Nothing has ever been uploaded. No
   file under `data/` has ever been over 4,460 bytes, against the 64 KB line. None of the four
   batches in `actions.jsonl` has a `{ git: true }` snapshot or a failed commit; the one without a
-  hash is `bcb7929`, whose hash waits for the next batch (Decision 47). `.env.local` does not exist
-  on this machine.
+  hash is `bcb7929` — since pruned by the rewrite, along with the three commits the other batches
+  named — whose hash was waiting for a next batch that never came (Decision 47). `.env.local` does
+  not exist on this machine.
 - **What the defect would have left here.** Not a secret in history. Every batch commits the whole
   of `data/` (`paths = ["data", …]`), so with the hook active the upload's own commit is refused, the
   key stays on disk uncommitted, and every later commit carries it and is refused too. The trace
@@ -2192,8 +2196,8 @@ help, but watch for it specifically."
 - **Found on the way, not remediated:** the test suite leaves its temporary checkouts behind. 228
   of them have piled up since 7 September.
 - **The other two defects were reachable before Phase 8, and no check passed over them.** The 64 KB
-  `{ git: true }` path is in `b931994` (Phase 2): undo, redo and rollback of any batch touching a
-  text file over 64 KB were broken from then on. Redo of an upload was broken from `03e2b4b`
+  `{ git: true }` path is in `5634a46` (Phase 2): undo, redo and rollback of any batch touching a
+  text file over 64 KB were broken from then on. Redo of an upload was broken from `d11c906`
   (Phase 5), when the upload route landed. Before the fix, no vitest file wrote a file over 64 KB
   or undid or redid an upload. No browser check did either: the knowledge checks undo a
   `habits.md` of a few lines, and the attachment checks never undo. No HTTP check recorded here
@@ -2259,7 +2263,7 @@ it turned out to hold something nobody expected."
     directory itself, with or without a ceiling.
   - 82 have no `.git` at all. 74 of those come from `chats`, `context` and `tools`, which never
     create a repository. The other 8 are `attune-chat-actions-*` directories, made on 12 September
-    between 14:37 and 21:35. That was before `131b5a2` (23:49 that day) gave that file a repository.
+    between 14:37 and 21:35. That was before `30f43ad` (23:49 that day) gave that file a repository.
     They are sandboxes from the runs whose undo commits went where the header of `checkout.ts` says,
     and each holds only `data/`.
   - 8 of the `attune-enclosing-*` outer repositories have a `.git` that is missing `HEAD` and
@@ -2439,7 +2443,7 @@ then the rest of B2. Stop at the end of B2."
 
 ### Approved conditions — the failure-evidence commit and the idle runs (rule 9)
 
-The owner's reply to the report after `e80e6da`/`ef1e430`, verbatim:
+The owner's reply to the report after `1f3fa64`/`c0ec7cd`, verbatim:
 
 "Machine is idle now — Medal is closed. Go ahead with the two full check:ui runs.
 
@@ -2741,7 +2745,7 @@ changes every hash they are written beside.
 2. Remove data/ from all history. seed/ is not data/ and must survive — init
    needs it. Keep everything else, including the commit history.
 3. Repoint anything holding a commit hash: AGENTS.md citations, the app's
-   recorded hashes (7ff6a68 had to do this last time), anything else.
+   recorded hashes (28befe0 had to do this last time), anything else.
 4. Verify afterward and report: no data/ blob reachable or unreachable, the six
    unreachable commits and two loose drafts handled, seed/ intact, npm test and
    tsc still clean, and a fresh clone still passes the init → build → GET
@@ -2782,8 +2786,8 @@ cost would have been real had any upload, or any file over 64 KB, ever been writ
 
 **The `:2661` in the instruction is amendment `x`'s row, and the line number is from the revision
 before the one it was written against.** The report that produced these four numbers cited
-`AGENTS.md:2661` for amendment `x` row (2); at `5f92242` that is exactly where the row sat, and
-at `d006c2d` — the commit the report was written after — it had moved to 2747, because `d006c2d`
+`AGENTS.md:2661` for amendment `x` row (2); at `be2a181` that is exactly where the row sat, and
+at `b88ffdf` — the commit the report was written after — it had moved to 2747, because `b88ffdf`
 inserted a section above it. 795, 797, 803 and 2594 are identical in both revisions. The intent is
 unambiguous either way, and the row is corrected where it now is.
 
@@ -2795,25 +2799,25 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 |---|---|---|---|---|
 | a | `/api/settings` is GET-only until `runBatch` exists; `PUT` waits for it | Phase 1 approval | Phase 2 | closed — `PUT` landed in Phase 2 |
 | b | Drop the P/Invoke console-break harness | Phase 1 approval | Phase 1 | closed — never committed |
-| c | Guard against a stale `.git/index.lock`: on startup, if the lock exists and no `git` process is running, remove it and log once. `taskkill /T /F` can leave it behind when `Ctrl+C` lands mid-commit, and the next git operation then fails with a message that reads like repository corruption | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
-| d | Record the resolved Next and React versions in `AGENTS.md`, not only in the phase report | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
-| e | Log the resolved `REPO_DIR` once at startup whenever `ATTUNE_REPO_DIR` is set, so a stray shell export cannot silently point the app at the wrong directory | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
-| f | `lib/schedule/dates.test.ts`, covering both 2026 `America/New_York` DST transitions (March 8, November 1) against the six functions `dates.ts` has now | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `492c035` |
-| g | `daysBetween`/`daysUntil` DST tests, off-by-one a day each way across both 2026 transitions | Phase 2 review | Phase 3, with the functions themselves | closed — `ec54cd4`, in `lib/schedule/dates.test.ts` |
+| c | Guard against a stale `.git/index.lock`: on startup, if the lock exists and no `git` process is running, remove it and log once. `taskkill /T /F` can leave it behind when `Ctrl+C` lands mid-commit, and the next git operation then fails with a message that reads like repository corruption | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `79be872` |
+| d | Record the resolved Next and React versions in `AGENTS.md`, not only in the phase report | Phase 1 approval | Phase 2 — **missed** | closed in the follow-up — `79be872` |
+| e | Log the resolved `REPO_DIR` once at startup whenever `ATTUNE_REPO_DIR` is set, so a stray shell export cannot silently point the app at the wrong directory | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `79be872` |
+| f | `lib/schedule/dates.test.ts`, covering both 2026 `America/New_York` DST transitions (March 8, November 1) against the six functions `dates.ts` has now | Phase 2 approval | Phase 2 — **missed** | closed in the follow-up — `79be872` |
+| g | `daysBetween`/`daysUntil` DST tests, off-by-one a day each way across both 2026 transitions | Phase 2 review | Phase 3, with the functions themselves | closed — `b843d53`, in `lib/schedule/dates.test.ts` |
 | h | A secret in a task's own text reaches `actions.jsonl` through the `after` snapshot, not through `commitError`, and no scrubbing can remove it without breaking byte-identical undo. The pre-commit hook then refuses every later commit. Raised and reproduced during the Phase 2 follow-up review | Phase 2 follow-up review | Phase 2 follow-up | closed — `runBatch` refuses the batch (Decision 50) |
 | i | A `force` that saves anyway past a `secret_rejected` refusal. Deferred, not rejected: a force has to exempt the pre-commit hook as well, or the block just moves one step later and the commit fails instead of the save — so half of it is worse than none. Wanted only if a real false positive shows up in use | amendment `h` approval | unscheduled | **deferred, deliberately whole-or-nothing** |
-| j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | closed — `78bd6b9`; the refusal, the file, the pattern, the un-echoed match and the untouched file are all checked over HTTP. `TaskEditForm` clears no field on failure, which is what preserves the text |
+| j | The "preserve the user's text on refusal" obligation from `h` is cross-referenced only from §13.5, which is about the chat composer's provider errors. The first surface that can raise `secret_rejected` is Phase 3's inline task edit form; Phase 8's document view is the second. Phase 3's checks must include: an inline task edit containing a credential-shaped string is refused, the form keeps what was typed, and the error names the file and pattern without echoing the match | Phase 2 close | Phase 3, in its acceptance checks | closed — `8c460e8`; the refusal, the file, the pattern, the un-echoed match and the untouched file are all checked over HTTP. `TaskEditForm` clears no field on failure, which is what preserves the text |
 | k | Timeline **edge resize**, deliberately not built, with the semantics settled so it is never guessed at: a **bottom-edge** drag moves the end, so it writes `estimateMin`; a **top-edge** drag moves the start while the end stays put, so it writes `estimateMin` **and** `scheduled` together. §10.1 said both edges write `scheduled`, which was wrong and is corrected. Not built because body drag already covers rearranging a day, `estimateMin` is editable in the row's form, and resizing forces a decision about whether the rest of the day repacks around the new length that v1 does not need to make | Phase 3 build; semantics fixed in the Phase 3 review | unscheduled — build it only if the form proves too slow for the case | **deferred, semantics settled** |
-| l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | closed — `c00929b`; the Today row's title is a link to `documentHref(task.path)`, and the document it opens carries the task's own Complete button and menu |
+| l | §10.1's "clicking the title opens the task in the document view". The document view is `components/browser/DocumentView.tsx`, which Phase 8 builds; until then the row title is plain text rather than a link to a page that says Chat arrives in Phase 6 | Phase 3 build | Phase 8, with the document view | closed — `b8466ef`; the Today row's title is a link to `documentHref(task.path)`, and the document it opens carries the task's own Complete button and menu |
 | n | **`npm run publish-check` must never invoke `npm run check:ui`.** The fresh-clone half of `publish-check` installs into a temp directory and starts the app; a clone has no Playwright browser binaries, so calling the browser checks there would turn "is this repo publishable" into "did someone run `playwright install` on this machine". The note also lives in `scripts/check-ui.mjs`, where the phase that writes `publish-check` will be looking | Phase 6a approval, condition 1 | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
-| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** | closed — `4bd7578`; the `ContentPart` variants, base64 in `anthropic.ts`, the `images`/`pdf` flags read, and attach/paste/drop on the chat composer |
-| m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | closed — `c00929b`; the document view was the third importer, so `TaskEditForm`, `TaskMenu`, `format.ts` and `TaskList.module.css` moved to `components/tasks/`, with `RowActions` and Today's row writes (`useTaskActions`) moving with them (Decision 104) |
+| o | **Attachments are carried on a message but are not sent to the provider yet.** §13.2 says attachments become image or document blocks "where the model supports them"; `ContentPart` in `lib/agent/registry.ts` has no such variant, and Phase 6a's chat composer has no attach control, so nothing can reach one. The record keeps `attachments` (§4.7) and the turn passes it through to disk. Building it means a `ContentPart` variant, base64 in `anthropic.ts`, and the `images`/`pdf` flags in `MODELS` actually being read | Phase 6a Stage B | **Phase 6b** | closed — `cee5aa3`; the `ContentPart` variants, base64 in `anthropic.ts`, the `images`/`pdf` flags read, and attach/paste/drop on the chat composer |
+| m | `TaskEditForm.tsx` and `format.ts` stay in `components/today/` and are imported across by `components/calendar/`, because moving them is churn for no behaviour change. The trigger is written down instead: **a third surface importing from `components/today/` is the signal to move the shared pieces into `components/tasks/`.** Phase 5's composer and Phase 8's document view are the likely third | Phase 4 approval | the phase that becomes the third importer | closed — `b8466ef`; the document view was the third importer, so `TaskEditForm`, `TaskMenu`, `format.ts` and `TaskList.module.css` moved to `components/tasks/`, with `RowActions` and Today's row writes (`useTaskActions`) moving with them (Decision 104) |
 | p | **`components/composer/Attachments.tsx` has two importers once the chat composer gets its attach control** — `ComposerSheet.tsx` and `ChatComposer.tsx`. Same shape as `m` and recorded for the same reason: moving it now is churn for no behaviour change, so the trigger is written down instead. **A third importer moves it to a shared home** — `components/files/`, since what it actually owns is the upload half of §9.2 rather than anything composer-shaped. Phase 8's document view is the likely third | Phase 6b approval, answer 2 | the phase that becomes the third importer | **outstanding — trigger recorded** |
-| q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | closed — `c00929b`; a `focus` listener per view calling that view's own ordered reload — the document view's `useDocument`, and `ChatView`'s `reload`, skipped while a reply streams |
+| q | **Decision 20's "refetch on window focus" is not implemented anywhere in the app.** Its first half works — an external edit appears on the next request, because every page is `force-dynamic` — but no view re-reads its own data on focus, and the only window `focus` listener is `components/shell/SyncStatus.tsx`, which polls `/api/sync/status`. Found while checking whether Stage A's `initial` fix had closed that path: it had not, because the path was never open (Decision 69). Building it means a listener per view calling that view's own reload, skipped while anything is in flight — never a server render adopted as state, which is the bug Decision 69 is about | Phase 6b Stage A review, item 1 | **Phase 8**, with the document view | closed — `b8466ef`; a `focus` listener per view calling that view's own ordered reload — the document view's `useDocument`, and `ChatView`'s `reload`, skipped while a reply streams |
 | r | **`publish-check` greps the published file set for four AI-authorship strings, and §12's skip list does not name `scripts/publish-check.mjs` — but the script has to contain all four literally in order to search for them, so it is the first thing its own grep finds.** The fix is to assemble the patterns from fragments at runtime, the way `SECRET_PATTERNS`' sample table and `lib/store/files.test.ts` do, rather than adding the script to the skip list: a skip list is a rule scoped to an address, which is the shape that let three writers drift past Decision 71 | Phase 6b close, one deferred amendment | Phase 11, with `publish-check` | **outstanding — a constraint on a script that does not exist yet** |
-| s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | closed — `c00929b`; §4.5's items are rows under a collection's preview, each with "Make this a task" through `POST /api/collections/[slug]/promote` (Decision 104) |
-| t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `5d8efb6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `5d8efb6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
-| u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `483b23f` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `2ce9008` and on `f5018e5`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `483b23f`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
+| s | **§4.5's "Make this a task" button on a collection item.** Promote itself lands in Phase 7 as `POST /api/collections/[slug]/promote { item }` — one batch creating the task, appending its id to the collection's `tasks`, and appending ` → [[t_…]]` to the item line — and is checked over HTTP. The button waits because no surface renders a collection's items as rows until Phase 8's document view: the preview panel shows a collection *proposal*, which has no task to link to yet. The route moved from `/api/tasks/[id]/promote` because the task does not exist until the promote creates it, so `[id]` had no referent; the collection is the resource that does exist. Same shape as `l`: a real action whose only surface belongs to a later phase | Phase 7 approval, open call 4 | **Phase 8**, with the document view | closed — `b8466ef`; §4.5's items are rows under a collection's preview, each with "Make this a task" through `POST /api/collections/[slug]/promote` (Decision 104) |
+| t | **A throw in `start` or `assembleContext` leaves the turn's two message files on disk as `status: streaming`.** Both run in `runChatTurn` before the loop's own `try`, so neither the discard nor the finalize runs; the files are Decision 64's orphans and the next startup's sweep repairs them. Since `f3dbdc6` it is no longer silent: the turn's `finally` releases its held paths, `releaseStreaming` finds the files still streaming, keeps them out of every commit and logs each path by name (`lib/history/in-flight.ts`). Fixing it means moving those two calls inside the `try` so the existing discard covers them — small, but it changes the order §16.3's finality contract is written in, so it was reported rather than folded into a fix about commits | Phase 7, the report after `f3dbdc6` | unscheduled — reported, warned, and filed so it does not drift | **outstanding** |
+| u | **After Stop, the chat pane can revert to how the conversation looked before the send — "New conversation", "Nothing said yet" — while the reply is on disk as `failed`/`stopped`, committed.** `e2e/chat.spec.ts`'s "Stop leaves the partial reply, marked stopped" fails intermittently: 1 in 5 on `cd46fd6` (before any of the git work, by stash), and about 1 in 5 across 31 runs after it. Instrumented, the failing runs are indistinguishable from passing ones inside `useConversation`: one instance, no remount, `settle`'s second read returns `failed` and is adopted (ticket 2 over 1). But the screencast's last frame is the empty pre-send view, and the DOM snapshots never show `failed`. The divergence starts after `settle` returns, when `send` calls `router.refresh()`. The shape is Decision 69's — a server render overtaking client state — reached by a route Decision 69's fix did not close; not yet explained, and not fixed. It is user-facing: a stopped reply can vanish from view until a reload. **Display-only, confirmed** (the Stage A review's first condition). A probe repeated the Stop check 30 times: 5 of 30 showed the wrong view, all five the empty pre-send screen. In every one, the user message was on disk as `complete` with its exact text and the reply was `failed`/`stopped` with its partial text. Both were in `actions.jsonl` and committed, and navigating away and back, and a reload, each showed the correct view. Two full `check:ui` runs, on `3896488` and on `0ffeb36`, failed the same check with the other face: the reply row stuck at `streaming` for 15 seconds, with the same state on disk each time, the turn committed as `chat: Unfinished reply in …`. No path found loses a message; the composer does clear, because the send landed. **Reproduction:** that check; a `[[slow]]` prompt, whose scripted reply streams 24-character pieces 60 ms apart; `[data-ui='stop']` clicked the moment `You asked` is visible. The failure appears after `settle` returns, when `send` calls `router.refresh()`. It happened about 1 in 5 across 31 runs, 1 in 5 on `cd46fd6`, and 5 in 30 in the probe. **Stage B raises its cost.** An auto-apply marker in a transcript that intermittently renders empty is worse than one in a transcript that does not, because a missing marker is indistinguishable from no write having happened. That argues for the log-backed design, which a reload restores, not against deferring. A stopped turn never auto-applies (Decision 79), so the Stop path itself never carries a marker, but the mechanism under it is shared with every send | Phase 7, verifying the git fix | unscheduled — deferred by the Stage A review, with its conditions met; the deferral stands (Phase 7 close) | **deferred — display-only, reproduced, not explained; its check is a known flake, run apart and not counted (Decision 83)** |
 | v | **A rename that rewrites the links to the file it renames.** Phase 8's Rename stays inside one folder and is refused when anything links to the file, and the refusal says why: renaming would leave every one of those links pointing at nothing. **The consequence, stated plainly: a note can never be renamed from the app.** §6.3 requires every note to be linked from a map, so every note always has a linker, and Rename on a note is a dead end the user can see, not only a deferral. The same holds for any task, map, collection or file something links to. The way round it today is by hand, outside the app, then fixing the links, which `kb:check` reports. Building it means one batch that renames the file and rewrites every body linking to it — tasks, notes, maps, collections — and §6.3's scan accepting the new path as the same note rather than a new one without a map. It can never be complete: a finalized message is never edited (§16.2), so every message whose `refs` name the old path keeps pointing at it | Phase 8 approval, open call 5 and the rename condition | unscheduled | **deferred — a user-visible dead end, stated as one** |
 | w | **A `code.change` batch must secret-scan its own files' bytes.** Phase 8 found that a `{ git: true }` snapshot was never scanned, so a key in an upload reached the commit and the hook then refused every commit after it (Decision 89). `unloggedTexts` in `lib/history/scan.ts` now reads such files and scans them the way the hook does, but **only for data paths**. It skips `code.change` entries, because their targets are repository paths the store's reader cannot reach. Phase 9's `code.change` is the one batch whose every file is `{ git: true }` by design, and it commits outside `data/`, so it is exactly where the deadlock would come back. Before `build.ts` commits anything, its batch has to hand `refuseBatch` the text of each changed repository file, skipping one with a NUL byte as the hook does | Phase 8 Stage A, the `{ git: true }` fix | **Phase 9**, with `lib/agent/build.ts` | **outstanding — a constraint on code that does not exist yet** |
 | x | **A check whose needle legitimately appears in the prose that describes it.** Four instances, the first three found while making the repository publishable and the fourth while recording the instruction to rewrite history, and all the shape amendment `r` names — except that `r` is about a *script* scanning itself, and these are about a check scanning the documentation and the legal file that have to say the same words in order to exist. **(1) §15's credential count.** `git log -p` for the key prefix was specified as 0 and stands at **nine**, every one of them prose in `PROJECT.md` and `AGENTS.md` — including §15's own sentence, which had to spell the prefix in order to say what to count, and §11.5's pattern list, which is the definition. **Closed here:** §15 now excludes `.md` from the count and takes the prefixes from `SECRET_PATTERNS` at runtime. **(2) §12's identity-name grep versus `LICENSE`.** `publish-check` greps the published set for the identity name out of `settings.json`, and the copyright line is that name, put there on purpose. **(3) §12's authorship grep versus `README.md`.** Four of that grep's five skipped paths are skipped only because of one needle — a bare provider name — which is not an authorship string at all, and a README that tells a reader which key to get has to name the provider. **The fix is the needle or the scope, never a longer skip list**, which is `r`'s argument and the reason a skip list is the wrong shape: it is a rule scoped to an address, and the rule is about text. For (2), the identity-name grep runs over `app/ components/ lib/ scripts/ seed/` — code and seed, the only places a personal name can have arrived by accident — and not over legal or documentation files. For (3), the provider name comes out of the authorship needle list, which retires four of the five skips with it. **(4) The rewrite instruction versus `AGENTS.md`.** Item 5 asks for confirmation that the owner's city appears nowhere in the tree or history, and rule 9 requires the instruction be recorded verbatim — so obeying rule 9 literally would have left that instruction as the one place the city still appeared, in a published file, after the rewrite that removed every other copy. This one has no check to amend, because the check is a person reading a grep; the fix is the elision, marked in the text, with the value kept in the survey it came from. It is the general case that (1) to (3) are instances of: **a rule about text cannot be satisfied by a rule about addresses, and the text that describes a needle is the first place the needle appears** | items 3 and 4 of the publishing instruction, while writing `LICENSE` and `README.md`; (4) the history-rewrite instruction | **(1) closed here**; (2) and (3) are Phase 11, with `publish-check` | **part closed, part outstanding — a constraint on a script that does not exist yet** |

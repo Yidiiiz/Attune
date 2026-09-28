@@ -107,7 +107,12 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(original);
   });
 
-  it("undoes an edit over 64 KB byte for byte, and redoes it byte for byte", async () => {
+  // SKIPPED, not deleted, and the case below pins what happens instead. `data/` is ignored and a
+  // batch that writes only under it never commits (`batch.ts`), so the one thing a `{ git: true }`
+  // snapshot of a data path needs in order to be restored — a commit holding those bytes — is the
+  // one thing that no longer exists. The replacement is a content-addressed blob store under
+  // `data/history/blobs/`, filed against Phase 8b in AGENTS.md; these three turn back on with it.
+  it.skip("undoes an edit over 64 KB byte for byte, and redoes it byte for byte", async () => {
     const { id, rel } = await bigTask("Edited");
     const original = sha(rel);
     const { batch } = await runBatch({ ...user, summary: "edit", commitPrefix: "task", actions: [updateTask(id, { body: "d".repeat(BIG) })] });
@@ -119,7 +124,7 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(edited);
   });
 
-  it("redoes an upload with the bytes that were uploaded", async () => {
+  it.skip("redoes an upload with the bytes that were uploaded", async () => {
     const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 0, 4]);
     const { batch, rel } = await upload("photo.png", bytes);
     const uploaded = sha(rel);
@@ -130,7 +135,7 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(uploaded);
   });
 
-  it("undoes a delete whose before-state is { git: true } from the commit before it", async () => {
+  it.skip("undoes a delete whose before-state is { git: true } from the commit before it", async () => {
     const { rel } = await upload("gone.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 9, 9, 9]));
     const uploaded = sha(rel);
     const remove: ActionSpec = {
@@ -146,5 +151,28 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
 
     expect(await undoBatch(batch)).toMatchObject({ ok: true });
     expect(sha(rel)).toBe(uploaded);
+  });
+
+  it("refuses such an undo by name rather than restoring the wrong bytes", async () => {
+    const { rel } = await upload("kept.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 7, 7, 7]));
+    const uploaded = sha(rel);
+    const remove: ActionSpec = {
+      type: "file.write",
+      summary: "delete it",
+      apply: async (store) => {
+        await store.files.deleteFile(rel);
+        return { targets: [rel], before: { [rel]: { git: true } }, after: { [rel]: null } };
+      },
+    };
+    const { batch, commit } = await runBatch({ ...user, summary: "delete", commitPrefix: "file", actions: [remove] });
+
+    // The gap the blob store closes, checked rather than only described. The batch has no commit,
+    // `resolveCommit` will not invent one from HEAD because the entry says `noCommit` rather than
+    // pending, and `applySnapshot` says which file and why instead of putting back whatever the
+    // wrong revision happens to hold.
+    expect(commit).toBeNull();
+    await expect(undoBatch(batch)).rejects.toThrow(/can only be restored from its commit/);
+    expect(existsSync(path.join(DATA, rel))).toBe(false);
+    expect(uploaded).toMatch(/^[0-9a-f]{64}$/); // the bytes existed; nothing can reach them
   });
 });

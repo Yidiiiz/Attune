@@ -1,15 +1,17 @@
 // Owns: the throwaway checkout the browser checks run against. Wiped and re-seeded before every
 // run, so a check never inherits state from the last one and never sees the owner's `data/`.
 //
-// It is a real git repository, because the §15 item about commits is one of the things being
-// checked: "a conversation with three branches produces one commit per finalized turn" is a
-// claim about `git log`, and a directory that is not a repository cannot answer it.
+// It is a real git repository, and `data/` is ignored in it exactly as in the real one. The app
+// commits nothing under `data/` (`lib/history/batch.ts`), so a sandbox that tracked it would let
+// every check about committing pass against a world the app does not run in. `e2e/branching.spec.ts`
+// is where that is read back: the §15 item is now one *batch* per finalized turn and no commit, and
+// both halves of it are claims about files this sandbox holds.
 //
 // Failure behavior: throws, which fails the run before a single check has misled anyone. A harness
 // that quietly ran against a directory it could not prepare would report passes that mean nothing.
 
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +26,7 @@ export default async function globalSetup(): Promise<void> {
   const git = (...args: string[]): void => {
     execFileSync("git", args, { cwd: SANDBOX, stdio: "ignore" });
   };
+  await writeFile(path.join(SANDBOX, ".gitignore"), "data/\n");
   git("init", "-q");
   git("config", "user.email", "checks@example.invalid");
   git("config", "user.name", "browser checks");

@@ -80,7 +80,8 @@ afterEach(() => {
 });
 
 describe("a completed turn proposing a short habits append", () => {
-  it("applies it after the turn's own batch, as the agent, in a batch and commit of its own", async () => {
+  it("applies it after the turn's own batch, as the agent, in a batch of its own", async () => {
+    const head = git("rev-parse", "HEAD");
     const { events, assistantId } = await send("[[propose-habit]] how do I usually work?");
 
     const [one] = applied(events);
@@ -96,7 +97,8 @@ describe("a completed turn proposing a short habits append", () => {
     expect(write).toBe(reply + 1);
     expect(all[write]).toMatchObject({ actor: "agent", type: "knowledge.write" });
     expect(all[write].entries[0].meta.autoApplied).toEqual({ conversation: CONV, message: assistantId, path: HABITS, lines: 2 });
-    expect(git("log", "-1", "--format=%s")).toBe("knowledge: Add to 'habits'");
+    // Its own batch, and no commit: every path it writes is under `data/`, which is ignored.
+    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("0");
   });
 
   it("is marked in the transcript from the log, and one undo restores habits.md and removes the marker", async () => {

@@ -2,6 +2,11 @@
 // rule 6, §7.1) — and the snapshot mechanics undo is built on. Nothing outside `lib/history/` writes
 // to `data/`, so this file is the place to look for what changed and why it was allowed to.
 //
+// **`data/` is not committed.** It is in `.gitignore`, so a batch that writes only under it is
+// logged, mirrored and undoable and never reaches git — `meta.noCommit: true`, and no push is
+// scheduled. That is what stops the app's own writes putting the owner's notes on a remote, and it
+// is what `README.md` has always said. Only `code.change`, which declares `repoPaths`, commits.
+//
 // Failure behavior: if an action throws, the actions that already ran are rolled back from their
 // `before` snapshots newest first, nothing is logged, and the error reaches the caller — a half-
 // applied batch is the one outcome undo could not describe. If git fails the batch stays logged with
@@ -25,8 +30,6 @@ import { commitExclusions } from "./in-flight.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
 import * as git from "./git.ts";
 import {
-  LOG_PATH,
-  MIRROR_PATH,
   appendActions,
   markCommitFailed,
   nextSeq,
@@ -138,7 +141,11 @@ export const store: Store = {
 
 /**
  * Put a file back into the state a snapshot describes. `commit` is needed only by `{ git: true }`,
- * which cannot be reconstructed without one — the UI says so rather than pretending otherwise. Which
+ * which cannot be reconstructed without one — the UI says so rather than pretending otherwise.
+ * **A data path's `{ git: true }` is therefore unrestorable now**, because a data batch has no
+ * commit: it throws the named error below rather than restoring the wrong bytes. Nothing has ever
+ * produced one here (it takes an upload or over 64 KB of text), and the blob store that replaces it
+ * is filed against Phase 8b in AGENTS.md. Which
  * side of the batch it was is what picks the revision: a `before` is the file as it was in the commit's
  * parent, an `after` as it was in the commit. `rel` is `data/`-relative unless `repoRelative` says it
  * is a repository path, which only `code.change` targets are.
@@ -228,8 +235,8 @@ async function backfillPrevious(): Promise<void> {
 
 /**
  * §7.1, in order: apply → backfill the previous batch's hash → log → mirror → commit → schedule the
- * push. Everything that writes under `data/` happens before the commit that sweeps it up, so the
- * tree is clean when the batch returns, and this batch's own hash waits for the next one.
+ * push. A batch with no repository path stops at the mirror, which is every batch the app runs
+ * today; one that has them commits only those, and this batch's own hash waits for the next one.
  */
 export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
   return enqueue(async () => {
@@ -238,11 +245,25 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     const batch = batchId(settings.timezone);
     const ts = nowIso(settings.timezone);
     const subject = `${spec.commitPrefix}: ${spec.summary}`;
-    const willCommit = spec.commit !== false;
+    // `data/` is ignored, so a batch whose every write is under it has nothing git could commit:
+    // `git add -A -- data` refuses an ignored pathspec outright, and the commit after it fails on
+    // `pathspec 'data' did not match any file(s) known to git` — a hard failure, not an empty
+    // commit. Rather than reach git to be told that, such a batch takes the non-committing path §8
+    // already has: `meta.noCommit: true`, no subject to backfill, and `schedulePush` never reached,
+    // which is what keeps the app's own writes off any remote. A batch carrying repository paths —
+    // `code.change`, which is the only thing that sets `repoPaths` — still commits them and still
+    // pushes. Structural on purpose: it does not ask git whether `data/` is ignored, so a checkout
+    // that forgot the line does not quietly start committing data again, and the suite exercises
+    // the same path the app takes.
+    const repoPaths = spec.repoPaths ?? [];
+    const willCommit = spec.commit !== false && repoPaths.length > 0;
 
     // Outside production, a missing or foreign repository is a bug in whatever set this checkout up,
     // so it is refused before a byte lands rather than logged as `commit: null` (`repository.ts`).
-    if (willCommit && !PRODUCTION) await git.assertOwnRepository();
+    // Keyed to §8's streaming bypass rather than to `willCommit`: almost no batch reaches git
+    // now, and an invariant that holds only when a `code.change` happens by is not the one that
+    // caught 232 commits landing in a repository in the home folder.
+    if (spec.commit !== false && !PRODUCTION) await git.assertOwnRepository();
 
     const applied: Applied[] = [];
     try {
@@ -299,19 +320,22 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
 
     const offset = await appendActions(entries);
     await regenerateMirror();
+
+    // For every batch except §8's streaming bypass, whether or not it reaches git: this call is
+    // also what ends a finalizing batch's hold on its own turn's files, and that lifetime must not
+    // start depending on whether the batch had a repository path to commit (`in-flight.ts`). What
+    // it returns protects nothing now — no data path is ever staged — so only the bookkeeping is
+    // left, and `in-flight.ts` guards §8's rule for repository paths alone, which never stream.
+    if (spec.commit !== false) await commitExclusions(targets, spec.turn);
     if (!willCommit) return { batch, commit: null, seq, targets };
 
     let commit: string | null = null;
-    const paths = ["data", ...(spec.repoPaths ?? [])];
-    // §8: a reply still arriving is never committed, whatever batch happens to land mid-turn.
-    const exclude = (await commitExclusions(targets, spec.turn)).map((rel) => `data/${rel}`);
-    const declared = [...targets, LOG_PATH, MIRROR_PATH].map((rel) => `data/${rel}`);
     try {
-      const expected = PRODUCTION ? undefined : [...declared, ...(spec.repoPaths ?? [])];
-      commit = await git.commitPaths(subject, paths, exclude, expected);
+      const expected = PRODUCTION ? undefined : repoPaths;
+      commit = await git.commitPaths(subject, repoPaths, [], expected);
       if (commit === null) {
-        // `data/` is tracked and a log line was just written, so this should be unreachable. If it
-        // ever happens the entry says so rather than sitting on an unexplained null.
+        // Every path here is a declared repository path, so this is a `code.change` that changed
+        // nothing. The entry says so rather than sitting on an unexplained null.
         await markCommitFailed(offset, batch, "nothing to commit");
       } else if (settings.sync.autoPush) {
         git.schedulePush(settings.sync.pushDebounceMs);

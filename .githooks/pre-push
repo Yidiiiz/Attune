@@ -1,0 +1,4 @@
+#!/bin/sh
+# Refuses any push that would put a data/ path on a remote (AGENTS.md, the X decision).
+# Installed by scripts/postinstall.mjs setting core.hooksPath to .githooks (PROJECT.md Decision 39).
+exec node scripts/check-push.mjs "$@"

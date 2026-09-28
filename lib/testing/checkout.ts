@@ -132,6 +132,11 @@ export async function createCheckout(name: string): Promise<Checkout> {
   git("config", "commit.gpgsign", "false");
   // The project's own rule (Decision 42), so a sandbox stores bytes the way the real repository does.
   await writeFile(path.join(dir, ".gitattributes"), "* text=auto eol=lf\n");
+  // And the rule that matters more here: `data/` is ignored in the real repository, so it is
+  // ignored in a sandbox too. One that tracked `data/` would let every check about committing
+  // pass against a world the app does not run in — `runBatch` would still take its
+  // non-committing path, and the commit such a check read would be the one `reset` had just made.
+  await writeFile(path.join(dir, ".gitignore"), "data/\n");
   git("add", "-A");
   git("commit", "-q", "-m", "checkout");
   await assertOwnRepository();

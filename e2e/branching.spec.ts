@@ -1,23 +1,41 @@
 // The browser half of PROJECT.md §17 step (d) — branching. Three of §15's items live here: a
-// conversation with three branches produces one commit per finalized turn, branching from the first
+// conversation with three branches produces one batch per finalized turn, branching from the first
 // message works, and the tree the sidebar will read is the one on screen.
 //
 // Every reply comes from `lib/agent/scripted.ts` — no key, no network. The library half of the same
 // list is `lib/agent/turn.test.ts`; these are the assertions that one cannot make, because they are
 // about what a fork looks like to someone clicking on it.
 //
-// The commit check reads the sandbox's git log directly. That is the only way to answer "one commit
-// per finalized turn": the count is a claim about `git log` (`e2e/setup.ts` says so), and no page
-// renders it.
+// That last check reads the sandbox's action log and git log directly, because no page renders
+// either. §15 asked for one *commit* per finalized turn; `data/` is ignored now and a batch writing
+// only under it never reaches git (`lib/history/batch.ts`), so the unit of a finished turn is the
+// batch, and the commit count that used to be three is zero. Both are asserted, because "three
+// batches" alone would still pass if the writes had also gone into a commit somewhere.
 
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { SANDBOX } from "./setup";
 import { assistant, chooseAction, exchange, idOf, messages, newConversation, reprompt } from "./helpers";
 
 test.use({ testIdAttribute: "data-ui" });
 
-/** Commits touching one conversation's directory, newest first. */
+/** Distinct `chat.message` batches whose targets name one conversation's directory. */
+function turnBatches(conversationId: string): string[] {
+  const text = readFileSync(path.join(SANDBOX, "data", "history", "actions.jsonl"), "utf8");
+  const found = new Set<string>();
+  for (const line of text.split("\n")) {
+    if (line.trim().length === 0) continue;
+    const entry = JSON.parse(line) as { batch: string; type: string; targets: string[] };
+    if (entry.type !== "chat.message") continue;
+    if (!entry.targets.some((one) => one.startsWith(`chats/${conversationId}/`))) continue;
+    found.add(entry.batch);
+  }
+  return [...found];
+}
+
+/** Commits touching one conversation's directory, newest first. Expected to be none of them. */
 function commitsFor(conversationId: string): string[] {
   const out = execFileSync("git", ["log", "--oneline", "--", `data/chats/${conversationId}`], {
     cwd: SANDBOX,
@@ -110,7 +128,7 @@ test("branching from the first message makes a second root", async ({ page }) =>
   await expect(messages(page)).toHaveCount(2);
 });
 
-test("three branches produce one commit per finalized turn", async ({ page }) => {
+test("three branches produce one batch per finalized turn, and no commit", async ({ page }) => {
   await newConversation(page);
   const conversationId = await page
     .locator("[data-ui='conversation']")
@@ -118,18 +136,18 @@ test("three branches produce one commit per finalized turn", async ({ page }) =>
   expect(conversationId).not.toBeNull();
   const id = conversationId as string;
 
-  const before = commitsFor(id).length; // the `chat.create` that started it
+  const before = turnBatches(id).length;
 
   await exchange(page, "branch one");
   await reprompt(page, await idOf(page, 0), "Edit and resend", "branch two");
   await reprompt(page, await idOf(page, 0), "Edit and resend", "branch three");
 
-  // §15, and §16.3's "commit both files as one `chat.message` batch": three finalized turns are
-  // three commits, not six. Branch switches are `chat.update` commits and touch the same directory,
-  // so what is counted is the turns' own summaries rather than every commit in the range.
-  const turns = commitsFor(id).filter((line) => / Reply in /.test(line));
-  expect(turns).toHaveLength(3);
-  expect(commitsFor(id).length).toBeGreaterThan(before);
+  // §16.3's "commit both files as one `chat.message` batch", read as the batch it always was:
+  // three finalized turns are three batches, not six — a branch switch is a `chat.update` and does
+  // not count. And not one of them is in a commit, which is the property that makes the whole
+  // conversation directory unable to reach a remote.
+  expect(turnBatches(id).length - before).toBe(3);
+  expect(commitsFor(id)).toHaveLength(0);
 });
 
 test("deleting a message with replies under it is refused, and it stays on screen", async ({ page }) => {

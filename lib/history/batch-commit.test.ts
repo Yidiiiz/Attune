@@ -1,13 +1,17 @@
-// What a batch's commit contains, against a real checkout. §8 says never commit a streaming
-// message, and `runBatch` stages `data/` whole — so a batch that commits while a reply is still
-// arriving would sweep the half-written message file into its commit, and git would then hold a
-// `status: streaming` file that nothing in the log describes. That is the case the first test
-// reproduces, and it stays in the suite because the only thing standing between the two is the
-// in-flight registry in `lib/history/in-flight.ts`.
+// What reaches git, against a real checkout.
 //
-// The exception to that exclusion is keyed to **ownership**: only the batch that finalizes a turn
-// may commit that turn's files. A batch that merely declares a held path is refused, which is the
-// original defect's second route closed.
+// **`data/` is ignored, so almost nothing does.** A batch whose every write is under `data/` is
+// logged, mirrored and undoable and never reaches git at all (`batch.ts`); only a batch declaring
+// `repoPaths` — `code.change`, which nothing builds yet — commits, and only those paths. The last
+// describe block here is that rule as checks, the batch that spans both included.
+//
+// **What that leaves of this file's original subject.** §8 says never commit a streaming message,
+// and `runBatch` used to stage `data/` whole, so a batch landing mid-turn swept the half-written
+// reply into its commit. There is no longer a commit for it to be swept into, which retires that
+// defect rather than fixing it — so what is checked here now is the half of `in-flight.ts` that
+// still does something: the **ownership** refusal, which stops a batch that does not own a held
+// path from writing it at all, and the registry's **lifetime**, where an entry left behind would
+// sit in the bookkeeping for the life of the process.
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -22,7 +26,9 @@ const { runBatch } = await import("./batch.ts");
 const { createTask } = await import("./actions.ts");
 const { saveMessage } = await import("./chat-actions.ts");
 const { commitExclusions, releaseStreaming, streamingPaths } = await import("./in-flight.ts");
-const { readActions } = await import("./log.ts");
+const { readActions, nullReason } = await import("./log.ts");
+// The module itself, so a check can watch `schedulePush` rather than infer it from a null commit.
+const gitModule = await import("./git.ts");
 const chats = await import("../store/chats.ts");
 const { StoreError } = await import("../store/paths.ts");
 const { uuidv7 } = await import("../chat/uuid.ts");
@@ -98,27 +104,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("a batch committed while a reply is streaming", () => {
-  it("leaves the streaming message out of its commit", async () => {
+describe("a batch that lands while a reply is streaming", () => {
+  it("makes no commit for the reply to be swept into, and leaves it on disk", async () => {
+    const head = git("rev-parse", "HEAD");
     const rel = await stream();
 
-    await task("pset 4");
+    const { commit } = await task("pset 4");
 
-    // The task is in the commit; the half-written reply is not, and is still on disk, untracked.
-    expect(committed().some((one) => one.startsWith("data/tasks/"))).toBe(true);
-    expect(committed()).not.toContain(`data/${rel}`);
+    // The original defect needed a commit to happen. Neither the task nor the half-written reply
+    // reaches one, and the reply is still there for its own turn to finish.
+    expect(commit).toBeNull();
+    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("0");
     expect(git("ls-files", "--", `data/${rel}`)).toBe("");
-    expect(git("status", "--porcelain", "--", `data/${rel}`)).toBe(`?? data/${rel}`);
+    expect(await readFile(path.join(DATA, rel), "utf8")).toContain("status: streaming");
   });
 
-  it("still lets the owning turn's finalizing batch commit it, and that batch ends the hold", async () => {
+  it("still ends the owning turn's hold when its finalizing batch lands", async () => {
     const before = streamingPaths();
     const rel = await stream();
     await task("pset 4");
 
-    await finish(rel, "The change of basis matrix", TURN);
-    expect(committed()).toContain(`data/${rel}`);
-    expect(git("status", "--porcelain", "--", "data")).toBe("");
+    const { commit } = await finish(rel, "The change of basis matrix", TURN);
+
+    expect(commit).toBeNull();
+    expect(await readFile(path.join(DATA, rel), "utf8")).toContain("The change of basis matrix");
     expect(streamingPaths()).toBe(before);
   });
 
@@ -168,7 +177,7 @@ describe("the in-flight registry's lifetime", () => {
     expect(committed()).not.toContain(`data/${rel}`);
   });
 
-  it("lets a batch take an orphan over, commits it, and clears the entry", async () => {
+  it("lets a batch take an orphan over and clears the entry", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const rel = await stream();
     await releaseStreaming([rel]);
@@ -177,7 +186,6 @@ describe("the in-flight registry's lifetime", () => {
     // Nobody owns an orphan, so a batch that declares it — the sweep, or deleting the conversation —
     // is repairing it rather than contesting it.
     await finish(rel, "repaired", undefined);
-    expect(committed()).toContain(`data/${rel}`);
     // By path rather than by count: an earlier case's orphan, whose file the reset removed, is
     // dropped by the same batch, and that is correct too.
     expect(await commitExclusions([], undefined)).not.toContain(rel);
@@ -190,8 +198,9 @@ describe("the in-flight registry's lifetime", () => {
     const rel = await stream();
     const held = streamingPaths();
 
-    // Changed by hand, outside any batch and outside the turn. Without the check the path would be
-    // excluded from every later commit, and this edit would never be committed.
+    // Changed by hand, outside any batch and outside the turn. Without the check the entry would
+    // sit in the registry for the life of the process, and the next turn wanting this path would be
+    // refused as contesting a stream that has already ended.
     await writeFile(
       path.join(DATA, rel),
       chats.renderMessage({ ...streaming(path.basename(rel, ".md"), "edited"), status: "complete" }),
@@ -200,47 +209,129 @@ describe("the in-flight registry's lifetime", () => {
 
     expect(errors.mock.calls.flat().join("\n")).toContain(`${rel} was held as streaming but no longer is`);
     expect(streamingPaths()).toBe(held - 1);
-    expect(committed()).toContain(`data/${rel}`);
   });
 });
 
-describe("the staged set against the declared targets (outside production)", () => {
-  it("is silent when they match", async () => {
+describe("what reaches git, and what does not", () => {
+  /** A file at the top of the checkout, outside `data/`, where a `code.change` writes one. */
+  const repoFile = (name: string) => path.join(checkout.dir, name);
+
+  /** The one action shape that declares a repository path, which is all `repoPaths` is for. */
+  const codeChange = (name: string, text: string) => ({
+    type: "code.change" as const,
+    summary: `edit ${name}`,
+    apply: async () => {
+      await writeFile(repoFile(name), text);
+      return { targets: [], before: {}, after: {} };
+    },
+  });
+
+  it("makes no commit and schedules no push for a batch writing only under data/", async () => {
+    const push = vi.spyOn(gitModule, "schedulePush").mockImplementation(() => undefined);
+    const head = git("rev-parse", "HEAD");
+
+    const { batch, commit } = await task("pset 4");
+
+    expect(commit).toBeNull();
+    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("0");
+    // The push is reachable only from a commit that happened, so the leak is closed at its source
+    // rather than by there being no remote today.
+    expect(push).not.toHaveBeenCalled();
+
+    // And the log says which kind of null this is: never, rather than the pending it would read as
+    // with no marker, or the failed it would carry had the batch reached git and found nothing
+    // staged. Every null explains itself (Decision 47).
+    const entries = (await readActions()).filter((one) => one.batch === batch);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.every((one) => one.commit === null)).toBe(true);
+    expect(entries.every((one) => one.meta.noCommit === true)).toBe(true);
+    expect(entries.some((one) => "commitSubject" in one.meta)).toBe(false);
+    expect(entries.some((one) => "commitFailed" in one.meta)).toBe(false);
+    expect(nullReason(entries[0])).toBe("never");
+  });
+
+  it("commits a repository path and schedules the push", async () => {
+    const push = vi.spyOn(gitModule, "schedulePush").mockImplementation(() => undefined);
+    const head = git("rev-parse", "HEAD");
+
+    const { batch, commit } = await runBatch({
+      actor: "user",
+      scope: "project",
+      summary: "touch a source file",
+      commitPrefix: "code",
+      repoPaths: ["only-code.txt"],
+      actions: [codeChange("only-code.txt", "changed")],
+    });
+
+    expect(commit).not.toBeNull();
+    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("1");
+    expect(committed()).toEqual(["only-code.txt"]);
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push.mock.calls[0][0]).toBe(30_000); // settings.sync.pushDebounceMs, from the seed
+
+    const entries = (await readActions()).filter((one) => one.batch === batch);
+    expect(entries.every((one) => one.meta.commitSubject === "code: touch a source file")).toBe(true);
+    expect(entries.some((one) => "noCommit" in one.meta)).toBe(false);
+  });
+
+  it("commits only the repository half of a batch that spans both, and pushes", async () => {
+    const push = vi.spyOn(gitModule, "schedulePush").mockImplementation(() => undefined);
+
+    // Nothing in the app builds this today: `repoPaths` has one intended caller, Phase 9's
+    // `code.change`, and such a batch always writes the log under `data/` as well as the files it
+    // changed — so a mixed batch is unreachable now and unavoidable then. What X makes of it is
+    // pinned here rather than left to the predicate. The repository paths are committed and pushed;
+    // the data half is logged, undoable and outside git; and the entries carry the hash all the
+    // same, because the batch did commit — just not the part that would have leaked.
+    const { batch, commit, targets } = await runBatch({
+      actor: "user",
+      scope: "project",
+      summary: "a source file and a task",
+      commitPrefix: "code",
+      repoPaths: ["both.txt"],
+      actions: [codeChange("both.txt", "changed"), createTask({ title: "from the same batch" })],
+    });
+
+    expect(commit).not.toBeNull();
+    expect(committed()).toEqual(["both.txt"]);
+    expect(targets.some((one) => one.startsWith("tasks/"))).toBe(true);
+    expect(git("ls-files", "--", "data")).toBe("");
+    expect(push).toHaveBeenCalledTimes(1);
+
+    const entries = (await readActions()).filter((one) => one.batch === batch);
+    expect(entries).toHaveLength(2);
+    expect(entries.every((one) => "commitSubject" in one.meta)).toBe(true);
+  });
+
+  it("is silent about the staged set for a batch with no repository path, because none is staged", async () => {
     const warnings = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await writeFile(path.join(DATA, "knowledge", "profile", "habits.md"), "# Habits — edited by hand");
+
     await task("pset 4");
+
+    // The comparison's *staged but not declared* arm went with the `data` pathspec that produced
+    // it, and this is what replaced it: a hand edit under `data/` used to ride along in the next
+    // batch's commit — over-staging, which `in-flight.ts` calls the recoverable direction — and now
+    // rides along in nothing at all. The other arm still runs, on repository paths, below.
     expect(warnings).not.toHaveBeenCalled();
+    expect(git("status", "--porcelain", "--", "data")).toBe("");
   });
 
-  it("names a file staged that no action declared", async () => {
+  it("names a repository path declared but written with the bytes it already had", async () => {
     const warnings = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    await writeFile(path.join(DATA, "knowledge", "profile", "habits.md"), "# Habits\n\nedited by hand\n");
-    await task("pset 4");
+    await writeFile(repoFile("unchanged.txt"), "the same");
+    git("add", "-A");
+    git("commit", "-q", "-m", "a file to leave alone");
 
-    const said = warnings.mock.calls.flat().join("\n");
-    expect(said).toContain("staged but not declared: data/knowledge/profile/habits.md");
-    // Over-staging is the recoverable direction, so the file is committed rather than left behind.
-    expect(committed()).toContain("data/knowledge/profile/habits.md");
-  });
-
-  it("names a target declared but written with the bytes it already had", async () => {
-    const warnings = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await runBatch({
       actor: "user",
-      scope: "user",
-      summary: "rewrite habits unchanged",
-      commitPrefix: "knowledge",
-      actions: [
-        {
-          type: "knowledge.write",
-          summary: "Rewrite habits",
-          apply: async (store) => {
-            const rel = "knowledge/profile/habits.md";
-            const snap = await store.snapshotContent(rel);
-            return { targets: [rel], before: { [rel]: snap }, after: { [rel]: snap } };
-          },
-        },
-      ],
+      scope: "project",
+      summary: "declare it and change nothing",
+      commitPrefix: "code",
+      repoPaths: ["unchanged.txt"],
+      actions: [codeChange("unchanged.txt", "the same")],
     });
-    expect(warnings.mock.calls.flat().join("\n")).toContain("declared but unchanged: data/knowledge/profile/habits.md");
+
+    expect(warnings.mock.calls.flat().join("\n")).toContain("declared but unchanged: unchanged.txt");
   });
 });

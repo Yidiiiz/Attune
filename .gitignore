@@ -1,6 +1,11 @@
 node_modules/
 .next/
 .env.local
+# Your own data (PROJECT.md 4). It is never committed and so never pushed: `runBatch` takes the
+# non-committing path when every write in a batch is under here, and git refuses `data` as a
+# pathspec outright while this line stands. Removing it does not put the data back in history —
+# it makes the app's commits fail instead. README says `nothing leaves your machine`; this is it.
+data/
 *.tsbuildinfo
 next-env.d.ts
 .e2e-sandbox/

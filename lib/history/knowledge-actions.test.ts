@@ -97,13 +97,14 @@ describe("a new note (§6.3)", () => {
     expect(await sha(NOTE)).toBeNull();
   });
 
-  it("with a map link is one batch and one commit, and one undo restores every byte", async () => {
+  it("with a map link is one batch and no commit, and one undo restores every byte", async () => {
     const before = await hashes([NOTE, MAP, knowledge.INDEX_PATH]);
     const head = git("rev-parse", "HEAD");
 
     const { batch } = await run("remember office hours", officeHours(MAP));
 
-    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("1");
+    // One batch, and no commit: the note, the map and the index are all under `data/` (`batch.ts`).
+    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("0");
     const note = await knowledge.readRecord(NOTE);
     expect(note.data).toMatchObject({ title: "Office hours for MATH 221", type: "fact", source: "chat:c_20260912_aaaa", links: [MAP] });
     expect(String(note.data.id)).toMatch(/^n_\d{8}_[0-9a-f]{4}$/);
@@ -177,7 +178,7 @@ describe("collections", () => {
 
     const { batch } = await run("promote", ...promoteItem(rel, "dune"));
 
-    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("1");
+    expect(git("rev-list", "--count", `${head}..HEAD`)).toBe("0");
     const [task] = await listTasks();
     expect(task).toMatchObject({ title: "Dune", body: "the 2021 one first", source: `collection:${rel}`, collection: `${rel}#dune` });
     const collection = await knowledge.readRecord(rel);

@@ -105,15 +105,16 @@ describe("a send that succeeds", () => {
     expect(chatBatches[0].entries).toHaveLength(3); // two messages and the leaf move
   });
 
-  it("produces one commit per finalized exchange across three branches", async () => {
-    // Counted from where this case started: the sandbox's history carries the other cases' commits.
+  it("branches three ways from three finalized exchanges, and commits none of them", async () => {
     const from = git("rev-parse", "HEAD");
     const first = await send("branch one");
     const second = await send("branch two", { parentId: null });
     const third = await send("branch three", { parentId: null });
 
-    const log = git("log", "--oneline", `${from}..HEAD`, "--", `data/chats/${CONV}`).split("\n");
-    expect(log.filter((line) => line.includes("chat:"))).toHaveLength(3);
+    // Every path a turn writes is under `data/`, which is ignored, so three finished
+    // exchanges are three batches in the log and not one commit (`batch.ts`). The branching
+    // below is what the turn owes; git is owed nothing.
+    expect(git("rev-list", "--count", `${from}..HEAD`)).toBe("0");
 
     const { messages } = await chats.readConversation(CONV);
     const tree = buildTree(messages);

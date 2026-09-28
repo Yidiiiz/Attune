@@ -169,16 +169,20 @@ describe("sweepInterruptedMessages", () => {
     expect((await read(id))?.status).toBe("streaming");
   });
 
-  it("clears the in-flight entries of the orphans it repairs, and commits them", async () => {
+  it("clears the in-flight entries of the orphans it repairs", async () => {
     const id = await abandon(message(uuidv7()));
     const rel = chats.messagePath(CONV, id);
     const held = streamingPaths();
+    const head = checkout.git("rev-parse", "HEAD");
 
     await sweepInterruptedMessages();
 
-    // A repaired orphan left in the registry would be excluded from every later commit.
+    // An entry left in the registry would sit in the exclusion bookkeeping for the life of the
+    // process. It is no longer held out of a commit, because there is none: the repair is a `data/`
+    // write like any other, logged and undoable and outside git (`batch.ts`).
     expect(streamingPaths()).toBe(held - 1);
-    expect(checkout.git("ls-files", "--", `data/${rel}`)).toBe(`data/${rel}`);
-    expect(checkout.git("status", "--porcelain", "--", "data")).toBe("");
+    expect((await read(id))?.status).not.toBe("streaming");
+    expect(checkout.git("rev-list", "--count", `${head}..HEAD`)).toBe("0");
+    expect(checkout.git("ls-files", "--", `data/${rel}`)).toBe("");
   });
 });

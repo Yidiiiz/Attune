@@ -189,7 +189,11 @@ describe("Rename of a task", () => {
 });
 
 describe("Delete", () => {
-  it("removes an upload and its manifest row, and undo puts the exact bytes back", async () => {
+  // SKIPPED with the three in `git-snapshot.test.ts`, and for the same reason: an upload is a
+  // `{ git: true }` snapshot, `data/` is no longer committed, and there is no commit to restore
+  // those bytes from until the blob store lands (AGENTS.md, filed against Phase 8b). The delete
+  // itself, and its manifest row, are covered by the folder case below.
+  it.skip("removes an upload and its manifest row, and undo puts the exact bytes back", async () => {
     const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 1, 2, 3]);
     const added = await runBatch({ actor: "user", scope: "user", summary: "add", commitPrefix: "file", actions: [addFile("images", "a.png", bytes, "check")] });
     const rel = added.targets[0];

@@ -142,7 +142,7 @@ describe("ceilingValue", () => {
 });
 
 describe("once the checkout has a repository of its own", () => {
-  it("commits there and nowhere else", async () => {
+  it("writes there, commits nowhere, and never reaches the enclosing repository", async () => {
     raw(INNER, ["init", "-q"]);
     raw(INNER, ["config", "user.email", "check@example.invalid"]);
     raw(INNER, ["config", "user.name", "check"]);
@@ -151,8 +151,12 @@ describe("once the checkout has a repository of its own", () => {
 
     const { commit } = await task("pset 5");
 
-    expect(commit).not.toBeNull();
-    expect(raw(INNER, ["log", "-1", "--format=%s"])).toBe("task: add pset 5");
+    // Two halves, and both matter. The repository still has to be its own: `assertOwnRepository`
+    // runs for every batch that is not the streaming bypass, which is what the two failing cases
+    // above pin. And then the batch commits nothing at all, because everything it wrote is under
+    // `data/` (`batch.ts`) — so there is no commit here to land in the wrong place to begin with.
+    expect(commit).toBeNull();
+    expect(raw(INNER, ["rev-list", "--count", "--all"])).toBe("0");
     expect(outerCommits()).toBe(before);
     expect(await readFile(path.join(INNER, "data", "history", "actions.jsonl"), "utf8")).toContain("pset 5");
   });

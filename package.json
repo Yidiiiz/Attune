@@ -12,6 +12,7 @@
     "test": "node scripts/check-lib-imports.mjs && vitest run",
     "check:ui": "node scripts/check-ui.mjs",
     "check-secrets": "node scripts/check-secrets.mjs",
+    "check-push": "node scripts/check-push.mjs",
     "check-lib-imports": "node scripts/check-lib-imports.mjs",
     "history": "node scripts/history.mjs",
     "kb:check": "node scripts/kb-check.mjs",

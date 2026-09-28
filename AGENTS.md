@@ -2838,7 +2838,11 @@ list` shows all four batches as `uncommitted`, where three used to show a hash. 
 the log has no state for "committed, then the commit was removed", and `null` reads as *pending* —
 but it is the only available value that does not name a commit which no longer exists. **Nothing
 depends on it**: no batch in this log has a `{ git: true }` snapshot, which is the only kind of
-restore that reads the field, so undo is unaffected either way.
+restore that reads the field, so undo is unaffected either way. **Recorded, at the owner's direction, as
+a known imprecision rather than fixed**: the honest repair would be a fourth commit state — *committed,
+then the commit was removed* — in `nullReason` (`lib/history/log.ts:78`), and inventing a state in the
+log's schema to describe one historical accident costs more than the wrong word in a CLI listing
+that nothing reads back.
 
 **Checked, and how.** `tsc` clean. `npm test` **744/744 across 63 files** in 98.7 s — the number the
 deterministic-suite work was done to make reproducible, unchanged by the rewrite. `npm run kb:check`
@@ -2920,6 +2924,27 @@ Anything deferred across a phase boundary gets a line here: where it was agreed,
 8. **Update the Phase status block as the last step of every phase**, in the trailing `docs:` commit described in rule 4: move the phase to complete with the build commit's hash, name the next one, and carry forward anything left unverified. The next session starts there.
 9. **Before building, write the approval's conditions into the Phase status block**, verbatim, as the first thing the build touches. Approvals arrive as prose in a chat and a chat gets compacted; conditions written into this file can be re-read instead of recalled. Anything deferred across a phase boundary goes in the Deferred amendments block at the same time.
 10. **Never reconstruct from memory what can be read.** Two things fail the same way here. **The record** — what was approved, what a condition was, what was asked for — is checkable, so check it: re-read the file, or the transcript under `.claude/projects/`. **The code is checkable in exactly the same sense**, and a report describing what was built is a claim about the state of the working tree, not a recollection: having written a file is not knowing what it now says. So before a report states that a component is laid out a certain way, that a guard fires at a certain point, or that a rule is applied in some file, open the file and read the line — and cite it, so the reader can check it too. Having written it earlier in the same session is not an exemption; having written it before a compaction is the case where the belief is most confident and least attached to anything. If it cannot be checked from what is in context, say "I can't confirm this from what I have" and stop there. A confident wrong reconstruction is worse than an admitted gap, and the error runs in the direction that favors the reconstructor. A report that reads well is not evidence, and neither is an earlier report saying the same thing: **restating a previous answer is not answering, and a new question in the same area is a new question.**
+
+**Rule 9 has one trap, and it is worth more than the rule.** An approval recorded verbatim becomes a
+tracked file, so **an instruction to remove a string from the repository writes that string into the
+repository.** It happened here, on the sharpest possible case: the owner's history-rewrite
+instruction named their city, in the very item asking for confirmation that the city appeared nowhere
+in the tree or in history — so obeying rule 9 literally would have left that instruction as the *last
+copy* of the city in `AGENTS.md`, in a tracked file, after the rewrite had removed every other one.
+A later commit cannot take a string out of history, so the only available fix is one that **precedes**
+the operation: the verbatim record was reset out of the pending commit, the value elided to `<city>`
+with the elision marked and its reason given, and the value kept in the survey it came from, which is
+where a later reader actually needs it. It was found by a grep in a rehearsal clone coming back with
+two hits, both of them this file — not by reasoning about it, which is the argument for rehearsing.
+
+**The general case is amendment `x` in its fourth and clearest instance: a rule about text cannot be
+satisfied by a rule about addresses, and the text that describes a needle is the first place the
+needle appears.** Every check here that greps for something has this shape — §15's credential count,
+§12's identity-name and authorship greps, `publish-check` finding itself (amendment `r`),
+`lib/store/files.test.ts` catching its own doc comment — and rule 9 is that shape again with a person
+holding the grep instead of a script. So **before recording an approval verbatim, read it as input to
+every check this repository runs**, and elide with a marked placeholder wherever it would plant one.
+Verbatim is still the rule; quietly planting the needle is not what it asks for.
 
 ## Hard rules (from `PROJECT.md` §1)
 

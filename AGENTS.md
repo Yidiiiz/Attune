@@ -3102,6 +3102,96 @@ one from memory.
 **Not done, deliberately.** No remote, no push, no blob store. `scratchpad/rw/backup/` is untouched
 and stays until the owner confirms the push, at which point it is deleted and they are told.
 
+### Approved conditions — the first push (rule 9)
+
+Verbatim from the owner's instruction, recorded **before** the remote exists and before anything is
+pushed. This is the case rule 9 is for twice over: the approval is conditional on a confirmation
+that has not arrived, and the operation it authorises is the one thing in this project that cannot
+be taken back by a later commit.
+
+**Read as input to every check this repository runs first, per the rule 9 trap above.** It says "the
+city string" rather than the city, and names no identity value, location or credential. Nothing is
+elided.
+
+"Approved to push. Go ahead when I say the remote exists — see the end.
+
+The correction on item 4 is important and changes its priority, not its
+ordering. Undo of a delete of an upload, and undo of an edit to a text file over
+64 KB, are broken in the app I actually use as of tonight. Refusing by name with
+the file untouched is the right failure and it's still a real regression.
+
+So: amendment z is Phase 8b's first task, before any graph code. Don't let the
+canvas work start ahead of it. Four checks skipped against it plus one pinning
+the refusal is the right way to hold it open.
+
+Good that you corrected your own claim here rather than letting the deferral
+stand on a premise that was true of my log and not of the app.
+
+THE TWO SMALL ONES — TAKE BOTH
+- history.mjs rendering every batch as "uncommitted" when nullReason says
+  "never": take the one-line fix. Three states exist to tell these apart and the
+  renderer ignoring them means the log now misreports every batch forever. Same
+  class as the three historical nulls, except those were four entries and this
+  is all of them.
+- The empty-commits mechanism: record the measured behaviour over the guess.
+  `git add -A -- data` exits 1 and the commit dies on pathspec — that's a hard
+  failure, not a null commit. Nothing rests on it, but the argument for item 1
+  was made on an unrun mechanism and the record should say what actually
+  happens.
+
+ACCEPTED
+- All five checks, particularly the hook mutated three ways with the files read
+  back off a bare remote. That's the check proving itself.
+- Mixed batches unreachable today and unavoidable in Phase 9, pinned as a check
+  rather than left to the predicate. Right call — a predicate that has never met
+  its real case isn't verified.
+- Moving the repository assertion onto the streaming bypass. That assertion is
+  the one that caught 232 commits in my home folder, and letting it stop running
+  for every batch would have been the worst possible side effect of this change.
+  Good catch, unprompted.
+- in-flight.ts half retired, with compareStaged's staged-but-not-declared arm
+  gone and the consequence recorded as a constraint on Phase 9. Don't remove the
+  rest.
+- Backup story unowned and Y unbuilt, both on the record.
+
+PUSH
+I'm creating the GitHub repo now. When I confirm, do exactly this and nothing
+else:
+- Add it as `origin`.
+- Push main, and only main.
+- Verify from the remote, not locally: no data/ path in any commit, seed/
+  present, LICENSE present, the city string absent from every blob and commit
+  message on the remote copy.
+- Report, then stop.
+
+Then I'll confirm and you delete scratchpad/rw/backup/.
+
+Nothing else goes out. No tags, no other branches, no force."
+
+**Both small items are taken**, in `7240e02` and `4861431`. `list` now prints `commitState` rather
+than one word for every null, so `never`, `pending` and `failed` read differently — shown against a
+throwaway checkout with all three present. And the rewrite narrative above now says what
+`git add -A -- data` against an ignored directory actually does — exit 1, then a thrown pathspec
+error — rather than the empty commit that paragraph guessed at.
+
+**Amendment `z`'s priority is raised and its phase is unchanged**, which the table and the Phase 8b
+row both already say: it is 8b's **first** task, before any graph code, and the canvas work does not
+start ahead of it. The reason is now on the record rather than in the amendment's own wording — the
+two broken operations are broken in the app the owner uses, tonight, not only in theory.
+
+**What the push instruction forecloses, so a later session does not widen it.** `origin` and nothing
+else; `main` and nothing else; no tags, no other branches, no force, and no second remote. The
+verification is **from the remote copy** rather than from this checkout, which is the point of it: a
+local answer would be a claim about the repository that produced the push rather than about the one
+that received it. The four questions are the ones the rewrite was run to be able to answer — no
+`data/` path in any commit, `seed/` present, `LICENSE` present, and the city absent from every blob
+and every commit message on the remote side.
+
+**And the pre-push hook will run on it.** It is installed through `core.hooksPath`, the remote oid
+for a branch the remote does not have is all zeroes, and `check-push.mjs` reads that as "scan the
+whole history" — so the first push is the case it was written for, and a refusal there is the hook
+working rather than a problem with the push.
+
 ## Deferred amendments
 
 Anything deferred across a phase boundary gets a line here: where it was agreed, where it lands, and its state — including the reason, because the reason is the part that gets lost. An amendment that lives only in a chat does not survive the one-chat-per-phase boundary, and a compacted session cannot recall what it was never told.

@@ -9,6 +9,7 @@
 
 import { applySnapshot, runBatch } from "./batch.ts";
 import { isDataRelative } from "../store/paths.ts";
+import { readBlob } from "../store/blobs.ts";
 import * as git from "./git.ts";
 import { groupBatches, readActions } from "./log.ts";
 import type { Batch, Snapshots } from "./log.ts";
@@ -129,6 +130,13 @@ function reverseAction(target: Batch, direction: "undo" | "redo", commit: string
     summary: target.summary,
     apply: async () => {
       const ordered = direction === "undo" ? [...target.entries].reverse() : target.entries;
+      // Check every blob before restoring any target: one missing second blob must
+      // not leave the first file reversed without a log entry for that reversal.
+      for (const entry of ordered) {
+        for (const snap of Object.values(direction === "undo" ? entry.before : entry.after)) {
+          if (snap !== null && "blob" in snap) await readBlob(snap.blob);
+        }
+      }
       const targets: string[] = [];
       const before: Snapshots = {};
       const after: Snapshots = {};

@@ -93,6 +93,23 @@ describe("the secret scan reads what a { git: true } snapshot leaves out", () =>
 });
 
 describe("blob integrity", () => {
+  it("preflights all blobs so a missing second restore leaves every target and the log untouched", async () => {
+    const { id: bigId, rel: bigRel } = await bigTask("Missing restore");
+    await runBatch({ ...user, summary: "small", commitPrefix: "task", actions: [createTask({ title: "Small", body: "before" })] });
+    const small = (await listTasks()).find((task) => task.title === "Small")!;
+    const changed = await runBatch({ ...user, summary: "both", commitPrefix: "task", actions: [
+      updateTask(bigId, { body: "b".repeat(BIG) }), updateTask(small.id, { body: "after" }),
+    ] });
+    const before = (await readActions()).find((entry) => entry.batch === changed.batch && entry.targets.includes(bigRel))!.before[bigRel];
+    if (before === null || !("blob" in before)) throw new Error("expected a blob");
+    unlinkSync(path.join(DATA, "history/blobs", before.blob));
+    const smallHash = sha(small.path), bigHash = sha(bigRel), logged = (await readActions()).length;
+    await expect(undoBatch(changed.batch)).rejects.toThrow();
+    expect(sha(small.path)).toBe(smallHash);
+    expect(sha(bigRel)).toBe(bigHash);
+    expect((await readActions()).length).toBe(logged);
+  });
+
   it("refuses an intermediate large secret even when later actions overwrite it", async () => {
     const { id, rel } = await bigTask("Intermediate");
     const original = sha(rel);

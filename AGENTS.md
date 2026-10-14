@@ -34,7 +34,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 7 — Knowledge base and collections | complete | splits `1191dab`, streaming-commit fix `f3dbdc6`, git containment `30f43ad`, ownership `9e0c387`, Stage A `d002555`, validation fix `d5ff378`, Stage B `72dfbd4`, toast fix `0ffeb36`, close `f4bdd61`, `69de221` |
 | 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `df8b710`, Step 0 `38509df`, `{ git: true }` fix `a17ca6a`, Stage A `6115d7a`, review items `066d562`, B1 `56feb52`, B2 first commit `48079c3`, failure evidence `1f3fa64`, data-* refs `877b5d0`, the rest of B2 `b8466ef`, the toggle `dac2c60`, the policy-aware menu `e2ad28b` |
 | 8b — Graph view | complete — blob repair, measured browser decision and graph accepted locally | blobs `89a1611`, preflight `72a5682`, graph `670438e` |
-| 9 — Build mode | next — SDK installed locally; backend then UI, with local review between stages | — |
+| 9 — Build mode | Stage A complete and reviewed locally; Stage B in progress | backend `a092f98` |
 | 10 — Settings and themes | not started | — |
 | 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `b09a7a2` |
 
@@ -64,6 +64,27 @@ client sign-ins are present. **The live supervisor probe was rejected by automat
 because it can transmit repository content to model services; it has not run.** Approval requested;
 no workaround, no model worker launched, budget remains six. No background continuation claimed.
 Existing key-blocked and manual checklist rows remain unchanged. Personal data was untouched.
+
+**Phase 9 Stage A — accepted locally, 2026-10-14** (`a092f98`). SDK 0.3.299, installed types checked.
+Mandatory hooks guard edit mode as well as planning; shell/worker tools are absent. Repository
+bytes are scanned inside `runBatch` (amendment `w`), with captured rollback bytes. Both gates,
+Auto, real diffs, commit/revert, existing/new-file undo/redo and failed transcripts are implemented.
+The full deterministic run passed 767/767 in 66 files; subsequent concurrency and cancellation
+checks passed 15/15 across the Build and SDK adapter suites; TypeScript clean. No model called.
+The SDK adapter checks prove a missing final result cannot become complete and that its hook runs
+in edit mode. Two asynchronous state claims were moved ahead of I/O and pinned by concurrent-call
+tests. Unapplied plans remain cancellable after an external commit. Failed SDK edits cannot commit.
+
+The first full run caught a newly tracked graph test using a direct rename — the scan's standing
+blind spot for untracked files, not an app failure. `ffbf23e` routes it through `renameAtomic`;
+the empty-data graph check passed again. Two newly created local commits were recomposed after
+the convention check's staged Build test entered the fixture commit; working files and all prior
+history were preserved, and neither superseded hash had been cited or pushed.
+
+Stage B now adds routes, the sheet's approval controls, Auto confirmation, pending-session resume,
+and browser checks through the existing non-production scripted-provider gate. Live SDK behavior
+and the signed supervisor probe remain separate, unverified checks; existing authorization for
+local implementation continues. No publishing, pushing or personal-data writes.
 
 **Phase 9 plan under the continuation authorization.** Stage A is repository-path guards, SDK
 planning/edit hooks, pending diff capture, secret scan of repository bytes, commit/revert and

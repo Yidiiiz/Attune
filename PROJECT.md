@@ -276,6 +276,8 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 108. **Build permissions run in PreToolUse, including edit mode.** The installed SDK can approve edits before consulting `canUseTool`. Every tool invocation therefore passes a mandatory hook that denies personal paths, credentials, links and recursive workers. Planning denies all writes. Editing offers only file tools; shells are excluded rather than relying on command-string patterns to contain arbitrary filesystem writes. Independent tests remain deterministic project tools.
 
+109. **Build's repository mechanics stay separate from data and model transport.** `lib/store/code.ts` guards repository I/O, `lib/history/build-git.ts` shares the existing repository containment policy for read-only observations, and `lib/history/code-actions.ts` records changes. Undo/redo declare their repository half and propagate it through snapshots, scanning and commits. `build-sdk.ts` is the model adapter; `build.ts` owns session gates; `build-transcript.ts` writes ordinary chat records. A session interrupted by server death leaves edits on disk and refuses a missing session rather than silently adopting them; inspect the working diff before a new build.
+
 ## 1. Hard rules
 
 These override anything else in this document.

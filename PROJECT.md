@@ -333,6 +333,16 @@ Sources: [Next maintainer advisory](https://github.com/vercel/next.js/security/a
 Concurrent Settings saves are specified by preservation and serialization, not which HTTP request
 reaches the queue first; their log assertion checks both exact summaries without imposing order.
 
+117. **Use patched Vitest 4 without changing the test-isolation policy.** The remaining
+whole-tree audit findings are @vitest/mocker and tinypool. Vitest 4.1.11 fixes the mocker
+advisory and Vitest 4 removes tinypool entirely. Keep one fork at a time for Git-creating files,
+with `fileParallelism: false`, `maxWorkers: 1` and `isolate: true`; pure files retain their parallel
+project and the temp-leak registry remains shared. This replaces the removed `poolOptions`
+setting, not the serialized-checkout policy. No browser runner, test assertion or runtime
+dependency is added. Sources: [Vitest 4 pool migration](https://v4.vitest.dev/guide/migration.html#pool-rework)
+and [maintainer advisory](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9).
+Require the same test count, clean TypeScript, whole-tree audit and fresh-clone release check.
+
 ## 1. Hard rules
 
 These override anything else in this document.

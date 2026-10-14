@@ -1,4 +1,4 @@
-# Continuation progress — RESUMED at owner request, 2026-10-14
+# Continuation progress — local implementation complete, 2026-10-14
 
 Owner resumed with “Continue from docs/progress.md.” Preserve the saved pause
 record and evidence; continue Phase 10 corrections before release tooling.
@@ -48,12 +48,36 @@ was removed (new draft became empty), then passed with exact source bytes restor
 Light/dark and narrow screenshots inspected. Negative evidence is retained under
 .agent/ui-settings*.log and check-ui-evidence/. No timeout or threshold changed.
 
-Current milestone: implement Phase 11 audit/export tooling under Decision 114 and
-AGENTS.md's concrete plan. Keep source and docs commits separate. Do not push,
-publish remotely, modify personal data, invent a remote or launch model clients.
-The tooling must verify a real fresh production clone without invoking check:ui.
-Manual/provider gaps remain honest. Complete the technical tooling, then summarize
-remaining acceptance gaps and supervisor startup from docs/SUPERVISOR.md.
+Phase 11 implementation is complete locally. Technical acceptance passed on source
+73c7570: 788/788 tests in 70 files (76.69 seconds), TypeScript, shared secret checks,
+historical source credential audit, exact export/seed/license/identity/attribution
+checks, and a fresh sanitized orphan export with offline locked installation,
+initialization, knowledge check, production build and empty /api/tasks startup.
+Its server was stopped and temporary checkout removed. publish-check never invokes
+check:ui. Final independent browser run: 94/94 gating in 4.3 minutes; Stop passed
+separately in 13.9 seconds (Phase 11 tally 1/1). No timeout or threshold changed.
+Evidence: .agent/publish-check-accepted.log, .agent/ui-release-final.log and
+check-ui-evidence/2026-10-14T22-34-20-204Z/. Whole-tree npm audit: zero findings.
+
+Release tooling builds a reviewable local one-commit orphan export, preserving the
+source checkout and excluding private files/history. Remote replacement requires
+its explicit flag and existing public remote; neither was used. LICENSE is preserved
+by its approved SHA-256. Patched dependencies retain Next 15; Vitest 4 uses sequential
+Git fixtures and a test-only JSX transform. CSS token values now refuse URL-bearing
+image functions; the refusal was reproduced before the fix and focused checks pass.
+
+During release test setup, a cached store root caused two accidental local test
+commits and temporary local Git identity settings. The commits were soft-restored,
+all working files preserved, owner HANDOFF.md unstaged, and inherited identity restored.
+No push occurred. A pre-Git sandbox-root guard now refuses this mistake and its
+negative regression test passes. See Decision 115 and AGENTS.md for the evidence.
+
+Next steps are acceptance work, not another implementation phase: inspect the local
+export, complete pending manual/provider rows in docs/CHECKLIST.md, and obtain explicit
+approval for repository transmission before attempting the two-task live supervisor
+probe. No live model worker or background continuation is running. Supervisor startup:
+run `python tools/agent_runner.py doctor`, `python tools/agent_runner.py status`, then
+start `claude` and paste the prompt from docs/SUPERVISOR.md. Do not reset the budget.
 
 Existing deferred amendments i/k/u/v remain deferred. Application provider checks
 need an application API key; CLI sign-in does not settle those checks. The signed

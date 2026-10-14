@@ -1,6 +1,6 @@
 # Attune — build specification
 
-A personal to-do and scheduling app, run locally, whose entire state is plain files in a private git repository. An assistant is part of the interface: it creates and edits tasks, answers questions, maintains a knowledge base, and can modify the app's own code.
+A personal to-do and scheduling app, run locally, whose personal state is plain local files with logged, undoable history; project code lives in git. An assistant is part of the interface: it creates and edits tasks, answers questions, maintains a knowledge base, and can modify the app's own code.
 
 This file is the complete specification. `BUILD_PROMPT.md` is the brief it was written from; `HANDOFF-CHAT.md` is a reference extraction from an earlier project and is cited here for code to port rather than restated. Where this file and the brief differ, this file wins, and the difference is listed under Decisions. Both of those files are private: `npm run publish` drops them together with `data/` (§12), so a public clone has only this file and `AGENTS.md`. The spec stands without them; the handoff citations are a convenience on the owner's machines.
 
@@ -1323,7 +1323,7 @@ All of these pass before the project is called finished; each is also an accepta
 - The graph opens on an empty `data/` without crashing and shows the empty state.
 - Killing the network mid-response leaves the message `failed`, not `complete`, with a Retry button.
 - A rejected send (invalid key) leaves no message file behind and the composer keeps the text.
-- A conversation with three branches produces one commit per finalized **turn**; `git log --oneline` on the conversation dir proves it. A turn is the pair — §16.3 commits both files as one `chat.message` batch, so three branches are three commits and not six. This said "per finalized message" until the Phase 6a close, which contradicted §16.3; the specific rule won.
+- A conversation with three branches produces one logged `chat.message` batch per finalized **turn**, containing both message files. Personal `data/` stays ignored by project git (§8); verify the batches in `actions.jsonl`, rather than expecting personal-message commits.
 - Branching from the first message works (the new root is a sibling; both appear in the sidebar).
 - An annotation on an off-path message shows in the "N notes on other branches" count.
 - `lib/chat/tree.ts`, `text-match.ts`, and `anchoring.ts` have unit tests that pass.

@@ -784,3 +784,21 @@ a newly typed name, restoring it passes. No real generated aesthetic is claimed.
 
 Use a real provider with a palette request, inspect the unsaved result in both base modes,
 save and reload. The scripted map checks UI behavior; it cannot verify prompt adherence.
+
+## Phase 11 — Release readiness
+
+### 11.1 Technical release checks — **verified locally, 2026-10-14**
+
+788/788 deterministic tests, TypeScript, exact export and canonical seed, approved LICENSE,
+shared secrets and historical source scans, scoped identity and attribution audits, LF checks.
+A sanitized one-commit orphan export installs locked dependencies offline, initializes, passes
+knowledge checks, builds production and starts with empty tasks; its process tree is stopped
+and temporary checkout removed. Independent browser regression: 94/94 gating in 4.3 minutes;
+Stop passed separately. Whole-tree dependency audit reports zero findings. No remote push.
+
+### 11.2 Remaining acceptance — **pending**
+
+Earlier pending manual/provider rows retain their status. Real model behavior, generated palette
+quality and signed Agent SDK inference are not established by scripted fixtures. The live
+supervisor probe requires explicit repository-transmission approval following automatic review
+rejection. A local prepared export does not authorize remote publication or satisfy these rows.

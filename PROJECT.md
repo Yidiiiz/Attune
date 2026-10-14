@@ -270,6 +270,10 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 ---
 
+106. **Large and binary data snapshots use content-addressed blobs, not git.** Amendment `z` lands in Phase 8b. `{ blob: "<sha256>" }` points into `data/history/blobs/`; bytes are held in memory until the shared secret scan accepts the batch, then written atomically before the log references them. Reads validate the digest and refuse missing/corrupt blobs. Legacy data `{ git: true }` snapshots still refuse; only repository code paths can restore from commits. Snapshot capture, restore and persistence move to `lib/history/snapshots.ts`, leaving the ordered transaction in `batch.ts`; this is §7.1's snapshot subject, separated because adding blob durability would otherwise grow the already oversized transaction module.
+
+107. **Retain Decision 67's five-minute browser threshold.** The 2026-10-14 pre-graph measurement was 3.8 minutes gating plus 18 seconds for the separate Stop check, with an 8.8-second cold server startup. One gating checkbox check failed with the document still loading, then passed alone in 12.8 seconds total. Preserve that negative evidence and require a clean full run after graph work. No sharding, timeout increase or threshold change is justified by this measurement; continue one worker against the existing single sandbox.
+
 ## 1. Hard rules
 
 These override anything else in this document.

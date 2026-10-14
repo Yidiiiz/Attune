@@ -29,6 +29,8 @@ import ChatsPanel from "@/components/chat/ChatsPanel";
 import ChatView from "@/components/chat/ChatView";
 import Rail from "@/components/chat/Rail";
 import DocumentView from "@/components/browser/DocumentView";
+import GraphView from "@/components/browser/GraphView";
+import FeatureBoundary from "@/components/chat/FeatureBoundary";
 import { FilesPanel, KnowledgePanel } from "@/components/browser/Panels";
 import type { ConversationState } from "@/components/chat/useConversation";
 import styles from "@/components/chat/Chat.module.css";
@@ -74,7 +76,9 @@ export default async function Page({ searchParams }: Search) {
       />
 
       <main className={styles.main}>
-        {opened !== null ? (
+        {query.graph === "1" ? (
+          <FeatureBoundary feature="The graph"><GraphView focus={typeof query.focus === "string" ? query.focus : null} /></FeatureBoundary>
+        ) : opened !== null ? (
           <DocumentView
             key={`${where}:${opened}`}
             path={opened}

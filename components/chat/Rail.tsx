@@ -15,6 +15,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import styles from "./Chat.module.css";
 
 const WIDTH_KEY = "chat.panelWidth";
@@ -102,6 +103,9 @@ export default function Rail({ panels }: { panels: Record<PanelName, React.React
             <span className={styles.srOnly}>{panel.label}</span>
           </button>
         ))}
+        <Link href="/chat?graph=1" className={styles.railButton} title="Graph" data-ui="rail-graph">
+          <span aria-hidden="true">◉</span><span className={styles.srOnly}>Graph</span>
+        </Link>
       </nav>
 
       {collapsed ? null : (

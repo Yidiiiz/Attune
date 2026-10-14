@@ -76,6 +76,7 @@ export default function FileMenu({ path, name, isFolder, policy, open, onOpen, o
       </button>
       {open ? (
         <div className={chat.rowMenu} data-ui="file-menu">
+          {policy !== null && !isFolder ? <a href={`/chat?graph=1&focus=${encodeURIComponent(path)}`} data-ui="reveal-graph">Reveal in graph</a> : null}
           {policy === null ? (
             <p className={styles.menuNote} data-ui="file-menu-note">
               Outside data/ the tree is read-only.

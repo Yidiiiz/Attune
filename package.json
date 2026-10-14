@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
+    "d3-force": "^3.0.0",
     "dompurify": "^3.4.15",
     "katex": "^0.18.7",
     "marked": "^18.0.12",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",

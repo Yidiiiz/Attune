@@ -1,0 +1,13 @@
+/* Owns: graph geometry and controls. Failure behavior: node list stays scrollable at narrow widths. */
+.view { flex: 1; min-width: 0; height: 100%; overflow: auto; padding: 24px; background: var(--bg); }
+.header { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.header h1 { margin: 0; font-size: 24px; }
+.header input { flex: 1; min-width: 180px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); color: var(--fg); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 20px 0; font-size: 13px; }
+.filters label { display: flex; align-items: center; gap: 4px; }
+.count { color: var(--fg-muted); font-size: 13px; }
+.canvas { display: block; width: 100%; height: clamp(260px, 50vh, 600px); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-elevated); cursor: pointer; }
+.list { margin-top: 18px; }
+.list ul { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; list-style: none; }
+.list button, .count button { border: 1px solid var(--border); padding: 5px 9px; border-radius: var(--radius-sm); color: var(--fg); background: var(--bg-elevated); cursor: pointer; }
+.list small { color: var(--fg-muted); }

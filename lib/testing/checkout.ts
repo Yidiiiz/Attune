@@ -122,6 +122,10 @@ export async function createCheckout(name: string): Promise<Checkout> {
   // After the variable is set, so `paths.ts` resolves this checkout and not the repository itself.
   const { assertOwnRepository, gitOptions } = await import("../history/repository.ts");
 
+  if (path.resolve(gitOptions().cwd) !== path.resolve(dir)) {
+    throw new Error("createCheckout: a store module loaded before the sandbox root was installed; refusing all git setup");
+  }
+
   const git = (...args: string[]): string =>
     execFileSync("git", args, { ...gitOptions(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 

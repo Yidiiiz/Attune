@@ -352,6 +352,13 @@ source cleanliness before export, and prepare from that exact revision. The prod
 therefore proves the declared public file set stands alone without private handoffs or ancestor
 objects. Temporary clones remain contained and are removed after the server is stopped.
 
+119. **Theme values allow known color/length functions, not arbitrary CSS functions.** Blocking
+only the spelling url() missed image functions with string URLs. The failing isolated request
+returned 200 for an image-set value where 400 was required. Admit a bounded set of color/math
+functions and reject protocol-relative URLs; keep normal rgb shadows and font lists valid.
+No unsafe value is rendered during the test. The [CSS Images 4 editor's draft](https://drafts.csswg.org/css-images-4/#image-set-notation)
+describes string image references; the general theme rule remains §11.3's no-URL contract.
+
 ## 1. Hard rules
 
 These override anything else in this document.

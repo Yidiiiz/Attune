@@ -11,7 +11,8 @@ import subprocess
 
 
 def load_json(path, limit=65536):
-    raw = Path(path).read_bytes()
+    with Path(path).open("rb") as file:
+        raw = file.read(limit + 1)
     if len(raw) > limit:
         raise ValueError(f"JSON exceeds {limit} bytes")
     return json.loads(raw)

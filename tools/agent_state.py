@@ -40,10 +40,6 @@ class State:
             latest = self.db.execute("SELECT * FROM runs ORDER BY created DESC LIMIT 2").fetchall()
             if len(latest) == 2 and all(r["progress"] == 0 for r in latest):
                 raise ValueError("two attempts made no progress; halt and diagnose")
-            if latest:
-                review = self.db.execute("SELECT * FROM reviews WHERE run=?", (latest[0]["id"],)).fetchone()
-                if review and review["decision"] == "blocked":
-                    raise ValueError("latest task blocked; resolve prerequisite before resuming")
             previous = self.db.execute("SELECT * FROM runs WHERE task=? ORDER BY attempt DESC LIMIT 1",
                                        (task["task_id"],)).fetchone()
             expected = previous["attempt"] + 1 if previous else 1

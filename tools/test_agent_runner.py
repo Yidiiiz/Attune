@@ -150,6 +150,39 @@ class RunnerTests(unittest.TestCase):
         finally:
             other.db.close()
 
+    def test_simultaneous_claims_consume_one_launch(self):
+        barrier = threading.Barrier(2)
+        outcomes = []
+        def claim():
+            state = State(self.root)
+            try:
+                barrier.wait()
+                state.claim(self.task, self.config)
+                outcomes.append("claimed")
+            except ValueError:
+                outcomes.append("refused")
+            finally:
+                state.db.close()
+        threads = [threading.Thread(target=claim) for _ in range(2)]
+        for thread in threads: thread.start()
+        for thread in threads: thread.join()
+        self.assertEqual(sorted(outcomes), ["claimed", "refused"])
+        self.assertEqual(self.state.db.execute("SELECT used FROM budgets").fetchone()[0], 1)
+
+    def test_blocked_predecessor_does_not_unlock_dependency(self):
+        report = self.run_task()
+        self.state.review(report["run_id"], "blocked", "external prerequisite")
+        self.task.update(task_id="T002", previous_report_id=report["run_id"])
+        with self.assertRaises(ValueError):
+            self.run_task()
+
+    def test_result_size_is_bounded(self):
+        from agent_contract import load_json
+        large = self.root / "large.json"
+        large.write_bytes(b" " * 100000)
+        with self.assertRaises(ValueError):
+            load_json(large, 1000)
+
     def test_budget_attempts_and_dependency(self):
         self.task["attempt"] = 2
         with self.assertRaises(ValueError):

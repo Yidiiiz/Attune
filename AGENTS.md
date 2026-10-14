@@ -4,6 +4,20 @@ Read `PROJECT.md` first; it is the specification. This file is how to work, not 
 
 ## Phase status
 
+### Continuation authorization — 2026-10-14
+
+Owner instruction: “Read AUTOMATION_WORKFLOW.md and implement or adapt its workflow in this
+project. Preserve existing instructions and work, reuse compatible tooling, verify the loop locally,
+and give me the supervisor startup instructions.” Also: “please implement the rest of this project”
+and “Do not overcomplicate code and make changes and improvements as needed.”
+
+This authorizes continued implementation in §17 order, with local review and verification between
+stages. Existing rules remain in force; personal data stays untouched, deferred features stay
+deferred, and no publishing or pushing is implied. The automation setup precedes Phase 8b's work;
+within 8b, amendment `z` precedes browser timing and the graph. See `AUTOMATION_WORKFLOW.md` and
+`docs/progress.md` for runner operation and evidence. One supervisor, one foreground worker, six
+launches per budget, no automatic budget resets or recursive delegation.
+
 Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fresh session finds the current position; the phase that finishes updates it in its own commit.
 
 | Phase | State | Commit |

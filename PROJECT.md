@@ -343,6 +343,13 @@ dependency is added. Sources: [Vitest 4 pool migration](https://v4.vitest.dev/gu
 and [maintainer advisory](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9).
 Require the same test count, clean TypeScript, whole-tree audit and fresh-clone release check.
 
+118. **Fresh-clone acceptance builds the sanitized public orphan, not the private working tree.**
+The export builder now has three callers — local preparation, publication and fresh-production
+verification — so it lives in `publish-export.mjs`. Capture the checked source revision, recheck
+source cleanliness before export, and prepare from that exact revision. The production build
+therefore proves the declared public file set stands alone without private handoffs or ancestor
+objects. Temporary clones remain contained and are removed after the server is stopped.
+
 ## 1. Hard rules
 
 These override anything else in this document.

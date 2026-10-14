@@ -321,6 +321,18 @@ negative setup proves the existing checkout's HEAD is unchanged. Store-dependent
 must remain dynamic after sandbox creation. Release audits distinguish namespace comparisons,
 fixture modules and comments from direct runtime-path literals. All tracked text is LF.
 
+116. **Release dependency fixes stay within the existing runtime architecture.** The production
+audit reported Next.js/DOMPurify and transitive PostCSS, sharp and source-map-js advisories. Keep
+Next 15, raise its minimum to 15.5.28 and DOMPurify to 3.4.17; pin PostCSS 8.5.30 by override because
+Next's dependency is fixed at 8.4.31. The newer Next patch explicitly permits sharp 0.35.5;
+PostCSS 8.5.30 requires source-map-js ^1.2.2. These add no runtime dependency or framework migration.
+Verify production audit, full deterministic/browser checks and fresh-clone build after installation.
+Sources: [Next maintainer advisory](https://github.com/vercel/next.js/security/advisories/GHSA-4jqv-mc3x-m676),
+[PostCSS maintainer advisory](https://github.com/postcss/postcss/security/advisories/GHSA-r28c-9q8g-f849),
+[sharp release](https://github.com/lovell/sharp/releases/tag/v0.35.5), and official npm package metadata.
+Concurrent Settings saves are specified by preservation and serialization, not which HTTP request
+reaches the queue first; their log assertion checks both exact summaries without imposing order.
+
 ## 1. Hard rules
 
 These override anything else in this document.

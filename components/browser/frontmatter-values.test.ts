@@ -4,7 +4,8 @@
 // a silently retyped field at worst.
 //
 // Named `frontmatter-values.test.ts` rather than `FrontmatterTable.test.ts` because the suite
-// collects `components/**/*.test.ts` and this file must not pull a `.tsx` component into plain Node.
+// collects `components/**/*.test.ts`. Vitest transforms the TSX import to reach its pure helper;
+// this check never renders a component or depends on a layout engine.
 
 import { describe, expect, it } from "vitest";
 import { asValue } from "./FrontmatterTable";

@@ -50,6 +50,8 @@ export default defineConfig({
       },
       {
         resolve: { alias },
+        // Next preserves JSX for its compiler; Vite must transform the helper's TSX import.
+        oxc: { jsx: { runtime: "automatic" } },
         test: {
           name: "parallel",
           environment: "node",

@@ -274,6 +274,8 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 107. **Retain Decision 67's five-minute browser threshold.** The 2026-10-14 pre-graph measurement was 3.8 minutes gating plus 18 seconds for the separate Stop check, with an 8.8-second cold server startup. One gating checkbox check failed with the document still loading, then passed alone in 12.8 seconds total. Preserve that negative evidence and require a clean full run after graph work. No sharding, timeout increase or threshold change is justified by this measurement; continue one worker against the existing single sandbox.
 
+108. **Build permissions run in PreToolUse, including edit mode.** The installed SDK can approve edits before consulting `canUseTool`. Every tool invocation therefore passes a mandatory hook that denies personal paths, credentials, links and recursive workers. Planning denies all writes. Editing offers only file tools; shells are excluded rather than relying on command-string patterns to contain arbitrary filesystem writes. Independent tests remain deterministic project tools.
+
 ## 1. Hard rules
 
 These override anything else in this document.
@@ -662,7 +664,8 @@ Types: `task.create`, `task.update`, `task.delete`, `task.complete`, `knowledge.
 type Snapshot =
   | { fields: Record<string, unknown> }   // small frontmatter edits; undo re-applies fields
   | { content: string }                   // whole text file ≤ 64 KB; undo writes content
-  | { git: true }                         // reconstruct from `commit` (code.change, binaries, large files)
+  | { blob: string }                      // binary/large data by SHA-256 in history/blobs/
+  | { git: true }                         // committed repository code only
   | null;                                 // file did not / does not exist
 ```
 
@@ -816,7 +819,7 @@ Sequence, inside the serial queue (`queue.ts`):
 
 Steps 3 and 4 both write under `data/`, which is ignored, so neither can reach a commit and `git status --porcelain` is empty once a batch returns — whatever it wrote.
 
-If `apply` throws, files written by earlier actions in the batch are restored from their `before` snapshots — a `{git: true}` one from the bytes `snapshotContent` held when it took it (Decision 89) — nothing is logged, and the error propagates. If git fails, the batch is logged with `commit: null` and `meta.commitFailed`, the sync indicator shows `error`, and the entry remains undoable because `before` snapshots are inline. The `{git: true}` snapshot is the exception, and it is used only for code changes, binaries and text files over 64 KB: it cannot be undone without a commit, and **for a data path there is no longer a commit to undo it from** (§7.2).
+If `apply` throws, earlier actions restore their `before` snapshots and nothing is logged. Binary and large data use content-addressed blobs (Decision 106), durable before the log references them; refused bytes remain in memory only. Git failures leave an explicit failed commit marker. Repository code snapshots still need their commit; personal data does not.
 
 ### 7.2 Undo and redo
 
@@ -825,9 +828,9 @@ undoBatch(batch: string, opts: { force?: boolean }): Promise<UndoResult>
 redoBatch(batch: string): Promise<UndoResult>
 ```
 
-- Undo applies each action's inverse **newest first**: `{fields}` → re-apply `before.fields`; `{content}` → write `before.content`; `null` → delete the file; `{git: true}` → the target checked out from the commit's parent, uncommitted: `git checkout <commit>^ -- data/<rel>`, or the repository path itself for a `code.change`. Redo checks out `<commit>` (Decision 89). Until Phase 8 this line said `git revert --no-commit`, which the code never ran.
+- Undo applies each action newest first: fields re-apply keys; content rewrites text; blobs restore verified bytes; null deletes the target; repository git snapshots restore the commit parent. Redo restores after snapshots and uses the commit itself. Blob references are all preflighted before any target changes. Legacy data git snapshots refuse, never substitute HEAD.
 - Undo appends an `undo` entry whose `meta.undoes = batch`, then commits `undo: <original summary>`. Redo applies `after` snapshots and appends `redo`.
-- **A `{fields}` or `{content}` snapshot is restorable only for a target under `data/`.** `undoBatch` refuses a batch carrying either kind on a path outside it, saying why rather than reading as a path error: the §11.5 key batch records the key's *name* and never its value, so there is nothing to restore, and applying its snapshot through the store would resolve `.env.local` under `data/` and write a file that is not the one anyone meant. `{git: true}` is unaffected for a repository path — it restores from the commit, which names that path as itself, and is how `code.change` reaches repository paths legitimately (Decision 58). **For a data path it is now unrestorable**, because such a batch has no commit: `applySnapshot` throws naming the file and the reason rather than checking out a revision that never held those bytes, and the log's `noCommit` marker stops `resolveCommit` inventing one from HEAD. It takes an upload or over 64 KB of text to produce one; the replacement is a content-addressed blob store under `data/history/blobs/`, filed as amendment `z` in `AGENTS.md`.
+- **Inline and blob snapshots restore data paths only.** Key changes record the key name, never its value, and remain non-restorable. Git snapshots restore repository code paths only; legacy data git snapshots refuse by name. Binary and large data are captured as blobs instead (Decision 106).
 - **Conflict check:** if any later batch touched the same targets, `undoBatch` returns `{ conflict: [batchIds] }` without acting unless `force`. The UI shows the warning and a "Undo anyway" button.
 - A batch is undoable if it has no later `undo` pointing at it, or if the latest such `undo` was itself redone. Redo is available only for a batch whose latest `undo` has no later `redo`. New actions do not clear anything; the UI simply reports "redo unavailable" when the check fails.
 - History is never truncated or rewritten.

@@ -1,10 +1,13 @@
 // Owns: structured theme generation into an unsaved token map (§11.3).
 // Failure behavior: invalid provider output refuses without writing a file or history entry.
+import { isScripted } from "./scripted.ts";
 import { TokenMap } from "../theme/tokens.ts";
 import { readSettings } from "../store/settings.ts";
 import { providerFor, effortFor } from "./registry.ts";
 import type { Provider } from "./registry.ts";
 export async function proposeTheme(prompt: string, signal: AbortSignal, provider?: Provider) {
+  // Browser fixture only; production cannot enable the existing scripted-provider gate.
+  if (!provider && isScripted()) return TokenMap.parse({ "--bg": "#eee8dc", "--fg": "#30291f" });
   const settings = await readSettings(), model = settings.models.default;
   const schema = TokenMap;
   const answer = await (provider ?? providerFor(model.model)).parse({ model: model.model,

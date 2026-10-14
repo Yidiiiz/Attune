@@ -7,6 +7,8 @@
 // base theme on a page that otherwise works.
 
 import type { Metadata } from "next";
+import HistorySheet from "@/components/history/HistorySheet";
+import ThemeController from "@/components/settings/ThemeController";
 import Tabs from "@/components/shell/Tabs";
 import ToastHost from "@/components/shell/Toast";
 import { activeTheme } from "@/lib/store/themes";
@@ -32,6 +34,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Tabs />
         <main>{children}</main>
         <ToastHost />
+        <HistorySheet />
+        <ThemeController />
       </body>
     </html>
   );

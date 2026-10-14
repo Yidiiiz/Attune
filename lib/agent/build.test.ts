@@ -46,6 +46,13 @@ beforeEach(async () => {
 });
 
 describe("Build gates", () => {
+  it("protects both names of a staged rename", async () => {
+    checkout.git("mv", "feature.ts", "renamed.ts");
+    try {
+      const { dirtyCode } = await import("../history/build-git.ts");
+      expect(await dirtyCode()).toEqual(new Set(["feature.ts", "renamed.ts"]));
+    } finally { checkout.git("reset", "--hard", "HEAD"); }
+  });
   it("plans without edits, applies only after approval, commits once and undoes/redoes both existing and new files", async () => {
     const plan = state(await collect(runBuild({ prompt: "Improve feature", approval: "plan", signal: signal() }, fake)));
     expect(plan.phase).toBe("plan");

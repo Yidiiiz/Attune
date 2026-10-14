@@ -1,14 +1,6 @@
 // Owns: the Tasks · Ask · Build segmented control (PROJECT.md §9.3).
 //
-// All three segments are rendered, and Build is disabled with a tooltip naming the phase that
-// builds it. That is deliberate and was the approved call: nothing routes to Build yet, so a
-// refusal path for it would be code with no caller, while a segment that simply is not there
-// changes the control's geometry when Phase 9 adds it back. Build's approval toggle — Plan first /
-// Auto, and its one-time confirmation — lands in Phase 9 with the mode it gates.
-//
-// Ask is selectable, because "Ask about this" on a task row opens the sheet in it and the user has
-// to be able to see the context it would carry. A send in Ask mode refuses inline; that refusal
-// lives in the sheet, next to the text it refused.
+// Each mode owns its own result surface. Build's approval gates live in BuildPanel.
 //
 // Failure behavior: none. It reports a choice; the sheet decides what a choice means.
 
@@ -23,10 +15,10 @@ export interface ModeSelectorProps {
   disabled?: boolean;
 }
 
-const SEGMENTS: Array<{ mode: Mode; label: string; until?: string }> = [
+const SEGMENTS: Array<{ mode: Mode; label: string }> = [
   { mode: "tasks", label: "Tasks" },
   { mode: "ask", label: "Ask" },
-  { mode: "build", label: "Build", until: "Build mode arrives in Phase 9." },
+  { mode: "build", label: "Build" },
 ];
 
 export default function ModeSelector({ mode, onChange, disabled = false }: ModeSelectorProps) {
@@ -41,8 +33,7 @@ export default function ModeSelector({ mode, onChange, disabled = false }: ModeS
             data-mode={segment.mode}
             className={`${styles.mode} ${on ? styles.modeOn : ""}`}
             aria-pressed={on}
-            disabled={disabled || segment.until !== undefined}
-            title={segment.until}
+            disabled={disabled}
             onClick={() => onChange(segment.mode)}
           >
             {segment.label}

@@ -1,0 +1,11 @@
+/* Owns: Build review controls and diff. Failure behavior: long lines scroll inside the sheet. */
+.panel { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; }
+.panel h2 { font-size: 16px; margin: 16px 0 8px; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.controls button { padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg-elevated); color: var(--fg); cursor: pointer; }
+.controls button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.controls button:disabled { opacity: .5; cursor: default; }
+.note { font-size: 13px; color: var(--fg-muted); overflow-wrap: anywhere; }
+.diff { max-height: 300px; overflow: auto; padding: 12px; background: var(--bg-sunken); border-radius: var(--radius-sm); font: 12px/1.6 var(--font-mono); }
+.live { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.error { color: var(--danger); }

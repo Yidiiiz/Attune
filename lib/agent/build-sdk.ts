@@ -6,10 +6,13 @@ import { readSettings } from "../store/settings.ts";
 import { readCode } from "../store/code.ts";
 import { REPO_DIR } from "../store/paths.ts";
 import { buildToolRefusal } from "./build-policy.ts";
+import { isScripted } from "./scripted.ts";
+import { scriptedBuild } from "./build-scripted.ts";
 
 export interface BuildQuery { prompt: string; plan: boolean; dirty: Set<string>; written: Set<string>; signal: AbortSignal }
 
 export async function* queryBuild(input: BuildQuery): AsyncGenerator<string> {
+  if (isScripted()) { yield* scriptedBuild(input); return; }
   const settings = await readSettings();
   const controller = new AbortController();
   const abort = (): void => controller.abort();

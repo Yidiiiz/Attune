@@ -31,5 +31,13 @@ export async function buildDiff(paths: string[], before: Set<string>): Promise<s
 
 export async function dirtyCode(): Promise<Set<string>> {
   const text = await buildGit("status", "--porcelain=v1", "--untracked-files=all", "-z");
-  return new Set(text.split("\0").filter(Boolean).map((line) => line.slice(3)));
+  const entries = text.split("\0"), paths = new Set<string>();
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index];
+    if (!entry) continue;
+    paths.add(entry.slice(3));
+    // Porcelain -z emits destination first, then the unprefixed original path.
+    if (/[RC]/.test(entry.slice(0, 2))) paths.add(entries[++index]);
+  }
+  return paths;
 }

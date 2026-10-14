@@ -27,6 +27,8 @@ import ProposalPanel from "./ProposalPanel";
 import { useProposals } from "./useProposals";
 import { useComposerTurn } from "./useComposerTurn";
 import VoiceButton from "./VoiceButton";
+import BuildPanel from "./BuildPanel";
+import { useBuild } from "./useBuild";
 import styles from "./Composer.module.css";
 
 export interface ComposerSheetProps {
@@ -54,6 +56,18 @@ export default function ComposerSheet(props: ComposerSheetProps) {
 
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<Attachment[]>([]);
+  const build = useBuild();
+  const [approval, setApproval] = useState<"plan" | "auto">("plan");
+  const pendingBuild = build.state && ["planning", "plan", "applying", "diff", "committing", "reverting"].includes(build.state.phase);
+  const chooseApproval = (next: "plan" | "auto"): void => {
+    if (next === "auto") {
+      let confirmed = false;
+      try { confirmed = window.localStorage.getItem("build.autoConfirmed") === "1"; } catch { /* ask again */ }
+      if (!confirmed && !window.confirm("Auto lets the assistant edit project files and commit changes without plan approval. Continue?")) return;
+      try { window.localStorage.setItem("build.autoConfirmed", "1"); } catch { /* this session still has consent */ }
+    }
+    setApproval(next);
+  };
 
   const onAdded = useCallback(() => {
     setFiles([]);
@@ -132,6 +146,10 @@ export default function ComposerSheet(props: ComposerSheetProps) {
   async function submit(): Promise<void> {
     const text = prompt.trim();
     if (text === "") return;
+    if (mode === "build") {
+      if (!pendingBuild && await build.start(text, approval)) setPrompt("");
+      return;
+    }
 
     // §9.6: Ask streams into a real conversation under `data/chats/` (Decision 17), which the
     // sheet shows in place and hands over to the Chat tab with "Open in Chat". The prompt is
@@ -162,11 +180,11 @@ export default function ComposerSheet(props: ComposerSheetProps) {
       inert={!open}
       data-composer="sheet"
     >
-      <Attachments files={files} onFiles={setFiles} onError={turn.setError} active={open} onReady={onReady} />
+      {mode === "build" ? null : <Attachments files={files} onFiles={setFiles} onError={turn.setError} active={open} onReady={onReady} />}
 
       <div className={styles.inner}>
         <div className={styles.top}>
-          <ModeSelector mode={mode} onChange={onMode} disabled={busy} />
+          <ModeSelector mode={mode} onChange={onMode} disabled={busy || build.busy} />
           {askingAbout === undefined ? null : (
             <span className={styles.note} data-composer="context">
               about &lsquo;{askingAbout.title}&rsquo;
@@ -178,7 +196,8 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           </button>
         </div>
 
-        <AskPanel
+        {mode === "build" ? <BuildPanel turn={build} approval={approval} onApproval={chooseApproval} /> : null}
+        {mode === "ask" ? <AskPanel
           reply={askTurn.reply}
           streaming={askTurn.streaming}
           conversationId={askTurn.conversationId}
@@ -194,11 +213,11 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             />
           ))}
           onStop={askTurn.stop}
-        />
+        /> : null}
 
-        <ProposalPanel tray={tray} categories={categories} />
+        {mode === "build" ? null : <ProposalPanel tray={tray} categories={categories} />}
 
-        {turn.result === null ? null : (
+        {mode !== "tasks" || turn.result === null ? null : (
           <PreviewPanel
             result={turn.result}
             drafts={turn.drafts}
@@ -213,7 +232,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           />
         )}
 
-        {turn.error === null ? null : (
+        {mode === "build" || turn.error === null ? null : (
           <p className={styles.error} role="alert" data-composer="error">
             {turn.error}
           </p>
@@ -225,10 +244,10 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             className={styles.textarea}
             rows={rowsFor(prompt)}
             value={prompt}
-            disabled={turn.busy === "sending" || askTurn.streaming}
+            disabled={turn.busy === "sending" || askTurn.streaming || build.busy}
             data-composer="input"
             placeholder={
-              turn.result?.kind === "question"
+              mode === "build" ? "Describe a project change" : turn.result?.kind === "question"
                 ? "Answer, and send again"
                 : turn.result === null
                   ? "What needs doing?"
@@ -242,6 +261,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
               }
             }}
             onPaste={(event) => {
+              if (mode === "build") return;
               const pasted = Array.from(event.clipboardData.files);
               if (pasted.length === 0) return; // a text paste inserts, as it always did
               event.preventDefault();
@@ -249,14 +269,14 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             }}
           />
 
-          <AttachButton onPick={(chosen) => attach.current(chosen)} />
+          {mode === "build" ? null : <AttachButton onPick={(chosen) => attach.current(chosen)} />}
           <VoiceButton onText={dictated} />
 
           <button
             type="button"
             className={styles.send}
             onClick={() => void submit()}
-            disabled={busy || askTurn.streaming || prompt.trim() === ""}
+            disabled={busy || askTurn.streaming || build.busy || (mode === "build" && !!pendingBuild) || prompt.trim() === ""}
             data-composer="send"
           >
             {turn.busy === "sending" ? <span className={styles.spinner} aria-label="Sending" /> : "Send"}

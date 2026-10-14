@@ -342,6 +342,8 @@ setting, not the serialized-checkout policy. No browser runner, test assertion o
 dependency is added. Sources: [Vitest 4 pool migration](https://v4.vitest.dev/guide/migration.html#pool-rework)
 and [maintainer advisory](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9).
 Require the same test count, clean TypeScript, whole-tree audit and fresh-clone release check.
+Vite 8 also needs an automatic JSX transform in the parallel test project for the existing
+frontmatter-helper TSX import; Next keeps its own required JSX-preserve setting unchanged.
 
 118. **Fresh-clone acceptance builds the sanitized public orphan, not the private working tree.**
 The export builder now has three callers — local preparation, publication and fresh-production

@@ -311,6 +311,16 @@ using a force-with-lease. LICENSE is preserved byte-for-byte. Audit scopes follo
 their needles: runtime paths rather than prose/test fixtures, identity in code/seed, attribution
 phrases rather than product names. This applies amendments `n`, `r`, `x` and `y` together.
 
+115. **A test sandbox must match the already-loaded store root before any git setup.**
+The release export test imported a store-dependent script before `createCheckout`, binding
+repository options to the real checkout. Setup made two local test commits and changed three
+local identity/signing keys. Those two owned commits were soft-restored, the handoff unstaged
+without changing its bytes, and the temporary config keys removed. No push or personal-data write
+occurred. `createCheckout` now refuses mismatched roots before its first git call; a caught
+negative setup proves the existing checkout's HEAD is unchanged. Store-dependent test imports
+must remain dynamic after sandbox creation. Release audits distinguish namespace comparisons,
+fixture modules and comments from direct runtime-path literals. All tracked text is LF.
+
 ## 1. Hard rules
 
 These override anything else in this document.

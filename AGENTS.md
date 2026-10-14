@@ -133,6 +133,16 @@ weather drafts during location requests. Native process reporting resolves the e
 redirection exit ambiguity; logs retain both observations. Real provider aesthetics remain
 unverified; the deterministic theme fixture has the existing non-production gate only.
 
+**Phase 11 setup finding — 2026-10-14.** The export test loaded a store module before its
+sandbox. Its setup reached this checkout and made two local test commits (one accidentally
+included the owner's untracked handoff), changing only this stage's staged files. Both commits
+were soft-restored to `9e2b9ab`; every working file was kept and HANDOFF.md was unstaged and
+byte-verified against its original. Temporary local identity/signing keys were removed; the
+inherited owner identity is restored. No push occurred. Unreachable local test objects are not
+part of main's history. Decision 115 refuses cached roots before git setup and is regression-tested.
+The corrected export test preserves source HEAD, index and private bytes and produces one orphan
+with no private refs. Focused publication checks: 8/8; TypeScript clean.
+
 **Phase 11 plan under the continuation authorization.** First amend §12 in one pass for `n`,
 `r`, `x` and `y`, including LICENSE verification and exact export scope. Reuse deterministic
 checks and the existing shared secret patterns. Never invoke check:ui from publish-check.

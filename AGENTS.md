@@ -94,6 +94,30 @@ Settings until both pass. The SDK's edit mode can skip `canUseTool`, so a PreToo
 every tool call (Decision 108); shells and recursive workers are not offered. No live model call
 is needed for the offline backend tests, and live verification remains separate.
 
+**Phase 9 close ? accepted locally, 2026-10-14** (`1fb49d5`). Four scripted browser checks
+cover both gates, pending-session resume, Revert, Auto, ordinary code Undo and denied personal
+writes with the prompt kept. Full deterministic suite: **770/770 in 66 files**, 92.31 seconds;
+TypeScript clean. Full browser suite: **85/85 gating in 4.3 minutes**, Stop passed separately
+in 16.9 seconds (Phase 9 tally 1/1). Decision 67's five-minute threshold remains unchanged.
+A staged rename's two NUL-separated paths are both protected, pinned by a regression test.
+Amendment `w` is closed by the independent repository-byte scan and rollback test. Real SDK
+inference remains unverified; neither scripted checks nor mocked SDK hooks claim it.
+
+**Phase 10 plan under the continuation authorization.** Reuse `PUT /api/settings`, the existing
+key editor, weather geocoding and sync endpoints. Save one section on blur; serialize saves and
+merge only that section server-side so another section is not overwritten. Unknown settings keys
+survive. Day-shape validation permits end times past midnight and refuses impossible blocks.
+
+Custom themes remain personal data: a protected light/dark base, validated override tokens,
+logged duplicate/save/delete actions and ordinary Undo. Dark custom themes inherit dark tokens
+through a separate base attribute; no generated CSS or unvalidated style text is injected.
+The provider returns a validated token map into an unsaved editor. No new dependency.
+Model metadata moves to a pure module so Settings cannot pull the provider into the browser.
+History is one shell-level sheet with filters, action details, Undo/Redo and inline conflicts;
+Ctrl/Cmd+Z outside editable controls opens it, rather than immediately undoing something.
+Review the backend locally before the interface; use isolated checkout and browser evidence.
+Geolocation/provider behavior remains explicitly unverified unless actually exercised.
+
 The follow-up carries four `code:` commits rather than rule 4's one: the owner split it into stages that stop for review, and both the §11.5 fix and amendment `h` came out of those reviews. Rule 4's stage clause is what makes that correct rather than a violation; a phase built in one pass still gets one commit.
 
 Phase 3 carries three for the same reason — Stage A (`b843d53`), the three corrections its review asked for (`88b1890`), and Stages B and C together (`8c460e8`) — each preceded by the `docs:` commit recording what was approved. Its closing review added a fourth round, spec-only apart from two comments: §10.1's edge-drag semantics corrected, §13.5's inline-versus-toast rule generalised, and `docs/CHECKLIST.md` started.

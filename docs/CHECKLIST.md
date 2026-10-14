@@ -757,3 +757,13 @@ change that commits, then press `Ctrl+C` in that window.
 Expected: `git rev-list --count @{u}..HEAD` is 0, and no `node` process from the dev tree survives.
 Both signals enter the same handler in `scripts/dev.mjs`, so a pass here confirms the path Phase 2
 could only reach by the other event.
+
+
+## Phase 9 ? Build
+
+### 9.1 Live Agent SDK behavior ? **unverified**
+
+The scripted browser loop and mocked SDK tests pass (2026-10-14). A real signed SDK
+plan/edit turn, including its mandatory hook refusals, has not been exercised.
+The external-client transmission probe was rejected by automatic approval review;
+no live verification is inferred from installed client sign-in or scripted checks.

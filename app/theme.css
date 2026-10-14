@@ -52,7 +52,7 @@
   --node-file: #6b675f;
 }
 
-[data-theme="dark"] {
+[data-theme="dark"], [data-theme-base="dark"] {
   --bg: #16171a;
   --bg-elevated: #1e2024;
   --bg-sunken: #101114;

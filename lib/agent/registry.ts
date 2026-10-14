@@ -17,28 +17,10 @@ import * as scripted from "./scripted.ts";
 import type { ContextBlock } from "./context.ts";
 import type { z } from "zod";
 
-/** §11.4. The same five values `settings.models.*.effort` allows. */
-export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-
-export interface ModelEntry {
-  id: string;
-  label: string;
-  provider: "anthropic";
-  images: boolean;
-  pdf: boolean;
-  /** Whether `output_config.effort` may be sent. Sent only when this is true (§11.4). */
-  effort: boolean;
-}
-
-export const MODELS: ModelEntry[] = [
-  { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic", images: true, pdf: true, effort: true },
-  { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic", images: true, pdf: true, effort: true },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "anthropic", images: true, pdf: true, effort: false },
-];
-
-export function modelEntry(id: string): ModelEntry | null {
-  return MODELS.find((entry) => entry.id === id) ?? null;
-}
+import { MODELS, modelEntry } from "./models.ts";
+import type { ModelEntry, Effort } from "./models.ts";
+export { MODELS, modelEntry };
+export type { ModelEntry, Effort };
 
 /**
  * What went wrong, in the shapes a caller has to tell apart (§13.5). `auth` covers a key that is

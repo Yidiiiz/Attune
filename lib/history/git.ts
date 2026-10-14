@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { scrubSecrets } from "../security/secrets.ts";
 import { REPO_DIR } from "../store/paths.ts";
 import { assertOwnRepository, gitOptions } from "./repository.ts";
 
@@ -279,4 +280,14 @@ export async function restorePaths(revision: string, paths: string[]): Promise<v
 /** Porcelain status limited to `paths`. Empty means clean. */
 export async function statusPorcelain(paths: string[]): Promise<string> {
   return (await gitOk(["status", "--porcelain", "--", ...paths])) ?? "";
+}
+
+/** A read-only remote label; never expose URL credentials, query parameters or fragments. */
+export async function remoteUrl(): Promise<string | null> {
+  const raw = await gitOk(["remote", "get-url", "origin"]);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw); url.username = ""; url.password = ""; url.search = ""; url.hash = "";
+    return scrubSecrets(url.toString());
+  } catch { return scrubSecrets(raw.replace(/[?#].*$/, "")); }
 }

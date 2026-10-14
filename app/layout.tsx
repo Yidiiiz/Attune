@@ -9,6 +9,8 @@
 import type { Metadata } from "next";
 import Tabs from "@/components/shell/Tabs";
 import ToastHost from "@/components/shell/Toast";
+import { activeTheme } from "@/lib/store/themes";
+import { themeCss } from "@/lib/theme/tokens";
 import { readSettings } from "@/lib/store/settings";
 import "./theme.css";
 
@@ -21,9 +23,11 @@ export const dynamic = "force-dynamic"; // settings live on disk and change unde
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const settings = await readSettings();
+  const custom = await activeTheme(settings.theme);
 
   return (
-    <html lang="en" data-theme={settings.theme}>
+    <html lang="en" data-theme={custom?.name ?? (["light", "dark"].includes(settings.theme) ? settings.theme : "light")} data-theme-base={custom?.base ?? settings.theme}>
+      <head><style id="custom-theme">{custom ? themeCss(custom) : ""}</style></head>
       <body>
         <Tabs />
         <main>{children}</main>

@@ -19,6 +19,10 @@
 // so does any other file with any selector at all. It is reported for the owner to decide, and the
 // pin is what stops it spreading while they do.
 //
+// Theme selectors are a separate public CSS contract (§11.3), not identity test hooks.
+// The one generated selector is pinned to themeCss and its validated name, just as the
+// injected-UI filter is pinned below; this does not permit DOM queries or attribute reads.
+//
 // What it still does not cover, said here so the gap stays on record: a `getAttribute` whose name
 // is not a literal, and a selector assembled from fragments at runtime.
 //
@@ -46,6 +50,7 @@ const READS: RegExp[] = [
 const SELECTORS: RegExp[] = [/\[\s*data-[A-Za-z-]+/];
 
 /** The one selector allowed to exist, and where (see the header). */
+const THEME = "lib/theme/tokens.ts";
 const ALLOWED = { file: "components/chat/anchoring-dom.ts", inside: "textNodes", is: "[data-ui]" };
 
 function sources(dir: string): string[] {
@@ -120,7 +125,7 @@ describe("the data-* convention: application code never reads one, and never sel
       const text = readFileSync(file, "utf8");
       if (/\sdata-[a-z-]+=\{/.test(text)) marks += 1;
       for (const one of readsIn(text)) read.push(`${relative(file)}:${one}`);
-      if (relative(file) === ALLOWED.file) continue;
+      if ([ALLOWED.file, THEME].includes(relative(file))) continue;
       for (const one of selectorsIn(text)) selected.push(`${relative(file)}:${one}`);
     }
     // The scan has to be reading the real tree for an empty list to mean anything: the hooks it
@@ -128,6 +133,16 @@ describe("the data-* convention: application code never reads one, and never sel
     expect(marks).toBeGreaterThan(5);
     expect(read).toEqual([]);
     expect(selected).toEqual([]);
+  });
+
+  it("pins the generated theme selector to validated CSS serialization", () => {
+    const text = readFileSync(path.join(REPO, THEME), "utf8");
+    const found = selectorsIn(text);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain('[data-theme="${safe.name}"]');
+    const body = text.split("export function themeCss(")[1].split("\n}")[0];
+    expect(body).toContain("ThemeSchema.parse(theme)");
+    expect(body).toContain(found[0].split(": ").slice(1).join(": "));
   });
 
   it("pins the one allowed selector to §16.4's filter, inside the function that owns it", () => {

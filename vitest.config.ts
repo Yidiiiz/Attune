@@ -1,3 +1,5 @@
+// Owns: parallel pure checks and serial isolated checkout checks.
+// Failure behavior: checkout leaks and test failures decide the deterministic exit status.
 import { fileURLToPath } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
 import { GIT_FILES } from "./lib/testing/git-files.ts";
@@ -24,10 +26,8 @@ const INCLUDE = ["lib/**/*.test.ts", "scripts/**/*.test.ts", "components/**/*.te
 // 727 and 741 passing (AGENTS.md, "The load, diagnosed and not fixed"). `lib/testing/git-files.ts`
 // is the set, with the test that keeps it complete.
 //
-// It has to be `poolOptions.forks.singleFork` and not `fileParallelism`: vitest 3.2 lists
-// `fileParallelism` in `NonProjectOptions`, so it cannot be set for one project. `singleFork` puts
-// the project's files in one worker, which runs them one after another — the same effect for this
-// purpose, and the form the Phase 8 close measured.
+// Vitest 4 replaces poolOptions with project-level scheduling. Keep Git files serial
+// and isolated, so every file installs its own store root before imports (Decisions 115, 117).
 export default defineConfig({
   test: {
     // Fails the run if it ends with more test-made temp directories than it began with — the check
@@ -42,7 +42,10 @@ export default defineConfig({
           name: "git",
           environment: "node",
           include: GIT_FILES,
-          poolOptions: { forks: { singleFork: true } },
+          pool: "forks",
+          fileParallelism: false,
+          maxWorkers: 1,
+          isolate: true,
         },
       },
       {

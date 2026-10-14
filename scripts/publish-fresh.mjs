@@ -1,17 +1,16 @@
 // Owns: the fresh-clone install/init/build/HTTP acceptance check (§12).
 // Failure behavior: stop its server and verify cleanup containment on success, error or interruption.
 import net from "node:net";
-import path from "node:path";
+import { prepareExport } from "./publish-export.mjs";
 import { once } from "node:events";
-import { clone, command, npmCli, start, stopTree, temporary, removeTemporary } from "./publish-process.mjs";
+import { command, npmCli, start, stopTree, removeTemporary } from "./publish-process.mjs";
 async function freePort() {
   const server = net.createServer(); server.listen(0, "127.0.0.1"); await once(server, "listening");
   const port = server.address().port; await new Promise(resolve => server.close(resolve)); return port;
 }
-export async function freshClone(root) {
-  const dir = await temporary(); let server;
+export async function freshClone(root, revision) {
+  const dir = await prepareExport(root, revision); let server;
   try {
-    await clone(root, dir);
     await command([npmCli(), "ci", "--offline", "--no-audit", "--no-fund"], dir);
     await command(["scripts/init.mjs"], dir, 30);
     await command(["scripts/kb-check.mjs"], dir, 30);

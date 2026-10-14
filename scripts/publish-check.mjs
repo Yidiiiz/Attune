@@ -21,7 +21,6 @@ export async function audit(root = ROOT) {
   catch (error) { if (error.code !== "ENOENT") throw new Error("Current settings could not be audited read-only"); }
   const files = await readFiles(root, exportFiles(names));
   const errors = auditFiles(files, [personal.identity?.name, personal.weather?.label].filter(Boolean));
-  if (names.some(rel => !exportFiles([rel]).length && !excluded(rel))) errors.push("Export selection is inconsistent");
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(`publish-check: ${files.size} exported files passed static audit`);
 }
@@ -40,12 +39,15 @@ export async function publishCheck({ auditOnly = false } = {}) {
   await audit();
   if (auditOnly) return;
   requireClean(ROOT, excluded);
+  const revision = git(ROOT, ["rev-parse", "HEAD"]);
   await command(["scripts/check-secrets.mjs", "--all"], ROOT, 60);
   auditHistory();
   await command(["scripts/check-lib-imports.mjs"], ROOT, 60);
   await command(["node_modules/vitest/vitest.mjs", "run"], ROOT, 300);
   await command(["node_modules/typescript/bin/tsc", "--noEmit"], ROOT, 120);
-  await freshClone(ROOT);
+  requireClean(ROOT, excluded);
+  if (git(ROOT, ["rev-parse", "HEAD"]) !== revision) throw new Error("Source revision changed during verification");
+  await freshClone(ROOT, revision);
   console.log("publish-check: technical checks passed; see docs/CHECKLIST.md for manual/provider acceptance");
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

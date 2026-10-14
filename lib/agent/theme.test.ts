@@ -11,8 +11,8 @@ function provider(output: unknown): Provider {
 }
 describe("theme preview", () => {
   it("uses the configured model and structured output, returning an unsaved token map", async () => {
-    const fake = provider({ "--bg": "#eee8dc", "--fg": "#30291f" });
-    expect(await proposeTheme("warm sepia", new AbortController().signal, fake)).toEqual({ "--bg": "#eee8dc", "--fg": "#30291f" });
+    const fake = provider({ "--bg": "#eee8dc", "--fg": "#30291f", "--shadow": "0 1px 2px rgb(0 0 0 / 10%)" });
+    expect(await proposeTheme("warm sepia", new AbortController().signal, fake)).toEqual({ "--bg": "#eee8dc", "--fg": "#30291f", "--shadow": "0 1px 2px rgb(0 0 0 / 10%)" });
     expect(fake.parse).toHaveBeenCalledWith(expect.objectContaining({ model: "claude-sonnet-5", effort: "medium", maxTokens: 64000, schema: TokenMap }));
   });
   it("refuses structural CSS or unknown properties returned by a provider", async () => {

@@ -53,7 +53,7 @@ describe("custom themes", () => {
       expect((await themes.PUT(request({ name, base: "light", tokens: {} }))).status).toBe(400);
       expect((await themes.DELETE(request({ name }, "DELETE"))).status).toBe(400);
     }
-    for (const tokens of [{ "--bg": "red; } body { color:red" }, { "--bg": "url(https://example.invalid)" }, { "--bg": "</style>" }, { "--unknown": "#ffffff" }]) {
+    for (const tokens of [{ "--bg": "red; } body { color:red" }, { "--bg": "url(https://example.invalid)" }, { "--bg": "</style>" }, { "--unknown": "#ffffff" }, { "--bg": 'image-set("//example.invalid/pixel" 1x)' }, { "--bg": 'src("//example.invalid/pixel")' }]) {
       expect((await themes.PUT(request({ name: "unsafe", base: "light", tokens }))).status).toBe(400);
     }
     expect(await listThemes()).toHaveLength(0); expect(await readActions()).toHaveLength(0);

@@ -8,8 +8,9 @@ export const TOKENS = ["--bg", "--bg-elevated", "--bg-sunken", "--fg", "--fg-mut
   "--priority-1", "--priority-2", "--priority-3", "--priority-4", "--node-task", "--node-note",
   "--node-map", "--node-collection", "--node-chat", "--node-file"] as const;
 export const ThemeName = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/).refine(name => !["light", "dark"].includes(name), "Base themes are protected");
+const FUNCTIONS = new Set(["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix", "calc", "min", "max", "clamp"]);
 const Value = z.string().min(1).max(300).regex(/^[#a-zA-Z0-9(),.%/"' +_-]+$/)
-  .refine(value => !/(url|expression|var|env|attr)\s*\(/i.test(value), "Unsafe CSS value");
+  .refine(value => !value.includes("//") && [...value.matchAll(/([a-z][a-z0-9-]*)\s*\(/gi)].every(match => FUNCTIONS.has(match[1].toLowerCase())), "Unsafe CSS value");
 const shape = Object.fromEntries(TOKENS.map(token => [token, Value.optional()])) as
   { [Key in typeof TOKENS[number]]: z.ZodOptional<typeof Value> };
 export const TokenMap = z.object(shape).strict();

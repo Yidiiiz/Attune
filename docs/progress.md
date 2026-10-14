@@ -1,6 +1,6 @@
-# Continuation progress ? 2026-10-14
+# Continuation progress — 2026-10-14
 
-Current milestone: finish PROJECT.md ?17 in phase order. Preserve the owner's
+Current milestone: finish PROJECT.md §17 in phase order. Preserve the owner's
 untracked HANDOFF.md. All commits are local; nothing has been pushed or published.
 
 Automation is implemented: strict task/result schemas, atomic six-launch budget,
@@ -9,7 +9,7 @@ baseline/scope protection. All 20 adversarial Windows runner tests pass.
 Startup instructions and the supervisor prompt are in docs/SUPERVISOR.md.
 Both installed clients report saved sign-in. The budget is untouched (0 of 6 used).
 
-The live Claude ? Codex two-task probe remains unrun. Automatic approval review
+The live Claude → Codex two-task probe remains unrun. Automatic approval review
 rejected launching the signed clients because repository content could be sent
 to external model services. Explicit approval of that transmission is still
 required; offline loop coverage is not a claim of live transport verification.
@@ -30,8 +30,13 @@ browser-write 41.61, browser 18.31, Build 20.6, chat 30.7, graph 7.02,
 knowledge 26.5, sidebar 35.8, toast 11.5. Startup 1.707 seconds.
 Evidence: check-ui-evidence/2026-10-14T21-05-48-113Z and .agent/ui-build-full.log.
 
-Next: Phase 10 backend (validated themes and section saves), then its Settings
-and History interfaces; then Phase 11 checks/export tooling. AGENTS.md records
+Phase 10 backend is implemented: section-scoped queued saves, validated personal
+themes, logged save/delete with fallback selection and Undo, generated unsaved token
+maps, and a credential-free remote label. Thirteen targeted checks passed; TypeScript
+is clean. A full deterministic run is in progress before the Stage A review.
+
+Next: review Phase 10 backend, implement its Settings and History interfaces,
+then Phase 11 checks/export tooling. AGENTS.md records
 the implementation conditions. Do not invoke publish or push.
 
 Existing deferred amendments i/k/u/v remain deferred. Existing manual and real-model

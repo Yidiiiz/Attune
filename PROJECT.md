@@ -278,6 +278,19 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 109. **Build's repository mechanics stay separate from data and model transport.** `lib/store/code.ts` guards repository I/O, `lib/history/build-git.ts` shares the existing repository containment policy for read-only observations, and `lib/history/code-actions.ts` records changes. Undo/redo declare their repository half and propagate it through snapshots, scanning and commits. `build-sdk.ts` is the model adapter; `build.ts` owns session gates; `build-transcript.ts` writes ordinary chat records. A session interrupted by server death leaves edits on disk and refuses a missing session rather than silently adopting them; inspect the working diff before a new build.
 
+110. **Custom themes inherit a named base and only inject validated tokens.** A separate
+`data-theme-base` attribute carries dark inheritance even when `data-theme` names a custom theme.
+Theme names are lowercase slugs; overrides are limited to §11.3's tokens, bounded values without
+CSS structure, HTML, URLs, variable references or executable expressions. Base names cannot be
+saved or deleted. Deleting the active theme falls back to its base in the same undoable batch.
+`lib/theme/tokens.ts` is pure; `lib/store/themes.ts` owns files; history owns mutations.
+
+111. **Settings saves merge one section inside the transaction queue.** `PUT /api/settings`
+retains full-document compatibility and additionally accepts `{ section, value }`. Section requests
+validate ranges, timezone and day-block ordering, then preserve unrelated and unknown fields.
+Weather Clear explicitly removes known location fields. Model metadata is pure in `models.ts`,
+re-exported by the provider registry, so Settings never imports provider transport into the browser.
+
 ## 1. Hard rules
 
 These override anything else in this document.

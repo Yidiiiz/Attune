@@ -759,7 +759,7 @@ Both signals enter the same handler in `scripts/dev.mjs`, so a pass here confirm
 could only reach by the other event.
 
 
-## Phase 9 ? Build
+## Phase 9 — Build
 
 ### 9.1 Live Agent SDK behavior ? **unverified**
 

@@ -25,7 +25,8 @@ describe("section transactions", () => {
     const next = await readSettings();
     expect(next.identity).toMatchObject({ name: "Sample", futureIdentity: "also keep" });
     expect(next.future).toBe("keep"); expect(next.list.focusSize).toBe(2);
-    expect((await readActions()).map(one => one.summary)).toEqual(["Change identity", "Change list"]);
+    // Concurrent HTTP requests may reach the serial queue in either order.
+    expect((await readActions()).map(one => one.summary).sort()).toEqual(["Change identity", "Change list"]);
     expect(checkout.git("ls-files", "data")).toBe("");
   });
   it("clears weather coordinates while preserving unknown fields", async () => {

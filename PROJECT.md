@@ -297,6 +297,12 @@ selector inside validated `themeCss`, in addition to §16.4's existing UI filter
 or queries are allowed, and a second selector in the serializer fails. Do not conceal the
 selector by assembling fragments or exempt its whole file without the pin.
 
+113. **Settings re-reads are ordered by request and local edit revision.** Undo may finish
+reading after the History sheet closes and the user has typed a new draft. Such a response
+cannot replace the newer draft. A browser test holds both re-reads until after typing; removing
+the guard loses the name and fails the test. Narrow shell controls shrink without hiding search,
+sync or Settings; the former fixed search width overflowed at 400 px.
+
 ## 1. Hard rules
 
 These override anything else in this document.

@@ -12,3 +12,6 @@ next-env.d.ts
 test-results/
 playwright-report/
 check-ui-evidence/
+.agent/
+.venv/
+__pycache__/

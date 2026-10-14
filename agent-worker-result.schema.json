@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "status", "summary", "changed_files", "checks_claimed", "blockers", "suggested_next_action"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "status": {"type": "string", "enum": ["completed", "needs_followup", "blocked"]},
+    "summary": {"type": "string", "minLength": 1},
+    "changed_files": {"type": "array", "items": {"type": "string"}},
+    "checks_claimed": {"type": "array", "items": {"type": "string"}},
+    "blockers": {"type": "array", "items": {"type": "string"}},
+    "suggested_next_action": {"type": "string", "minLength": 1}
+  }
+}

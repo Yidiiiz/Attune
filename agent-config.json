@@ -1,0 +1,17 @@
+{
+  "launch_budget": 6,
+  "max_attempts": 3,
+  "worker_seconds": 900,
+  "check_seconds": 300,
+  "log_bytes": 20971520,
+  "result_bytes": 65536,
+  "worker_argv": ["codex", "exec", "--sandbox", "workspace-write", "--json", "--output-schema", "{schema}", "--output-last-message", "{result}", "-"],
+  "checks": {
+    "typecheck": ["node", "node_modules/typescript/bin/tsc", "--noEmit"],
+    "unit": ["node", "scripts/check-lib-imports.mjs"],
+    "tests": ["node", "node_modules/vitest/vitest.mjs", "run"],
+    "history": ["node", "node_modules/vitest/vitest.mjs", "run", "lib/history/git-snapshot.test.ts", "lib/history/file-actions.test.ts"],
+    "runner": ["python", "-m", "unittest", "discover", "-s", "tools", "-p", "test_agent_*.py"],
+    "ui": ["node", "scripts/check-ui.mjs"]
+  }
+}

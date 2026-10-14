@@ -35,7 +35,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `df8b710`, Step 0 `38509df`, `{ git: true }` fix `a17ca6a`, Stage A `6115d7a`, review items `066d562`, B1 `56feb52`, B2 first commit `48079c3`, failure evidence `1f3fa64`, data-* refs `877b5d0`, the rest of B2 `b8466ef`, the toggle `dac2c60`, the policy-aware menu `e2ad28b` |
 | 8b — Graph view | complete — blob repair, measured browser decision and graph accepted locally | blobs `89a1611`, preflight `72a5682`, graph `670438e` |
 | 9 — Build mode | complete — both stages accepted locally; live SDK check remains unverified | backend `a092f98`, interface `1fb49d5` |
-| 10 — Settings and themes | Stage A in progress under the continuation plan below | — |
+| 10 — Settings and themes | Stage A accepted locally; interface in progress | backend `bf37c8e` |
 | 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `b09a7a2` |
 
 
@@ -102,6 +102,18 @@ in 16.9 seconds (Phase 9 tally 1/1). Decision 67's five-minute threshold remains
 A staged rename's two NUL-separated paths are both protected, pinned by a regression test.
 Amendment `w` is closed by the independent repository-byte scan and rollback test. Real SDK
 inference remains unverified; neither scripted checks nor mocked SDK hooks claim it.
+
+**Phase 10 Stage A — accepted locally, 2026-10-14** (`bf37c8e`). Section saves merge inside
+the queue and preserve unrelated/unknown keys. Theme save/delete/fallback are logged and undoable;
+base names and CSS structure are refused. Generated themes return an unsaved, strict token map.
+The SDK helper's real schema conversion is checked without inference. Thirteen focused checks
+pass and TypeScript is clean. The broad run passed 775/776, its only failure the convention's
+mistaking the spec-required CSS selector for a test-hook query. Decision 112 pins the serializer;
+its correction passes. No actual app regression or model call was observed.
+
+Stage B builds all Settings sections, live custom-theme preview/editor, geolocation and History.
+Repeat the full deterministic/browser checks on the completed interface; do not call the earlier
+775/776 run clean. Prompt-generated aesthetics and live SDK outcomes remain provider checks.
 
 **Phase 10 plan under the continuation authorization.** Reuse `PUT /api/settings`, the existing
 key editor, weather geocoding and sync endpoints. Save one section on blur; serialize saves and

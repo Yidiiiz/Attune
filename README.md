@@ -1,83 +1,88 @@
 # Attune
 
-A personal to-do and scheduling app that runs on your own machine. Everything it knows — tasks,
-notes, conversations, settings — is plain Markdown and JSON in a git repository you own. There is no
-database, no account, and no server but the one on your laptop.
+A local task, scheduling and knowledge app. Tasks, notes, conversations and settings
+are Markdown and JSON files. There is no database or app account.
 
-An assistant is part of the interface rather than a panel bolted to the side: it creates and edits
-tasks, answers questions about your own files, and keeps a small knowledge base for you. Every change
-it makes is a commit you can read and undo.
+## Run
 
-## What it does
+Node 24 or newer and Git are required.
 
-- **Today** — a ranked list of what is due, scheduled, or worth doing, with a timeline you can drag.
-- **Calendar** — rolling, month and week views; drag a task to schedule it.
-- **Chat** — conversations that branch, with annotations in the margin and full history on disk.
-- **Knowledge** — notes, maps, and collections, with backlinks and a link checker.
-- **Browser** — read and edit any file under `data/` in the app, with undo for every write.
-- **Undo** — every write goes through one transaction log. `npm run history -- undo <batch>` reverses
-  any of them, and the app restores the previous bytes exactly.
-
-## Run it
-
-Node 24 or newer, and git.
-
-```
+```sh
 npm install
-npm run init     # copies seed/ into data/ — refuses if data/ already has anything in it
-npm run dev      # http://localhost:3000
+npm run init
+npm run dev
 ```
 
-`npm run init` creates your `data/` directory from the shipped seed. It is yours: nothing in it is
-tracked by this repository, and nothing leaves your machine.
+Open http://localhost:3000. Initialization copies `seed/` into `data/` and refuses
+to replace an existing nonempty directory. On Windows PowerShell with a restricted
+script policy, use `npm.cmd` in place of `npm`.
 
-**Bring your own key.** The assistant talks to the Anthropic API and there is no key in this
-repository. Open Settings and paste one, or put it in `.env.local` yourself. Without a key everything
-except the assistant works, and a missing key gives you a plain error rather than a broken page.
+## Features
 
-## What is built, and what is not
+- Today ranks tasks and offers a draggable timeline; Calendar has rolling, month and week views.
+- Chat branches, keeps attachments and marginal annotations, and connects replies to tasks and notes.
+- The knowledge browser supports editing, search, backlinks, collections and a force-directed graph.
+- Build offers Plan first → apply → review diff → Commit/Revert, or explicitly enabled Auto, with Undo.
+- Settings includes weather, day shape, list behavior, categories, models, protected/custom themes,
+  API keys and project sync. History opens from Settings or Ctrl/Cmd+Z outside an editor.
 
-Phases 1 through 8 are done. **Phases 8b, 9, 10 and 11 have not been started**, so this is a working
-app with four known holes in it:
+## Assistant and privacy
 
-| Working | Not built yet |
-|---|---|
-| Today, Calendar, the task composer | **Graph view** — the Knowledge rail has no Graph icon yet (8b) |
-| Chat with branching, annotations, attachments | **Build mode** — the assistant cannot edit the app's own code (9) |
-| Knowledge base, collections, link checking | **Settings** — only the API-key section is live; the rest is a stub (10) |
-| The file browser, editing and saving, search | **Publishing** — `publish-check` and `publish` do not exist (11) |
+Chat, task extraction and theme generation use the Anthropic API. Set your own key
+in Settings; it is stored only in ignored `.env.local` and displayed masked. Build
+uses the installed Agent SDK and can use a saved Claude login when no API key is set.
+Requests send the prompt and relevant context to the provider. Local task and file
+features work without provider access.
 
-Do not read the phase numbers as a promise. They are the order the work happened in, and the table
-above is the current state, not a roadmap.
+`data/` is ignored and never committed or pushed by the app. Its transaction log,
+small text snapshots and content-addressed blobs support local Undo; personal data
+is not version-controlled and has no automatic off-machine backup. Project Build
+changes are real Git commits and follow the Settings sync policy.
 
-## Where things are
+## Checks and release tooling
 
-```
-app/          routes and pages
-components/   the UI, one folder per surface
-lib/store/    the only code that touches the filesystem
-lib/history/  the transaction log, undo, and git
-lib/agent/    the only code that talks to a model provider
-seed/         what `npm run init` copies into data/
-PROJECT.md    the full specification — every decision, with the reasoning
-AGENTS.md     how the work is done, and the record of every phase
-```
-
-`PROJECT.md` is long and it is the real documentation. If you want to know why something is the way
-it is, the answer is in there under a numbered Decision.
-
-## Checks
-
-```
-npm test         # unit and route tests
-npm run check:ui # Playwright, needs `npx playwright install chromium` first
-npm run kb:check # orphaned notes, broken links, size caps
+```sh
+npm test
+npm run check:ui
+npm run kb:check
+npm run publish-check
+npm run publish -- --prepare
 ```
 
-`npm test` is deterministic: the same count every run. If it is not, that is a bug worth reporting.
+Browser checks require `npx playwright install chromium` once and run against a
+throwaway checkout. They are separate from deterministic tests and never invoked
+by `publish-check`. The known Stop flake is reported separately and does not gate.
+
+`publish-check` audits the approved license, canonical seed, personal/credential
+boundaries, source history and attribution phrases, then installs locked dependencies
+from the local npm cache in a fresh clone, initializes it, builds production and checks
+an empty task response. A missing cached package fails with an npm diagnostic; populate
+the cache using the ordinary install before retrying. It performs no remote write.
+
+`publish -- --prepare` produces a local, inspectable orphan export without changing
+the source checkout. Actual remote replacement is separately explicit, requires a
+configured `public` remote and passing checks, and uses a force-with-lease. No remote
+is created automatically. Private handoffs and personal data are excluded.
+
+Automated checks cover scripted provider behavior. Real provider outcomes and remaining
+manual acceptance checks are listed honestly in [docs/CHECKLIST.md](docs/CHECKLIST.md);
+the project is not declared fully accepted while those rows remain pending.
+
+## Supervisor startup
+
+The bounded foreground workflow, strict task contracts and review/budget rules are
+in [docs/SUPERVISOR.md](docs/SUPERVISOR.md). It includes the one-session startup prompt.
+Offline runner checks pass; the live signed-client probe remains unrun pending approval
+of repository transmission. Do not interpret that as unattended background execution.
+
+## Layout
+
+`app/` contains routes, `components/` the UI, `lib/store/` filesystem access,
+`lib/history/` transactions/Undo/Git, `lib/agent/` provider traffic, and `seed/` the
+empty initial state. [PROJECT.md](PROJECT.md) is the specification;
+[AGENTS.md](AGENTS.md) records working rules and phase evidence.
 
 ## Licence
 
-**Proprietary — see [LICENSE](LICENSE), and that is deliberate rather than an oversight:** the
-source is here to be read, and any reuse needs written permission first. GitHub shows a repository
-with no open licence as unlicensed, which is this sentence said less clearly.
+**Proprietary — see [LICENSE](LICENSE).** The existing notice is preserved. Reuse
+requires the copyright holder's written permission as stated in that file.

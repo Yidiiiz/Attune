@@ -303,6 +303,14 @@ cannot replace the newer draft. A browser test holds both re-reads until after t
 the guard loses the name and fails the test. Narrow shell controls shrink without hiding search,
 sync or Settings; the former fixed search width overflowed at 400 px.
 
+114. **Publication verifies the exported snapshot and never mutates the source checkout.**
+An isolated local clone replaces the planned linked worktree, avoiding source index/ref changes.
+An orphan snapshot excludes personal data, private handoffs, credential-shaped files and generated
+runtime state. `--prepare` is local inspection; remote replacement is a separate explicit command
+using a force-with-lease. LICENSE is preserved byte-for-byte. Audit scopes follow the meaning of
+their needles: runtime paths rather than prose/test fixtures, identity in code/seed, attribution
+phrases rather than product names. This applies amendments `n`, `r`, `x` and `y` together.
+
 ## 1. Hard rules
 
 These override anything else in this document.
@@ -1133,12 +1141,12 @@ Adding a provider = one file implementing `Provider`, one entry in `PROVIDERS`, 
 
 ## 12. Project versus user changes
 
-- `seed/` mirrors `data/`: empty `tasks/`, `chats/`, `files/{images,docs,other}` with `.gitkeep`, `files/index.md` header only, `knowledge/index.md` explaining the layout, empty profile files with a comment header each, the four maps, empty `notes/`, `collections/`, `sessions/`, `settings/settings.json` (§4.9 values with `weather.query` empty and no coordinates, so the public seed ships with weather off), `settings/themes/.gitkeep`, `history/actions.jsonl` (empty) and `action-history.md` (header only).
+- `seed/` mirrors `data/`: empty `tasks/`, `chats/`, `files/{images,docs,other}` with `.gitkeep`, `files/index.md` header only, `knowledge/index.md` explaining the layout, empty profile files with a comment header each, the four maps, empty `notes/`, `collections/`, `sessions/`, `settings/settings.json` (§4.9 values with `weather.query` empty and no coordinates, so the public seed ships with weather off), `settings/themes/.gitkeep`, `history/actions.jsonl` (empty) and `action-history.md` (header only), with an empty `history/blobs/` for durable snapshots.
 - `npm run init` copies `seed/` → `data/` and refuses if `data/` exists and is non-empty (exit 1, message names the directory). It does not touch git configuration; the hook path is installed by `postinstall` (§11.5), which is what makes it land on a clone whose `data/` is already populated.
 - Every batch carries `scope`, and it records **whose change this is**, not where the file sits. **`user` is anything personal to the owner — everything under `data/`, plus `.env.local`; `project` is code, `seed/`, and docs.** `code.change` is `project` unless every touched path is under `data/`. The key writes of §11.5 are the case that made the wording matter: `.env.local` is outside `data/` and is as personal as anything in it (Decision 57).
 - **When the assistant cannot tell** (a new theme, a new category, a seed change), the Build-mode prompt tells it to ask "Should this ship with the project or stay yours?" before writing, and the answer sets where the file goes (`seed/` vs `data/`).
-- `npm run publish-check`: greps `app/ components/ lib/ scripts/` for `data/` string literals outside `lib/store/paths.ts`; greps for the identity name and weather label from the current `settings.json`; verifies every path `lib/store` reads has a counterpart in `seed/`; verifies `.env.local` is ignored; runs `check-secrets --all`; greps the **published file set** (the repo minus `data/`, `BUILD_PROMPT.md`, and `HANDOFF-CHAT.md`, exactly what `publish` ships) for AI-authorship strings (`Co-Authored-By`, `Generated with`, `Claude Code`, `Anthropic`), skipping only `lib/agent/`, `package.json`, `package-lock.json`, `PROJECT.md`, and `AGENTS.md`, which name providers and SDKs legitimately. `BUILD_PROMPT.md` would trip this grep if it were included; that is a symptom of it being published at all, never a reason to lengthen the skip list; **the four strings are assembled from fragments at runtime rather than written literally in the script**, because a grep for literal text held literally in the file that greps for it finds itself first, and the skip list is not the fix (`AGENTS.md` amendment `r`); then, in a temp directory, clones the repo, runs `init`, `build`, and starts the server to hit `/api/tasks` once. Exit 1 on any failure.
-- `npm run publish` (Decisions 22, 41): creates a temporary worktree, removes `data/`, `BUILD_PROMPT.md`, and `HANDOFF-CHAT.md` from the index, adds all three to `.gitignore` in that tree, commits as a single orphan commit `Publish`, and force-pushes to the `public` remote's `main`. Refuses if `publish-check` fails. Everything else, including `PROJECT.md` and `AGENTS.md`, ships.
+- `npm run publish-check`: audits the exact published file set (tracked files excluding `data/`, `BUILD_PROMPT.md`, `HANDOFF-CHAT.md`, `HANDOFF.md`, credentials and generated runtime state). `LICENSE` is mandatory, non-empty, proprietary, and byte-verified against the approved copyright notice (amendments `x` and `y`). Identity-name and weather-label checks cover `app/ components/ lib/ scripts/ seed/` only, excluding legal/documentation text. Executable string/template literals beginning with the data-directory prefix are refused outside `lib/store/paths.ts`; comments, prose, regular expressions and test fixtures are not runtime paths. Run shared secret scanning over tracked content and historical source, deterministic tests and TypeScript. Authorship checks search attribution phrases assembled from fragments; bare product/provider names are not attribution. Only `PROJECT.md` and `AGENTS.md` describe the forbidden phrases as instructions and are excluded from that phrase audit. In a contained temporary clone, install locked dependencies, run `init`, build, start production and verify `/api/tasks` is empty. Never invoke `check:ui` (amendment `n`). A technical pass does not mark pending manual/provider checklist rows verified.
+- `npm run publish` (Decisions 22, 41, 114): prepares an independent temporary clone, drops all excluded files, adds private handoff names to `.gitignore`, and creates one orphan commit `Publish`. `--prepare` keeps the local export for inspection without any network write. Actual publication requires `--confirm-force-push`, a configured `public` remote, a clean tracked source tree, and a passing `publish-check`; it replaces `public/main` using an explicit force-with-lease against its observed revision. The source index, branches and personal files stay untouched. No remote is invented. Everything in the declared export set, including `LICENSE`, the specification and working rules, ships.
 - `README.md` (Phase 11): setup, layout, bring-your-own-key, no personal content.
 
 ---
@@ -1285,7 +1293,7 @@ All of these pass before the project is called finished; each is also an accepta
   and in `AGENTS.md`. The prefixes come from `lib/security/secrets.ts` at runtime rather than being
   written into the script, the same fix and for the same reason as `AGENTS.md` amendment `r`;
   amendment `x` is this instance and the two others that came with it.
-- `grep -ri` for `co-authored-by`, `generated with`, and assistant names over the published file set returns nothing outside `lib/agent/`, lockfiles, and model-id strings.
+- The §12 attribution-phrase audit passes over the exported snapshot. Model IDs and product/provider names used for operation are not attribution; the two instruction documents necessarily describe the rule.
 
 ---
 

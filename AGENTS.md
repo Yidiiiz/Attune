@@ -35,7 +35,7 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 8 — Knowledge browser | complete — Stage A, B1 and B2 accepted, and the close's two items taken. The graph is Phase 8b's | conditions `df8b710`, Step 0 `38509df`, `{ git: true }` fix `a17ca6a`, Stage A `6115d7a`, review items `066d562`, B1 `56feb52`, B2 first commit `48079c3`, failure evidence `1f3fa64`, data-* refs `877b5d0`, the rest of B2 `b8466ef`, the toggle `dac2c60`, the policy-aware menu `e2ad28b` |
 | 8b — Graph view | complete — blob repair, measured browser decision and graph accepted locally | blobs `89a1611`, preflight `72a5682`, graph `670438e` |
 | 9 — Build mode | complete — both stages accepted locally; live SDK check remains unverified | backend `a092f98`, interface `1fb49d5` |
-| 10 — Settings and themes | Stage A accepted locally; interface in progress | backend `bf37c8e` |
+| 10 — Settings and themes | complete — both stages accepted locally; real theme-generation aesthetics remain unverified | backend `bf37c8e`, interface `c71c1e5` |
 | 11 — Publish | not started — amendments `n`, `r`, `x` and `y` are constraints on `publish-check` and are binding before a line of it is written. `LICENSE`, `README.md` and the deterministic suite landed early, out of phase, at the owner's direction | the suite and `LICENSE` `b09a7a2` |
 
 
@@ -114,6 +114,40 @@ its correction passes. No actual app regression or model call was observed.
 Stage B builds all Settings sections, live custom-theme preview/editor, geolocation and History.
 Repeat the full deterministic/browser checks on the completed interface; do not call the earlier
 775/776 run clean. Prompt-generated aesthetics and live SDK outcomes remain provider checks.
+
+**Phase 10 close — accepted locally, 2026-10-14** (`c71c1e5`). Every Settings section and
+the shared History sheet render. Theme duplication/edit/delete and dark inheritance, unsaved
+prompt previews, focus ranking, controlled geolocation/Clear, masked keys, explicit Undo/Redo
+and conflict/Undo-anyway passed browser checks. Light/dark and narrow screenshots inspected.
+The full deterministic suite passed **780/780 in 68 files** (62.13 seconds), TypeScript clean.
+Full browser: **93/93 gating in 4.0 minutes**, native exit 0; Stop passed separately in 15.5 seconds
+(Phase 10 tally 1/1). After review added the draft-read guard, Settings passed **9/9** in 29.7
+seconds. Removing the guard failed the held-response test with the newer name replaced by empty;
+restoring exact source bytes passed that strengthened check, 1/1. Final boundaries/schema checks
+11/11 and TypeScript clean. No timeout, quarantine, threshold or pattern was weakened.
+
+The first focused run was 3/7: ambiguous Theme labels, a History-test loading race and an
+unaccepted key-removal confirmation. After those corrections, a real 400 px top-bar overflow
+was measured and fixed. The application also disables History selection while loading and
+weather drafts during location requests. Native process reporting resolves the earlier PowerShell
+redirection exit ambiguity; logs retain both observations. Real provider aesthetics remain
+unverified; the deterministic theme fixture has the existing non-production gate only.
+
+**Phase 11 plan under the continuation authorization.** First amend §12 in one pass for `n`,
+`r`, `x` and `y`, including LICENSE verification and exact export scope. Reuse deterministic
+checks and the existing shared secret patterns. Never invoke check:ui from publish-check.
+Audit executable data-path literals rather than prose or intentional test fixtures, identity
+only in code/seed, and authorship phrases rather than bare product/provider names needed by
+setup documentation. Assemble attribution patterns from fragments; do not lengthen skip lists.
+
+A fresh isolated local clone installs locked dependencies, initializes seed, builds production
+and answers /api/tasks with an empty list. Strip application API-key/test/root overrides from
+its environment. Bound every subprocess and stop its server tree; verify temporary cleanup
+paths. Publication preparation uses an independent clone and one orphan commit, excluding all
+personal/private files. Provide local preparation for inspection and a separately explicit
+force-with-lease publication command, requiring the existing public remote. Do not run any
+push or create/configure a remote in this session. Checklist gaps stay pending; implementation
+of tooling is not completion of all manual/provider acceptance checks.
 
 **Phase 10 plan under the continuation authorization.** Reuse `PUT /api/settings`, the existing
 key editor, weather geocoding and sync endpoints. Save one section on blur; serialize saves and

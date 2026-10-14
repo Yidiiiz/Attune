@@ -767,3 +767,20 @@ The scripted browser loop and mocked SDK tests pass (2026-10-14). A real signed 
 plan/edit turn, including its mandatory hook refusals, has not been exercised.
 The external-client transmission probe was rejected by automatic approval review;
 no live verification is inferred from installed client sign-in or scripted checks.
+
+
+## Phase 10 — Settings
+
+### 10.1 Settings, themes and History — **verified by browser checks and screenshots, 2026-10-14**
+
+Protected bases; duplicate/edit/delete with dark inheritance and persistent colors;
+unsaved scripted generation; focus-size ranking; controlled browser geolocation and Clear;
+masked keys with name-only logs; History Undo/Redo and inline conflicts; narrow layout.
+Full regression 93/93 gating, and subsequent Settings checks 9/9. Light/dark and 400 px
+screenshots inspected. The delayed-read guard was mutation-checked: removing it loses
+a newly typed name, restoring it passes. No real generated aesthetic is claimed.
+
+### 10.2 Real generated palette — **pending provider access**
+
+Use a real provider with a palette request, inspect the unsaved result in both base modes,
+save and reload. The scripted map checks UI behavior; it cannot verify prompt adherence.

@@ -1,6 +1,9 @@
-# Continuation progress — 2026-10-14
+# Continuation progress — RESUMED at owner request, 2026-10-14
 
-Current milestone: finish PROJECT.md §17 in phase order. Preserve the owner's
+Owner resumed with “Continue from docs/progress.md.” Preserve the saved pause
+record and evidence; continue Phase 10 corrections before release tooling.
+
+Current milestone on resume: finish PROJECT.md §17 in phase order. Preserve the owner's
 untracked HANDOFF.md. All commits are local; nothing has been pushed or published.
 
 Automation is implemented: strict task/result schemas, atomic six-launch budget,
@@ -36,10 +39,23 @@ maps, and a credential-free remote label. Backend bf37c8e is accepted locally. T
 is clean. The broad run was 775/776; the only failure was the CSS convention check,
 corrected and pinned by Decision 112. Repeat the full suite after the interface.
 
-Next: implement Phase 10 Settings and History interfaces,
-then Phase 11 checks/export tooling. AGENTS.md records
-the implementation conditions. Do not invoke publish or push.
+Phase 10 is complete locally: backend bf37c8e, interface c71c1e5. All Settings
+sections, themes and History are implemented. Full deterministic run: 780/780 in
+68 files (62.13 seconds), TypeScript clean. Full browser: 93/93 gating in 4.0 minutes,
+native exit 0; Stop passed apart in 15.5 seconds (phase tally 1/1). Settings after
+review: 9/9 in 29.7 seconds. A strengthened delayed-read test failed when its guard
+was removed (new draft became empty), then passed with exact source bytes restored.
+Light/dark and narrow screenshots inspected. Negative evidence is retained under
+.agent/ui-settings*.log and check-ui-evidence/. No timeout or threshold changed.
 
-Existing deferred amendments i/k/u/v remain deferred. Existing manual and real-model
-checklist rows remain outstanding. Application provider checks need an application
-API key; CLI sign-in does not settle those checks. Do not mark them passed.
+Current milestone: implement Phase 11 audit/export tooling under Decision 114 and
+AGENTS.md's concrete plan. Keep source and docs commits separate. Do not push,
+publish remotely, modify personal data, invent a remote or launch model clients.
+The tooling must verify a real fresh production clone without invoking check:ui.
+Manual/provider gaps remain honest. Complete the technical tooling, then summarize
+remaining acceptance gaps and supervisor startup from docs/SUPERVISOR.md.
+
+Existing deferred amendments i/k/u/v remain deferred. Application provider checks
+need an application API key; CLI sign-in does not settle those checks. The signed
+supervisor probe remains blocked by automatic approval review pending explicit
+approval of repository transmission. Budget 0/6 used, no workers launched.

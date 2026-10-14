@@ -1,6 +1,7 @@
 // Owns: the graph's actual empty checkout, HTTP edge parity and node navigation.
 // Failure behavior: restore sandbox data in finally; never touch the owner's tree.
-import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { renameAtomic } from "../lib/store/files";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { SANDBOX } from "./setup";
@@ -11,7 +12,7 @@ const MAP = "knowledge/maps/graph-map.md";
 
 test("graph opens on a genuinely empty data directory without a simulation", async ({ page, request }) => {
   const data = path.join(SANDBOX, "data"), saved = path.join(SANDBOX, "graph-saved-data");
-  renameSync(data, saved);
+  await renameAtomic(data, saved);
   mkdirSync(data);
   try {
     const answer = await request.get("/api/knowledge/graph");
@@ -22,7 +23,7 @@ test("graph opens on a genuinely empty data directory without a simulation", asy
   } finally {
     if (path.dirname(data) !== SANDBOX) throw new Error("sandbox containment failed");
     rmSync(data, { recursive: true, force: true });
-    renameSync(saved, data);
+    await renameAtomic(saved, data);
   }
 });
 

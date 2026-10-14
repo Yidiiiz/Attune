@@ -35,24 +35,32 @@ export interface Unlogged {
  * the text, and this refuses everything the hook would. `read` is the store's binary read, passed in
  * so this module still touches no disk of its own.
  *
- * Data paths only. Phase 9's `code.change` targets are repository paths this reader cannot reach;
- * that batch owes the same scan of its own files.
+ * Repository code uses the separately guarded reader supplied by runBatch (amendment w).
+ * Undo and redo declare their repository half too, so they cannot route it through data/.
  */
 export async function unloggedTexts(applied: Applied[], read: (rel: string) => Promise<Buffer>,
-  readBlob?: (hash: string) => Promise<Buffer>): Promise<Unlogged[]> {
+  readBlob?: (hash: string) => Promise<Buffer>, readRepo?: (rel: string) => Promise<Buffer | null>, repoPaths: string[] = []): Promise<Unlogged[]> {
   const last = new Map<string, Snapshot>();
+  const found: Unlogged[] = [];
   for (const step of applied) {
-    if (step.spec.type === "code.change") continue;
+    if (step.spec.type === "code.change" || step.targets.some((rel) => repoPaths.includes(rel))) {
+      if (!readRepo) throw new Error("repository secret scan is required for code.change");
+      for (const rel of step.targets) {
+        if (step.spec.type !== "code.change" && !repoPaths.includes(rel)) continue;
+        const bytes = await readRepo(rel);
+        if (bytes && !bytes.includes(0)) found.push({ rel, text: bytes.toString("utf8") });
+      }
+      if (step.spec.type === "code.change") continue;
+    }
     for (const snapshots of [step.before, step.after]) {
       for (const [rel, snap] of Object.entries(snapshots)) {
-        if (snap !== null && "blob" in snap) last.set(`${rel}\0${snap.blob}`, snap);
+        if (!repoPaths.includes(rel) && snap !== null && "blob" in snap) last.set(`${rel}\0${snap.blob}`, snap);
       }
     }
     for (const [rel, snap] of Object.entries(step.after)) {
-      if (snap === null || !("blob" in snap)) last.set(rel, snap);
+      if (!repoPaths.includes(rel) && (snap === null || !("blob" in snap))) last.set(rel, snap);
     }
   }
-  const found: Unlogged[] = [];
   for (const [rel, snap] of last) {
     if (snap === null || !("git" in snap || "blob" in snap)) continue;
     const bytes = "blob" in snap && readBlob ? await readBlob(snap.blob) : await read(rel);

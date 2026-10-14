@@ -5,6 +5,7 @@
 import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
 import * as files from "../store/files.ts";
 import * as tasks from "../store/tasks.ts";
+import { writeCode } from "../store/code.ts";
 import { blobHash, readBlob, writeBlob } from "../store/blobs.ts";
 import { StoreError } from "../store/paths.ts";
 import { looksLikeText } from "../security/raw.ts";
@@ -17,6 +18,12 @@ const INLINE_LIMIT = 64 * 1024;
 const held = new Map<string, Buffer>();
 // Persist only after the shared secret scan accepts the batch. Rejected bytes never reach blobs.
 const pendingBlobs = new Map<string, Buffer>();
+const repositoryBefore = new Map<string, Buffer | null>();
+
+export function rememberRepository(rel: string, bytes: Buffer | null): Snapshot {
+  if (!repositoryBefore.has(rel)) repositoryBefore.set(rel, bytes);
+  return bytes === null ? null : { git: true };
+}
 
 /** Small text inline, binary and large text by hash; no lossy binary decoding. */
 export async function snapshotContent(rel: string): Promise<Snapshot> {
@@ -48,12 +55,14 @@ export async function applySnapshot(
   repoRelative = false,
 ): Promise<void> {
   if (snap === null) {
-    await files.deleteFile(rel);
+    if (repoRelative) await writeCode(rel, null);
+    else await files.deleteFile(rel);
     tasks.invalidateTaskCache();
     return;
   }
 
   if ("content" in snap) {
+    if (repoRelative) throw new StoreError("invalid", `${rel}: inline snapshots restore data only`);
     await files.writeText(rel, snap.content);
     tasks.invalidateTaskCache();
     return;
@@ -67,6 +76,7 @@ export async function applySnapshot(
   }
 
   if ("fields" in snap) {
+    if (repoRelative) throw new StoreError("invalid", `${rel}: field snapshots restore data only`);
     const text = (await files.exists(rel)) ? await files.readText(rel) : "";
     const { data, body } = splitFrontmatter(text);
     for (const [key, value] of Object.entries(snap.fields)) data[key] = value;
@@ -85,6 +95,7 @@ export async function applySnapshot(
 export function resetSnapshots(): void {
   held.clear();
   pendingBlobs.clear();
+  repositoryBefore.clear();
 }
 
 export async function snapshotBytes(hash: string): Promise<Buffer> {
@@ -100,7 +111,12 @@ export async function persistSnapshots(snapshots: Snapshot[]): Promise<void> {
   }
 }
 
-export async function rollbackSnapshot(rel: string, snap: Snapshot): Promise<void> {
+export async function rollbackSnapshot(rel: string, snap: Snapshot, repoRelative = false): Promise<void> {
+  if (repoRelative) {
+    if (!repositoryBefore.has(rel)) throw new StoreError("invalid", `${rel}: missing repository rollback bytes`);
+    await writeCode(rel, repositoryBefore.get(rel) ?? null);
+    return;
+  }
   const bytes = snap !== null && ("git" in snap || "blob" in snap) ? held.get(rel) : undefined;
   if (bytes === undefined) await applySnapshot(rel, snap, null);
   else await files.writeBinary(rel, bytes);

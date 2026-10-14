@@ -1,4 +1,4 @@
-// Owns: every git command this app runs — one commit per batch, a debounced push, and the state the
+// Owns: git mutations and sync — one commit per batch, a debounced push, and the state the
 // sync indicator reads (PROJECT.md §8). Git is shelled out to; there is no library (§2).
 //
 // Failure behavior: failures never block a write. The batch is already on disk and already logged
@@ -8,6 +8,7 @@
 // worse outcome than a stalled indicator. Every command runs contained to `REPO_DIR`'s own
 // repository, and commit, push and checkout assert it first (`repository.ts`); a `RepositoryError`
 // from that check is the one failure `runBatch` does not always downgrade.
+// Build's contained read-only observations and diff are in `build-git.ts` (§13.4).
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";

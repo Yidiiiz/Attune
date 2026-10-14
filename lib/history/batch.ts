@@ -22,6 +22,7 @@ import * as knowledge from "../store/knowledge.ts";
 import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
+import { readCode } from "../store/code.ts";
 import { StoreError } from "../store/paths.ts";
 import { refuseBatch, unloggedTexts } from "./scan.ts";
 import { commitExclusions } from "./in-flight.ts";
@@ -118,11 +119,11 @@ export interface Applied {
   after: Snapshots;
 }
 
-async function rollback(applied: Applied[]): Promise<void> {
+async function rollback(applied: Applied[], repoPaths: string[] = []): Promise<void> {
   for (const step of [...applied].reverse()) {
     for (const [rel, snap] of Object.entries(step.before)) {
       try {
-        await rollbackSnapshot(rel, snap);
+        await rollbackSnapshot(rel, snap, step.spec.type === "code.change" || repoPaths.includes(rel));
       } catch (err) {
         console.error(`history: could not roll back ${rel} (${(err as Error).message})`);
       }
@@ -190,7 +191,7 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
         applied.push({ spec: action, ...(await action.apply(store)) });
       }
     } catch (err) {
-      await rollback(applied);
+      await rollback(applied, repoPaths);
       throw err;
     }
 
@@ -200,20 +201,20 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     // `data/`, or write into a reply another turn is still streaming (`scan.ts`). Rolling back first
     // means the files are as they were, and the text the caller sent is still the caller's — a
     // rejected save must not cost someone what they wrote (§13.5).
-    const unlogged = await unloggedTexts(applied, files.readBinary, snapshotBytes).catch(async (err: unknown) => {
-      await rollback(applied); // a file that cannot be scanned cannot be committed either
+    const unlogged = await unloggedTexts(applied, files.readBinary, snapshotBytes, readCode, repoPaths).catch(async (err: unknown) => {
+      await rollback(applied, repoPaths); // a file that cannot be scanned cannot be committed either
       throw err;
     });
     const refused = refuseBatch(spec, applied, targets, unlogged);
     if (refused) {
-      await rollback(applied);
+      await rollback(applied, repoPaths);
       throw new StoreError(refused.code, refused.message);
     }
 
     try {
       await persistSnapshots(applied.flatMap((step) => [...Object.values(step.before), ...Object.values(step.after)]));
     } catch (err) {
-      await rollback(applied);
+      await rollback(applied, repoPaths);
       throw err;
     }
 
@@ -236,6 +237,7 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
       meta: {
         ...(spec.meta ?? {}),
         batchSummary: spec.summary,
+        ...(repoPaths.length > 0 ? { repoPaths } : {}),
         // Either the subject the next batch's backfill must match, or the marker saying this batch
         // was never going to have a hash. Every null in the log explains itself (Decision 47).
         ...(willCommit ? { commitSubject: subject } : { noCommit: true }),

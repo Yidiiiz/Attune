@@ -10,6 +10,8 @@
 import { applySnapshot, runBatch } from "./batch.ts";
 import { isDataRelative } from "../store/paths.ts";
 import { readBlob } from "../store/blobs.ts";
+import { readCode } from "../store/code.ts";
+import { rememberRepository } from "./snapshots.ts";
 import * as git from "./git.ts";
 import { groupBatches, readActions } from "./log.ts";
 import type { Batch, Snapshots } from "./log.ts";
@@ -24,6 +26,8 @@ export interface UndoResult {
 }
 
 const targetsOf = (batch: Batch): string[] => batch.entries.flatMap((entry) => entry.targets);
+const repositoryPathsOf = (batch: Batch): string[] => [...new Set(batch.entries.flatMap((entry) =>
+  entry.type === "code.change" ? entry.targets : Array.isArray(entry.meta.repoPaths) ? entry.meta.repoPaths.filter((rel): rel is string => typeof rel === "string") : []))];
 
 /** The undo/redo entries pointing at `batchId`, oldest first. */
 function historyFor(batches: Batch[], batchId: string): Batch[] {
@@ -147,7 +151,9 @@ function reverseAction(target: Batch, direction: "undo" | "redo", commit: string
         for (const [rel, snap] of Object.entries(restore)) {
           if (!targets.includes(rel)) targets.push(rel);
           before[rel] = current[rel] ?? null;
-          await applySnapshot(rel, snap, entry.commit ?? commit, direction === "undo" ? "before" : "after", entry.type === "code.change");
+          const repository = entry.type === "code.change" || (Array.isArray(entry.meta.repoPaths) && entry.meta.repoPaths.includes(rel));
+          if (repository) rememberRepository(rel, await readCode(rel));
+          await applySnapshot(rel, snap, entry.commit ?? commit, direction === "undo" ? "before" : "after", repository);
           after[rel] = snap;
         }
       }
@@ -188,6 +194,7 @@ export async function undoBatch(batchId: string, opts: { force?: boolean } = {})
     summary: target.summary,
     commitPrefix: "undo",
     meta: { undoes: batchId },
+    repoPaths: repositoryPathsOf(target),
     actions: [reverseAction(target, "undo", commit)],
   });
   return { ok: true, batch: result.batch, commit: result.commit };
@@ -207,6 +214,7 @@ export async function redoBatch(batchId: string): Promise<UndoResult> {
     summary: target.summary,
     commitPrefix: "redo",
     meta: { redoes: batchId },
+    repoPaths: repositoryPathsOf(target),
     actions: [reverseAction(target, "redo", commit)],
   });
   return { ok: true, batch: result.batch, commit: result.commit };

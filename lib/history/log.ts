@@ -29,10 +29,11 @@ export type ActionType =
   | "code.change"
   | "undo" | "redo";
 
-/** §4.11. `fields` undoes by re-applying keys, `content` by rewriting the file, `git` from the commit. */
+/** §4.11. Fields/text inline, binary/large data by blob hash, repository code from its commit. */
 export type Snapshot =
   | { fields: Record<string, unknown> }
   | { content: string }
+  | { blob: string }
   | { git: true }
   | null;
 

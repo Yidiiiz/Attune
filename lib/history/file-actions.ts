@@ -177,9 +177,9 @@ export function deleteAction(rel: string): ActionSpec {
  * manifest as part of storing the file and a batch that named only one of them would leave the
  * other outside undo.
  *
- * The uploaded bytes are snapshotted as `{ git: true }`, not inline: they are binary and the inline
- * path is text (§7.1 says that snapshot is for code changes and binaries). Undo still needs no
- * commit, because `before` is null and null means delete. A re-upload of bytes already stored
+ * Uploaded bytes use the shared snapshot choice: small text inline, binary or large text by blob
+ * hash (Decision 106). Undo needs no commit because `before` is null and null means delete.
+ * A re-upload of bytes already stored
  * writes nothing, so it snapshots nothing and only the manifest moves; the file stays in `targets`,
  * where the conflict check can see it.
  */
@@ -201,7 +201,7 @@ export function addFile(
         targets: [rel, manifestPath],
         before: { ...(created ? { [rel]: null } : {}), [manifestPath]: manifestBefore },
         after: {
-          ...(created ? { [rel]: { git: true } as const } : {}),
+          ...(created ? { [rel]: await store.snapshotContent(rel) } : {}),
           [manifestPath]: await store.snapshotContent(manifestPath),
         },
       };

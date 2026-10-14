@@ -1,5 +1,5 @@
 // Owns: `runBatch` — the single entry point every mutation in this app goes through (PROJECT.md §1
-// rule 6, §7.1) — and the snapshot mechanics undo is built on. Nothing outside `lib/history/` writes
+// rule 6, §7.1). Snapshot mechanics are in `snapshots.ts`. Nothing outside `lib/history/` writes
 // to `data/`, so this file is the place to look for what changed and why it was allowed to.
 //
 // **`data/` is not committed.** It is in `.gitignore`, so a batch that writes only under it is
@@ -15,7 +15,6 @@
 // anything is applied (`repository.ts`).
 
 import { randomBytes } from "node:crypto";
-import { joinFrontmatter, splitFrontmatter } from "../store/frontmatter.ts";
 import * as chats from "../store/chats.ts";
 import * as env from "../store/env.ts";
 import * as files from "../store/files.ts";
@@ -24,7 +23,6 @@ import * as manifest from "../store/manifest.ts";
 import * as settingsStore from "../store/settings.ts";
 import * as tasks from "../store/tasks.ts";
 import { StoreError } from "../store/paths.ts";
-import { looksLikeText } from "../security/raw.ts";
 import { refuseBatch, unloggedTexts } from "./scan.ts";
 import { commitExclusions } from "./in-flight.ts";
 import { zonedParts, nowIso } from "../schedule/dates.ts";
@@ -40,9 +38,9 @@ import {
 } from "./log.ts";
 import type { ActionEntry, ActionType, Snapshot, Snapshots } from "./log.ts";
 import { enqueue } from "./queue.ts";
-
-/** Whole-text snapshots stop here; anything larger is reconstructed from the commit instead. */
-const INLINE_LIMIT = 64 * 1024;
+import { snapshotContent, snapshotFields, persistSnapshots, resetSnapshots,
+  rollbackSnapshot, snapshotBytes } from "./snapshots.ts";
+export { applySnapshot, snapshotContent, snapshotFields } from "./snapshots.ts";
 
 const PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -104,86 +102,9 @@ export interface BatchResult {
   targets: string[];
 }
 
-/**
- * The bytes behind each `{ git: true }` snapshot this batch took, first capture per path kept. The log
- * carries none of them and the commit does not exist yet, so a batch refused after applying could not
- * otherwise put such a file back; `rollback` writes these instead. Cleared as each batch starts,
- * which the queue runs one at a time.
- */
-const held = new Map<string, Buffer>();
-
-/**
- * A file's snapshot: its text inline when it is text and small, else `{ git: true }` with the bytes
- * held for rollback. A binary is `{ git: true }` at any size — as text it would be decoded lossily
- * and written back through the text path, which is how a restored image would come back corrupted.
- */
-export async function snapshotContent(rel: string): Promise<Snapshot> {
-  if (!(await files.exists(rel))) return null;
-  const bytes = await files.readBinary(rel);
-  if (bytes.length > INLINE_LIMIT || !looksLikeText(bytes)) {
-    if (!held.has(rel)) held.set(rel, bytes);
-    return { git: true };
-  }
-  return { content: bytes.toString("utf8") };
-}
-
-export async function snapshotFields(rel: string, keys: string[]): Promise<Snapshot> {
-  if (!(await files.exists(rel))) return null;
-  const { data } = splitFrontmatter(await files.readText(rel));
-  const fields: Record<string, unknown> = {};
-  for (const key of keys) fields[key] = data[key] ?? null;
-  return { fields };
-}
-
 export const store: Store = {
   tasks, files, chats, env, manifest, knowledge, settings: settingsStore, snapshotContent, snapshotFields,
 };
-
-/**
- * Put a file back into the state a snapshot describes. `commit` is needed only by `{ git: true }`,
- * which cannot be reconstructed without one — the UI says so rather than pretending otherwise.
- * **A data path's `{ git: true }` is therefore unrestorable now**, because a data batch has no
- * commit: it throws the named error below rather than restoring the wrong bytes. Nothing has ever
- * produced one here (it takes an upload or over 64 KB of text), and the blob store that replaces it
- * is filed against Phase 8b in AGENTS.md. Which
- * side of the batch it was is what picks the revision: a `before` is the file as it was in the commit's
- * parent, an `after` as it was in the commit. `rel` is `data/`-relative unless `repoRelative` says it
- * is a repository path, which only `code.change` targets are.
- */
-export async function applySnapshot(
-  rel: string,
-  snap: Snapshot,
-  commit: string | null,
-  side: "before" | "after" = "before",
-  repoRelative = false,
-): Promise<void> {
-  if (snap === null) {
-    await files.deleteFile(rel);
-    tasks.invalidateTaskCache();
-    return;
-  }
-
-  if ("content" in snap) {
-    await files.writeText(rel, snap.content);
-    tasks.invalidateTaskCache();
-    return;
-  }
-
-  if ("fields" in snap) {
-    const text = (await files.exists(rel)) ? await files.readText(rel) : "";
-    const { data, body } = splitFrontmatter(text);
-    for (const [key, value] of Object.entries(snap.fields)) data[key] = value;
-    await files.writeText(rel, joinFrontmatter(data, body));
-    tasks.invalidateTaskCache();
-    return;
-  }
-
-  if (!commit) {
-    throw new Error(`${rel} can only be restored from its commit, and this batch has none`);
-  }
-  await git.restorePaths(side === "before" ? `${commit}^` : commit, [repoRelative ? rel : `data/${rel}`]);
-  tasks.invalidateTaskCache();
-}
 
 function batchId(timezone: string): string {
   const p = zonedParts(new Date(), timezone);
@@ -201,9 +122,7 @@ async function rollback(applied: Applied[]): Promise<void> {
   for (const step of [...applied].reverse()) {
     for (const [rel, snap] of Object.entries(step.before)) {
       try {
-        const bytes = snap !== null && "git" in snap ? held.get(rel) : undefined;
-        if (bytes === undefined) await applySnapshot(rel, snap, null);
-        else await files.writeBinary(rel, bytes);
+        await rollbackSnapshot(rel, snap);
       } catch (err) {
         console.error(`history: could not roll back ${rel} (${(err as Error).message})`);
       }
@@ -240,7 +159,7 @@ async function backfillPrevious(): Promise<void> {
  */
 export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
   return enqueue(async () => {
-    held.clear(); // the queue runs one batch at a time, so this is the only batch holding any
+    resetSnapshots();
     const settings = await settingsStore.readSettings();
     const batch = batchId(settings.timezone);
     const ts = nowIso(settings.timezone);
@@ -281,7 +200,7 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     // `data/`, or write into a reply another turn is still streaming (`scan.ts`). Rolling back first
     // means the files are as they were, and the text the caller sent is still the caller's — a
     // rejected save must not cost someone what they wrote (§13.5).
-    const unlogged = await unloggedTexts(applied, files.readBinary).catch(async (err: unknown) => {
+    const unlogged = await unloggedTexts(applied, files.readBinary, snapshotBytes).catch(async (err: unknown) => {
       await rollback(applied); // a file that cannot be scanned cannot be committed either
       throw err;
     });
@@ -289,6 +208,13 @@ export async function runBatch(spec: BatchSpec): Promise<BatchResult> {
     if (refused) {
       await rollback(applied);
       throw new StoreError(refused.code, refused.message);
+    }
+
+    try {
+      await persistSnapshots(applied.flatMap((step) => [...Object.values(step.before), ...Object.values(step.after)]));
+    } catch (err) {
+      await rollback(applied);
+      throw err;
     }
 
     await backfillPrevious();

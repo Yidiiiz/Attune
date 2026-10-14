@@ -38,17 +38,25 @@ export interface Unlogged {
  * Data paths only. Phase 9's `code.change` targets are repository paths this reader cannot reach;
  * that batch owes the same scan of its own files.
  */
-export async function unloggedTexts(applied: Applied[], read: (rel: string) => Promise<Buffer>): Promise<Unlogged[]> {
+export async function unloggedTexts(applied: Applied[], read: (rel: string) => Promise<Buffer>,
+  readBlob?: (hash: string) => Promise<Buffer>): Promise<Unlogged[]> {
   const last = new Map<string, Snapshot>();
   for (const step of applied) {
     if (step.spec.type === "code.change") continue;
-    for (const [rel, snap] of Object.entries(step.after)) last.set(rel, snap);
+    for (const snapshots of [step.before, step.after]) {
+      for (const [rel, snap] of Object.entries(snapshots)) {
+        if (snap !== null && "blob" in snap) last.set(`${rel}\0${snap.blob}`, snap);
+      }
+    }
+    for (const [rel, snap] of Object.entries(step.after)) {
+      if (snap === null || !("blob" in snap)) last.set(rel, snap);
+    }
   }
   const found: Unlogged[] = [];
   for (const [rel, snap] of last) {
-    if (snap === null || !("git" in snap)) continue;
-    const bytes = await read(rel);
-    if (!bytes.includes(0)) found.push({ rel, text: bytes.toString("utf8") });
+    if (snap === null || !("git" in snap || "blob" in snap)) continue;
+    const bytes = "blob" in snap && readBlob ? await readBlob(snap.blob) : await read(rel);
+    if (!bytes.includes(0)) found.push({ rel: rel.split("\0")[0], text: bytes.toString("utf8") });
   }
   return found;
 }

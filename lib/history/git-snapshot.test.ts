@@ -12,7 +12,7 @@
 //     the commit's parent, which is the state before the batch rather than after it.
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createCheckout } from "../testing/checkout.ts";
@@ -27,6 +27,7 @@ const { undoBatch, redoBatch } = await import("./undo.ts");
 const { readActions } = await import("./log.ts");
 const { listTasks } = await import("../store/tasks.ts");
 const { StoreError } = await import("../store/paths.ts");
+const { blobHash, readBlob } = await import("../store/blobs.ts");
 
 type ActionSpec = import("./batch.ts").ActionSpec;
 
@@ -79,6 +80,7 @@ describe("the secret scan reads what a { git: true } snapshot leaves out", () =>
     const { id, rel } = await bigTask("Long");
     const original = sha(rel);
     const logged = (await readActions()).length;
+    const blobs = readdirSync(path.join(DATA, "history/blobs")).sort();
 
     await expect(
       runBatch({ ...user, summary: "edit", commitPrefix: "task", actions: [updateTask(id, { body: `${"b".repeat(BIG)}\n${KEY}\n` })] }),
@@ -86,6 +88,45 @@ describe("the secret scan reads what a { git: true } snapshot leaves out", () =>
 
     expect(sha(rel)).toBe(original);
     expect((await readActions()).length).toBe(logged);
+    expect(readdirSync(path.join(DATA, "history/blobs")).sort()).toEqual(blobs);
+  });
+});
+
+describe("blob integrity", () => {
+  it("refuses an intermediate large secret even when later actions overwrite it", async () => {
+    const { id, rel } = await bigTask("Intermediate");
+    const original = sha(rel);
+    const blobs = readdirSync(path.join(DATA, "history/blobs")).sort();
+    await expect(runBatch({ ...user, summary: "several edits", commitPrefix: "task", actions: [
+      updateTask(id, { body: "a".repeat(BIG) + KEY }),
+      updateTask(id, { body: "b".repeat(BIG) }),
+      updateTask(id, { body: "c".repeat(BIG) }),
+    ] })).rejects.toMatchObject({ code: "secret_rejected" });
+    expect(sha(rel)).toBe(original);
+    expect(readdirSync(path.join(DATA, "history/blobs")).sort()).toEqual(blobs);
+  });
+
+  it("deduplicates identical binary bytes and records hashes instead of git snapshots", async () => {
+    const bytes = Buffer.from([0, 1, 4, 255]);
+    const { rel } = await upload("same.png", bytes);
+    const expected = blobHash(bytes);
+    const entry = (await readActions()).find((one) => one.targets.includes(rel));
+    expect(entry?.after[rel]).toEqual({ blob: expected });
+    expect(await readBlob(expected)).toEqual(bytes);
+    await upload("again.png", bytes);
+    expect(readdirSync(path.join(DATA, "history/blobs")).filter((name) => name === expected)).toHaveLength(1);
+  });
+
+  it("refuses missing, corrupt and traversing blob references", async () => {
+    const bytes = Buffer.from([0, 8, 255]);
+    await upload("integrity.png", bytes);
+    const hash = blobHash(bytes);
+    const file = path.join(DATA, "history/blobs", hash);
+    writeFileSync(file, "corrupt");
+    await expect(readBlob(hash)).rejects.toThrow(/corrupt/);
+    unlinkSync(file);
+    await expect(readBlob(hash)).rejects.toThrow();
+    await expect(readBlob("../actions.jsonl")).rejects.toMatchObject({ code: "invalid" });
   });
 });
 
@@ -107,12 +148,8 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(original);
   });
 
-  // SKIPPED, not deleted, and the case below pins what happens instead. `data/` is ignored and a
-  // batch that writes only under it never commits (`batch.ts`), so the one thing a `{ git: true }`
-  // snapshot of a data path needs in order to be restored — a commit holding those bytes — is the
-  // one thing that no longer exists. The replacement is a content-addressed blob store under
-  // `data/history/blobs/`, filed against Phase 8b in AGENTS.md; these three turn back on with it.
-  it.skip("undoes an edit over 64 KB byte for byte, and redoes it byte for byte", async () => {
+  // Re-enabled by amendment z: blobs restore the bytes without committing personal data.
+  it("undoes an edit over 64 KB byte for byte, and redoes it byte for byte", async () => {
     const { id, rel } = await bigTask("Edited");
     const original = sha(rel);
     const { batch } = await runBatch({ ...user, summary: "edit", commitPrefix: "task", actions: [updateTask(id, { body: "d".repeat(BIG) })] });
@@ -124,7 +161,7 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(edited);
   });
 
-  it.skip("redoes an upload with the bytes that were uploaded", async () => {
+  it("redoes an upload with the bytes that were uploaded", async () => {
     const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 0, 4]);
     const { batch, rel } = await upload("photo.png", bytes);
     const uploaded = sha(rel);
@@ -135,15 +172,16 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(uploaded);
   });
 
-  it.skip("undoes a delete whose before-state is { git: true } from the commit before it", async () => {
+  it("undoes a binary delete from its blob without a commit", async () => {
     const { rel } = await upload("gone.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 9, 9, 9]));
     const uploaded = sha(rel);
     const remove: ActionSpec = {
       type: "file.write",
       summary: "delete it",
       apply: async (store) => {
+        const before = await store.snapshotContent(rel);
         await store.files.deleteFile(rel);
-        return { targets: [rel], before: { [rel]: { git: true } }, after: { [rel]: null } };
+        return { targets: [rel], before: { [rel]: before }, after: { [rel]: null } };
       },
     };
     const { batch } = await runBatch({ ...user, summary: "delete", commitPrefix: "file", actions: [remove] });
@@ -153,7 +191,7 @@ describe("rollback, undo and redo restore a { git: true } snapshot", () => {
     expect(sha(rel)).toBe(uploaded);
   });
 
-  it("refuses such an undo by name rather than restoring the wrong bytes", async () => {
+  it("still refuses a legacy data git snapshot by name rather than guessing", async () => {
     const { rel } = await upload("kept.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 7, 7, 7]));
     const uploaded = sha(rel);
     const remove: ActionSpec = {

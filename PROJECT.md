@@ -291,6 +291,12 @@ validate ranges, timezone and day-block ordering, then preserve unrelated and un
 Weather Clear explicitly removes known location fields. Model metadata is pure in `models.ts`,
 re-exported by the provider registry, so Settings never imports provider transport into the browser.
 
+112. **Theme CSS is a semantic attribute contract, not a test hook.** §11.3 requires the
+custom selector `[data-theme="<name>"]`. The convention check pins that single generated
+selector inside validated `themeCss`, in addition to §16.4's existing UI filter. No DOM reads
+or queries are allowed, and a second selector in the serializer fails. Do not conceal the
+selector by assembling fragments or exempt its whole file without the pin.
+
 ## 1. Hard rules
 
 These override anything else in this document.

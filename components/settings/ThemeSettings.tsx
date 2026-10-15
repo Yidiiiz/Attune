@@ -12,6 +12,11 @@ export default function ThemeSettings({ value, onChange, onSave, onReload }: { v
   const [name, setName] = useState(""), [prompt, setPrompt] = useState(""), [error, setError] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const selected = themes.find(theme => theme.name === value);
   const load = useCallback(async () => { const result = await send("/api/settings/themes"); if (result.error) setError(result.error); else setThemes(result.data.themes as Theme[]); }, []);
+  useEffect(() => {
+    if (!draft) return;
+    const checked = ThemeSchema.safeParse(draft);
+    if (checked.success) previewTheme(checked.data.name, checked.data);
+  }, [draft]);
   useEffect(() => { void load(); window.addEventListener("history:changed", load); return () => window.removeEventListener("history:changed", load); }, [load]);
   const choose = (next: string) => { onChange(next); previewTheme(next, themes.find(theme => theme.name === next)); setDraft(null); };
   async function save(next: Theme, activate = false) {
@@ -51,7 +56,7 @@ export default function ThemeSettings({ value, onChange, onSave, onReload }: { v
     {draft ? <div className={styles.editor} data-ui="theme-editor">
       <h3>{themes.some(theme => theme.name === draft.name) ? `Edit ${draft.name}` : "Unsaved theme"}</h3>
       <label>Theme name<input value={draft.name} disabled={themes.some(theme => theme.name === draft.name)} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
-      <label>Base<select value={draft.base} onChange={event => setDraft({ ...draft, base: event.target.value as Theme["base"] })}><option>light</option><option>dark</option></select></label>
+      <label>Base<select aria-label="Theme base" value={draft.base} onChange={event => setDraft({ ...draft, base: event.target.value as Theme["base"] })}><option>light</option><option>dark</option></select></label>
       <p>Empty values inherit the base. Save to keep this palette.</p>
       <div className={styles.tokens}>{TOKENS.map(token => <label key={token}>{token}<div className={styles.row}>
         {colorToken(token) ? <input type="color" aria-label={`${token} color`} value={/^#[a-f0-9]{6}$/i.test(draft.tokens[token] ?? "") ? draft.tokens[token] : "#000000"} onChange={event => setDraft({ ...draft, tokens: { ...draft.tokens, [token]: event.target.value } })} /> : null}

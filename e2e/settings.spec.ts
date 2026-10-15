@@ -39,10 +39,22 @@ test("base themes are protected; a custom palette applies live, persists and del
 
 test("generated theme is an unsaved preview until Save", async ({ page, request }) => {
   await page.goto("/settings");
+  const beforePreview = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());
   await page.getByLabel("New theme name", { exact: true }).fill("generated-browser");
   await page.getByLabel("Create by prompting").fill("warm sepia");
   await page.getByRole("button", { name: "Generate preview" }).click();
   await expect(page.getByRole("heading", { name: "Unsaved theme" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim())).toBe("#eee8dc");
+  await page.getByRole("combobox", { name: "Theme base", exact: true }).selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme-base", "dark");
+  await page.getByRole("combobox", { name: "Theme base", exact: true }).selectOption("light");
+  await page.getByLabel("--bg", { exact: true }).fill("#ededed");
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim())).toBe("#ededed");
+  await page.getByRole("button", { name: "Discard preview", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim())).toBe(beforePreview);
+  await page.getByRole("button", { name: "Generate preview", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Unsaved theme" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim())).toBe("#eee8dc");
   expect((await (await request.get("/api/settings/themes")).json()).themes.some((theme: { name: string }) => theme.name === "generated-browser")).toBe(false);
   await page.getByRole("button", { name: "Save theme", exact: true }).click();
   await expect.poll(() => settings().theme).toBe("generated-browser");

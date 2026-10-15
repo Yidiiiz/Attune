@@ -58,7 +58,10 @@ const MEMORY = `Proposing knowledge writes:
 ${HEURISTIC}
 - Before proposing a new note, call search_knowledge for its topic. If a note already covers it,
   propose an append to that note instead of a second one.
-- A new note names the map that will link to it in mapLink, a path under knowledge/maps/.
+- New notes live only at knowledge/notes/<slug>.md. Projects, courses, people and tools are
+  map names, never note directories. A new note names the existing map that will link to it in
+  mapLink, a path under knowledge/maps/. Profiles use their existing knowledge/profile/ paths;
+  session summaries use knowledge/sessions/c_<id>.md. Use the collection tool for collections.
 - A short append to knowledge/profile/habits.md or preferences.md — three lines or fewer — is
   applied without a card and the user is told; everything else waits for the user to approve it.`;
 

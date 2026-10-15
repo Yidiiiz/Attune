@@ -38,7 +38,7 @@ export function withEstimate(task: ModelTaskDraft): ModelTaskDraft {
 
 
 export const KnowledgeWriteSchema = z.object({
-  path: z.string(),
+  path: z.string().regex(/^knowledge\/(?:notes\/.+|maps\/[^/]+|profile\/[^/]+|sessions\/c_[0-9a-z_]+)\.md$/, "Use knowledge/notes/<slug>.md for notes; maps/, profile/ and sessions/ have their existing canonical paths. Project notes do not use a projects/ directory."),
   op: z.enum(["create", "append", "replace"]),
   content: z.string(),
   reason: z.string(),

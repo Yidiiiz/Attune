@@ -167,6 +167,13 @@ describe("the three collectors", () => {
     expect(await tree()).toEqual(before);
   });
 
+  it("returns an invalid knowledge directory as a tool error before proposing or writing", async () => {
+    const before = await tree();
+    const outcome = await executeTool("propose_knowledge_write", { writes: [{ path: "knowledge/projects/thesis.md", op: "create", content: "Synthetic project note", reason: "remember", mapLink: "knowledge/maps/projects.md" }] });
+    expect(outcome.isError).toBe(true); expect(outcome.proposal).toBeUndefined();
+    expect(outcome.result).toContain("knowledge/notes/"); expect(await tree()).toEqual(before);
+  });
+
   it("records a knowledge write, with the map link the note will need (§6.3)", async () => {
     const before = await tree();
     const outcome = await executeTool("propose_knowledge_write", {

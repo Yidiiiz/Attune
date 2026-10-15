@@ -359,6 +359,19 @@ functions and reject protocol-relative URLs; keep normal rgb shadows and font li
 No unsafe value is rendered during the test. The [CSS Images 4 editor's draft](https://drafts.csswg.org/css-images-4/#image-set-notation)
 describes string image references; the general theme rule remains §11.3's no-URL contract.
 
+120. **Acceptance checks exercise layout and live state transitions, with provider fixtures named as such.**
+The direct acceptance pass reproduced phone-width weather moving the date, disabled cards during
+follow-up, a refused Add losing its prompt, document Edit clamping scroll, a Files menu below the
+viewport, streaming deltas overriding a reader's scroll, and annotation draft/card displacement.
+Narrow controls use a second row; cards freeze only during Add; refused Add restores the original
+prompt without replacing a newer draft. Edit preserves the preview body's height; menu placement
+flips upward when necessary. §16.0's tail following has its own small hook; ordered focus reads
+live with the conversation lifecycle. Annotation drafts use the card's existing first-line range
+geometry after gutter reflow. Browser checks use isolated seed data and controlled extraction for
+UI-only preview tests; no real model adherence, audible speech, microphone or mintty observation
+is inferred. HTML5 event checks cover Shift/drop writes; native OS drag automation stalled and its
+manual pointer residual stays explicit. No timeout, secret pattern or deferred amendment changes.
+
 ## 1. Hard rules
 
 These override anything else in this document.

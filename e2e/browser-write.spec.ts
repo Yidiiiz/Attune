@@ -369,16 +369,23 @@ test("the row menu disables what the policy forbids, with the policy's own reaso
   await expect(page.getByTestId("rename")).toContainText("A note cannot be renamed here");
   await expect(page.getByTestId("delete")).toBeEnabled();
 
+  // Close the overlay before targeting a row underneath it.
+  await panel.locator(`[data-file='${NOTE}']`).getByTestId("file-menu-button").click();
+
   // A folder is never renamed, and knowledge/ is not a place new folders go.
   await panel.locator("[data-folder='knowledge']").getByTestId("file-menu-button").click();
   await expect(page.getByTestId("rename")).toBeDisabled();
   await expect(page.getByTestId("new-folder")).toBeDisabled();
   await expect(page.getByTestId("new-folder")).toContainText("New folders go under files/");
 
+  await panel.locator("[data-folder='knowledge']").getByTestId("file-menu-button").click();
+
   // A generated file is read-only, so Delete is off with the reason the document view gives.
   await panel.locator("[data-file='knowledge/index.md']").getByTestId("file-menu-button").click();
   await expect(page.getByTestId("delete")).toBeDisabled();
   await expect(page.getByTestId("delete")).toContainText("generated from the maps");
+
+  await panel.locator("[data-file='knowledge/index.md']").getByTestId("file-menu-button").click();
 
   // Under files/ the two creates are on, which is what makes the disabled cases above mean
   // something — and Delete is off on `files` itself, because it is one of the folders the app keeps.

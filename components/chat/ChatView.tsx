@@ -27,7 +27,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { activePath, buildPairs, buildTree, siblingsOf } from "@/lib/chat/tree";
 import { groupAnnotations } from "@/lib/chat/annotations";
@@ -49,6 +49,7 @@ import QuoteReply from "./QuoteReply";
 import { useAnnotationDraft } from "./useAnnotationDraft";
 import { useElementRegistry } from "./element-registry";
 import { scrollMessageIntoView, useSidebar } from "./useSidebar";
+import { useChatScroll } from "./useChatScroll";
 import { useConversation } from "./useConversation";
 import { useDistill } from "./useDistill";
 import { useHandover } from "./useHandover";
@@ -93,7 +94,6 @@ export default function ChatView({ initial, models, scripted, categories, distil
     },
     onMissing: setError,
   });
-  const bottom = useRef<HTMLDivElement | null>(null);
 
   // Callback refs rather than `useRef`: the sidebar hook needs to *re-run* when an element arrives,
   // and a ref object mutating does not re-render anything.
@@ -149,23 +149,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
     collapsed: false,
   });
 
-  // Decision 20's window-focus refetch, the other half of amendment `q`: a message file edited in
-  // another program appears when the tab comes back. It is `reload`, which is ordered by issue
-  // against the sends it must not overtake (Decision 70), and it is skipped outright while a reply
-  // is streaming — the two ways of getting this wrong, both named in the amendment.
-  useEffect(() => {
-    const onFocus = (): void => {
-      if (streamingId === null) void reload(id);
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [id, reload, streamingId]);
-
-  // §16.0 rule 6: no virtualization, `scrollIntoView` for navigation. The newest message is what
-  // someone wants to see, and it moves while a reply streams.
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
-  }, [path.length, streamingId, state.messages]);
+  const { bottom, follow } = useChatScroll(scroller, path.length, streamingId, state.messages);
 
   /** Retry = regenerate: a new assistant sibling under the failed one's own parent (§16.2). */
   const retry = (message: Message): void => {
@@ -273,7 +257,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
         </div>
 
         <ChatComposer
-          onSend={(text, attachments) => send(text, { attachments })}
+          onSend={(text, attachments) => { follow(); return send(text, { attachments }); }}
           onStop={stop}
           streaming={streamingId !== null}
           error={error}

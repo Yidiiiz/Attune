@@ -19,9 +19,11 @@ export interface DocumentEditorProps {
   /** `Ctrl/Cmd+S`, which is the same save the strip's button runs. */
   onSave: () => void;
   busy: boolean;
+  /** Keep the preview body’s height so switching views cannot clamp the parent scroll. */
+  minimumHeight?: number;
 }
 
-export default function DocumentEditor({ value, onChange, onSave, busy }: DocumentEditorProps) {
+export default function DocumentEditor({ value, onChange, onSave, busy, minimumHeight }: DocumentEditorProps) {
   const box = useRef<HTMLTextAreaElement>(null);
 
   // Focus on mount, with `preventScroll`: the toggle sits at the top of a scrolled document, and a
@@ -34,6 +36,7 @@ export default function DocumentEditor({ value, onChange, onSave, busy }: Docume
     <textarea
       ref={box}
       className={styles.editor}
+      style={minimumHeight === undefined ? undefined : { minHeight: `max(60vh, ${minimumHeight}px)` }}
       data-ui="document-editor"
       value={value}
       spellCheck={false}

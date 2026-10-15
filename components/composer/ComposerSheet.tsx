@@ -92,6 +92,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     ...(askingAbout === undefined ? {} : { askingAbout }),
     links: files.map((file) => file.path),
     onAdded,
+    onAddRefused: (original) => setPrompt((current) => current || original),
   });
 
   // §9.1: a draft survives the sheet closing, per device (Decision 19). Read after mount so the
@@ -224,6 +225,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
             selected={turn.selected}
             categories={categories}
             busy={busy}
+            editingDisabled={turn.busy === "adding"}
             onChangeDraft={turn.editDraft}
             onSelect={turn.pick}
             onAdd={() => void turn.add()}

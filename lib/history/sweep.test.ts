@@ -9,7 +9,7 @@
 // one process the nearest thing is the turn releasing its hold on a file that is still streaming,
 // which is exactly what makes the registry call it an orphan.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createCheckout } from "../testing/checkout.ts";
@@ -89,6 +89,7 @@ describe("sweepInterruptedMessages", () => {
     expect(await read(reply)).toMatchObject({ status: "failed", error: INTERRUPTED });
     // And the partial text is kept, which is what makes Retry worth offering.
     expect((await read(reply))?.text).toContain("The matrix is");
+    expect((await chats.readConversation(CONV)).conversation.activeLeafId).toBe(reply);
   });
 
   it("records the repair, so nothing is left outside the log", async () => {
@@ -102,6 +103,7 @@ describe("sweepInterruptedMessages", () => {
   });
 
   it("is undoable, like any other batch", async () => {
+    const before = await readFile(path.join(DATA, chats.conversationPath(CONV)));
     const reply = await abandon(message(uuidv7(), { role: "assistant", text: "half" }));
     await sweepInterruptedMessages();
     expect((await read(reply))?.status).toBe("failed");
@@ -109,6 +111,18 @@ describe("sweepInterruptedMessages", () => {
     const batch = (await groupBatches(await readActions())).at(-1);
     await undoBatch(String(batch?.batch));
     expect((await read(reply))?.status).toBe("streaming");
+    expect(await readFile(path.join(DATA, chats.conversationPath(CONV)))).toEqual(before);
+  });
+
+  it("preserves a newer saved leaf when repairing an older abandoned reply", async () => {
+    const abandoned = await abandon(message(uuidv7(), { role: "assistant" }));
+    const newer = uuidv7();
+    await chats.writeMessage(CONV, message(newer, { status: "complete", role: "assistant" }));
+    const { conversation } = await chats.readConversation(CONV);
+    await chats.writeConversation({ ...conversation, activeLeafId: newer });
+    await sweepInterruptedMessages();
+    expect((await read(abandoned))?.status).toBe("failed");
+    expect((await chats.readConversation(CONV)).conversation.activeLeafId).toBe(newer);
   });
 
   it("leaves a message the log knows about alone, whatever its status says", async () => {

@@ -35,10 +35,10 @@
 
 import { splitFrontmatter } from "../store/frontmatter.ts";
 import { deleteFile, exists, listTree, readText, writeText } from "../store/files.ts";
-import { CHATS_DIR, parseMessage } from "../store/chats.ts";
+import { CHATS_DIR, conversationPath, parseConversation, parseMessage } from "../store/chats.ts";
 import { StoreError } from "../store/paths.ts";
 import { runBatch } from "./batch.ts";
-import { repairInterrupted } from "./chat-actions.ts";
+import { repairInterrupted, updateConversation } from "./chat-actions.ts";
 import { heldByLiveTurn, markStreaming } from "./in-flight.ts";
 import { readActions, readLogText } from "./log.ts";
 import type { TreeNode } from "../store/files.ts";
@@ -166,6 +166,20 @@ export async function sweepInterruptedMessages(): Promise<{ repaired: number }> 
 
   if (orphans.length === 0) return { repaired: 0 };
 
+  // UUIDv7 order is creation order (§4.7). Restore the newest abandoned tip, unless a newer
+  // leaf was already saved. Read metadata strictly: a lenient message list cannot authorize it.
+  const tips = new Map<string, Message>();
+  for (const { convId, message } of orphans) {
+    if (!message.deleted && (!tips.has(convId) || tips.get(convId)!.id < message.id)) tips.set(convId, message);
+  }
+  const leaves = [];
+  for (const [convId, tip] of tips) {
+    const conversation = parseConversation(await readText(conversationPath(convId)));
+    if (conversation.activeLeafId === null || conversation.activeLeafId < tip.id) {
+      leaves.push(updateConversation(convId, { activeLeafId: tip.id }, "Restore the interrupted conversation path"));
+    }
+  }
+
   const count = `${orphans.length} message${orphans.length === 1 ? "" : "s"}`;
   await runBatch({
     actor: "user",
@@ -173,7 +187,7 @@ export async function sweepInterruptedMessages(): Promise<{ repaired: number }> 
     summary: `recover ${count} left by an interrupted run`,
     commitPrefix: "chat",
     meta: { interruptedSweep: true },
-    actions: orphans.map((orphan) => repairInterrupted(orphan.convId, orphan.message)),
+    actions: [...orphans.map((orphan) => repairInterrupted(orphan.convId, orphan.message)), ...leaves],
   });
 
   console.error(`history: recovered ${count} left streaming by an earlier run; the replies are marked unfinished`);

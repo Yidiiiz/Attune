@@ -121,3 +121,20 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* At phone widths the controls need a second row; intrinsic side widths must not move the date. */
+@media (max-width: 480px) {
+  .header {
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
+    gap: 8px;
+    padding: 16px 12px 10px;
+  }
+
+  .left, .right { display: contents; }
+  .centre { grid-column: 2; grid-row: 1; min-width: 0; }
+  .date { font-size: 18px; }
+  .left .arrow { grid-column: 1; grid-row: 1; }
+  .right .arrow { grid-column: 3; grid-row: 1; }
+  .weather { grid-column: 1 / 3; grid-row: 2; justify-self: start; }
+  .toggle { grid-column: 2 / 4; grid-row: 2; justify-self: end; }
+}

@@ -93,7 +93,7 @@ export function useConversation(initial: ConversationState, listeners: TurnListe
   // lands whenever it lands, which is how a first send's refresh used to overwrite a second send's
   // `reload` and snap the view back to the state before the edit. `reload()` is the only path in,
   // because it is ours and therefore ordered. §16.8 rules out a filesystem watcher, and Decision
-  // 20's focus refetch does not exist yet (amendment `q`); when it does it calls `reload`.
+  // 20's focus refetch calls the same ordered `reload`.
 
   // Unmounting aborts, which ends the request, which ends the server's turn and clears its buffer.
   useEffect(() => () => abort.current?.abort(), []);
@@ -276,6 +276,13 @@ export function useConversation(initial: ConversationState, listeners: TurnListe
     },
     [reload, router, settle, state.conversation.activeLeafId, state.conversation.id],
   );
+
+  // Ordered focus reads belong to this hook and never interrupt a live turn (Decision 70).
+  useEffect(() => {
+    const onFocus = () => { if (streamingId === null) void reload(state.conversation.id); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [reload, state.conversation.id, streamingId]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
 

@@ -24,6 +24,8 @@ export interface PreviewPanelProps {
   categories: string[];
   /** True while a send or an add is in flight; cards stay editable, buttons do not. */
   busy: boolean;
+  /** Freeze card edits only while applying, not while waiting for a follow-up. */
+  editingDisabled: boolean;
   onChangeDraft: (index: number, next: ModelTaskDraft) => void;
   onSelect: (index: number, selected: boolean) => void;
   onAdd: () => void;
@@ -37,6 +39,7 @@ export default function PreviewPanel({
   selected,
   categories,
   busy,
+  editingDisabled,
   onChangeDraft,
   onSelect,
   onAdd,
@@ -86,7 +89,7 @@ export default function PreviewPanel({
             index={index}
             selected={selected[index] ?? true}
             categories={categories}
-            disabled={busy}
+            disabled={editingDisabled}
             onSelect={(next) => onSelect(index, next)}
             onChange={(next) => onChangeDraft(index, next)}
           />

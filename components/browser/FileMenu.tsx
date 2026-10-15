@@ -20,6 +20,7 @@
 
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import type { Asking, FileOps, OpKind } from "./useFileOps.ts";
 import chat from "@/components/chat/Chat.module.css";
 import styles from "./Browser.module.css";
@@ -58,6 +59,23 @@ function Entry({ id, label, why, run }: { id: string; label: string; why: string
 }
 
 export default function FileMenu({ path, name, isFolder, policy, open, onOpen, ops }: FileMenuProps) {
+  const menu = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const node = menu.current;
+    if (!node) return;
+    node.style.top = "100%";
+    node.style.bottom = "auto";
+    node.style.maxHeight = "calc(100dvh - 16px)";
+    if (node.getBoundingClientRect().bottom > window.innerHeight - 8) {
+      const row = (node.offsetParent as HTMLElement).getBoundingClientRect();
+      const above = Math.max(0, row.top - 8), below = Math.max(0, window.innerHeight - row.bottom - 8);
+      if (above >= below) {
+        node.style.top = "auto";
+        node.style.bottom = "100%";
+      }
+      node.style.maxHeight = `${Math.max(above, below)}px`;
+    }
+  }, [open]);
   const choose = (kind: OpKind, initial = ""): void => {
     onOpen(false);
     ops.start(kind, path, initial);
@@ -75,7 +93,7 @@ export default function FileMenu({ path, name, isFolder, policy, open, onOpen, o
         ⋯
       </button>
       {open ? (
-        <div className={chat.rowMenu} data-ui="file-menu">
+        <div ref={menu} className={chat.rowMenu} data-ui="file-menu" style={{ maxHeight: "calc(100dvh - 16px)", maxWidth: "calc(100% - 12px)", overflowY: "auto" }}>
           {policy !== null && !isFolder ? <a href={`/chat?graph=1&focus=${encodeURIComponent(path)}`} data-ui="reveal-graph">Reveal in graph</a> : null}
           {policy === null ? (
             <p className={styles.menuNote} data-ui="file-menu-note">

@@ -30,6 +30,8 @@ export interface TurnInput {
   links: string[];
   /** Called after a successful add, once the preview has been cleared. */
   onAdded: () => void;
+  /** Restore the submitted prompt beside a refused Add without replacing a newer draft. */
+  onAddRefused?: (prompt: string) => void;
 }
 
 export interface Turn {
@@ -48,7 +50,7 @@ export interface Turn {
   pick: (index: number, selected: boolean) => void;
 }
 
-export function useComposerTurn({ viewDate, askingAbout, links, onAdded }: TurnInput): Turn {
+export function useComposerTurn({ viewDate, askingAbout, links, onAdded, onAddRefused }: TurnInput): Turn {
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [drafts, setDrafts] = useState<ModelTaskDraft[]>([]);
   const [selected, setSelected] = useState<boolean[]>([]);
@@ -133,6 +135,7 @@ export function useComposerTurn({ viewDate, askingAbout, links, onAdded }: TurnI
 
     if (answer.error !== null) {
       route(answer, "Could not add those tasks");
+      onAddRefused?.(asked);
       return;
     }
 
@@ -158,6 +161,7 @@ export function useComposerTurn({ viewDate, askingAbout, links, onAdded }: TurnI
 
     if (answer.error !== null) {
       route(answer, "Could not add to that collection");
+      onAddRefused?.(asked);
       return;
     }
 

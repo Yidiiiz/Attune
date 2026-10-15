@@ -14,9 +14,9 @@
 
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { reportFailure } from "@/components/tasks/writes";
-import { rememberSelection } from "./anchoring-dom";
+import { firstLineRect, indexText, rangeFromOffsets, rememberSelection } from "./anchoring-dom";
 import type { RememberedSelection } from "./anchoring-dom";
 import type { ElementRegistry } from "./element-registry";
 import type { Draft } from "./Gutter";
@@ -39,6 +39,24 @@ export function useAnnotationDraft(
       remembered.stop();
     };
   }, [scroller, rows]);
+
+  // Opening the gutter can reflow the quote. Measure after layout using the same range as its card.
+  useLayoutEffect(() => {
+    if (draft === null || scroller === null) return;
+    const element = rows.get(draft.targetMessageId);
+    if (element === null) return;
+    const place = () => {
+      const range = rangeFromOffsets(indexText(element), draft.charOffset, draft.charOffset + draft.quote.length);
+      const rect = range === null ? null : firstLineRect(range);
+      const top = rect === null ? element.offsetTop : rect.top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+      setDraft(current => current === null || current.top === top ? current : { ...current, top });
+    };
+    place();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(place);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [draft, scroller, rows]);
 
   const annotate = useCallback(
     (message: Message): void => {

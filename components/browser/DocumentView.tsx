@@ -26,7 +26,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { send } from "@/components/tasks/writes";
 import type { TaskLine } from "@/components/markdown/checkboxes";
@@ -56,6 +56,8 @@ const size = (bytes: number): string =>
 export default function DocumentView({ path, where, conversation }: DocumentViewProps) {
   const { doc, error, reload } = useDocument(path, where);
   const draft = useDocumentDraft(path, doc, reload);
+  const body = useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = useState<number | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
@@ -126,7 +128,10 @@ export default function DocumentView({ path, where, conversation }: DocumentView
               className={styles.stripButton}
               data-ui="edit-toggle"
               aria-pressed={draft.editing}
-              onClick={() => draft.setEditing(!draft.editing)}
+              onClick={() => {
+                if (!draft.editing) setEditorHeight(body.current?.getBoundingClientRect().height);
+                draft.setEditing(!draft.editing);
+              }}
             >
               {draft.editing ? "Preview" : "Edit"}
             </button>
@@ -180,24 +185,27 @@ export default function DocumentView({ path, where, conversation }: DocumentView
               readOnly={readOnly ?? (doc.policy.fields ? null : "this file's frontmatter is not editable here")}
               onChange={draft.setField}
             />
-            {draft.editing ? (
-              <DocumentEditor
-                value={shownBody ?? doc.body}
-                onChange={draft.setBody}
-                onSave={() => void draft.save()}
-                busy={draft.saving}
-              />
-            ) : (
-              <DocumentBody
-                path={path}
-                where={where}
-                body={shownBody ?? doc.body}
-                conversation={conversation}
-                readOnly={boxesBlocked}
-                busy={busy}
-                onTick={(line) => void tick(line)}
-              />
-            )}
+            <div ref={body}>
+              {draft.editing ? (
+                <DocumentEditor
+                  value={shownBody ?? doc.body}
+                  onChange={draft.setBody}
+                  onSave={() => void draft.save()}
+                  busy={draft.saving}
+                  minimumHeight={editorHeight}
+                />
+              ) : (
+                <DocumentBody
+                  path={path}
+                  where={where}
+                  body={shownBody ?? doc.body}
+                  conversation={conversation}
+                  readOnly={boxesBlocked}
+                  busy={busy}
+                  onTick={(line) => void tick(line)}
+                />
+              )}
+            </div>
             {doc.policy.kind === "collection" && !draft.editing ? (
               <CollectionItems path={path} body={shownBody ?? doc.body} blocked={draftOpen} onChanged={() => void reload()} />
             ) : null}
@@ -209,18 +217,21 @@ export default function DocumentView({ path, where, conversation }: DocumentView
                 The frontmatter could not be read, so the file is shown exactly as it is on disk — {doc.frontmatterError}
               </p>
             ) : null}
-            {draft.editing ? (
-              <DocumentEditor
-                value={shownText ?? ""}
-                onChange={draft.setBody}
-                onSave={() => void draft.save()}
-                busy={draft.saving}
-              />
-            ) : (
-              <pre className={styles.plain} data-ui="document-text">
-                {shownText}
-              </pre>
-            )}
+            <div ref={body}>
+              {draft.editing ? (
+                <DocumentEditor
+                  value={shownText ?? ""}
+                  onChange={draft.setBody}
+                  onSave={() => void draft.save()}
+                  busy={draft.saving}
+                  minimumHeight={editorHeight}
+                />
+              ) : (
+                <pre className={styles.plain} data-ui="document-text">
+                  {shownText}
+                </pre>
+              )}
+            </div>
           </>
         ) : doc.kind === "image" ? (
           <img className={styles.image} src={rawHref(path, where)} alt={path} data-ui="document-image" />

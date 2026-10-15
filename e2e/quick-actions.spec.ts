@@ -79,6 +79,7 @@ test("failed turns cannot auto-apply earlier proposals; refused automatic Apply 
 });
 
 test("Tasks extraction auto-adds once while enabled and preserves ordinary history", async ({ page }) => {
+  await page.request.post("/api/tasks", { data: { items: Array.from({ length: 6 }, (_, index) => ({ title: `Existing focus item ${index}`, priority: 1 })) } });
   await page.route("**/api/agent/extract", route => route.fulfill({ json: { ok: true, result: { kind: "tasks", items: [{ title: "Auto extracted task", body: "", priority: 3, estimateMin: 30, due: null, scheduled: null, status: "todo", category: null, context: null, tags: [], links: [], repeat: null, repeatUntil: null, collection: null, inferred: [] }] } } }));
   await page.goto("/"); await page.keyboard.press("/");
   await sheet(page).getByRole("switch", { name: "Approve for me" }).check();
@@ -86,6 +87,9 @@ test("Tasks extraction auto-adds once while enabled and preserves ordinary histo
   await input(page).fill("Create my task"); await input(page).press("Enter");
   const answer = await (await added).json(); expect(answer.ok).toBe(true);
   await expect(sheet(page)).not.toBeVisible();
+  // A populated Today may rank this new undated task under Also possible.
+  const more = page.getByRole("button", { name: /^Also possible/ });
+  if (await more.isVisible()) await more.click();
   await expect(page.getByRole("link", { name: "Auto extracted task", exact: true })).toBeVisible();
   expect((await (await page.request.post("/api/history/undo", { data: { batch: answer.batch } })).json()).ok).toBe(true);
 });
@@ -147,4 +151,61 @@ test("Today's deadlines precede later work and count down to explicit times or 1
   await page.clock.fastForward("00:30:00");
   await expect(row("Deadline soon")).toContainText("in 30m");
   await page.screenshot({ path: info.outputPath("today-deadlines.png") });
+});
+
+test("bottom Ask automatically applies a priority edit once and ordinary Undo restores it", async ({ page, request }) => {
+  const id = await appointment(request, "Bottom Ask automatic appointment");
+  await page.goto("/"); await page.keyboard.press("/");
+  await sheet(page).locator('[data-mode="ask"]').click();
+  await sheet(page).getByRole("switch", { name: "Approve for me" }).check();
+  let attempts = 0;
+  page.on("request", req => { if (req.url().endsWith("/api/agent/apply")) attempts++; });
+  const applied = page.waitForResponse(response => response.url().endsWith("/api/agent/apply"));
+  await input(page).fill(`[[update-task:${id}]] Normal priority, keep the time.`);
+  await input(page).press("Enter");
+  const answer = await (await applied).json(); expect(answer.ok).toBe(true);
+  await expect.poll(async () => (await task(request, id)).priority).toBe(3);
+  await expect(page.locator('[data-proposal="task_update"]')).toHaveCount(0);
+  await expect(input(page)).toHaveValue("");
+  expect(attempts).toBe(1);
+  expect((await task(request, id)).scheduled).toBe("2026-10-15T17:30");
+  expect((await (await request.post("/api/history/undo", { data: { batch: answer.batch } })).json()).ok).toBe(true);
+  expect((await task(request, id)).priority).toBe(1);
+});
+
+test("turning approval off during an automatic write leaves queued proposals for review", async ({ page }) => {
+  await newConversation(page);
+  const toggle = page.getByRole("switch", { name: "Approve for me" });
+  await toggle.check();
+  let attempts = 0;
+  let firstKind = "";
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let firstStarted!: () => void;
+  const started = new Promise<void>(resolve => { firstStarted = resolve; });
+  await page.route("**/api/agent/apply", async route => {
+    attempts++;
+    if (attempts !== 1) { await route.continue(); return; }
+    firstKind = route.request().postDataJSON().proposal.kind;
+    const response = await route.fetch();
+    firstStarted();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await exchange(page, "[[propose-note]] [[propose-collection]] Save both synthetic references.");
+    await started;
+    await expect(toggle).toBeEnabled();
+    await toggle.uncheck();
+    release();
+    expect(["collection", "knowledge"]).toContain(firstKind);
+    const remainingKind = firstKind === "collection" ? "knowledge" : "collection";
+    const remaining = page.locator(`[data-proposal="${remainingKind}"]`);
+    await expect(page.locator(`[data-proposal="${firstKind}"]`)).toHaveCount(0);
+    await expect(remaining).toBeVisible();
+    expect(attempts).toBe(1);
+    await remaining.getByRole("button", { name: "Discard", exact: true }).click();
+    await expect(page.getByTestId("proposals")).toHaveCount(0);
+    expect(attempts).toBe(1);
+  } finally { release(); }
 });

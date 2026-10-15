@@ -461,3 +461,101 @@ The app is intentionally left running. Refresh the existing tab for the new asse
 No implementation checks remain unfinished for this refinement. Next steps are
 owner visual/use review and the explicitly remaining checklist/manual/provider rows;
 synthetic terminal probes do not claim those broader workflows are accepted.
+
+
+## Live terminal acceptance continuation — 2026-10-15
+
+Source `7a255e8` closes two observed defects under the owner's direct continuation:
+Decision 127 (`942b624`) documents a real model proposing an invalid note directory;
+Decision 128 (`7fd083c`) documents unsaved theme tokens not reaching the page.
+Knowledge tool schema/prompt now require canonical note/map/profile/session paths,
+returning an invalid-path tool error before a proposal appears. Store/history remain
+the final write authority. Validated draft theme edits now preview immediately;
+Theme base has an explicit accessible label. No dependency was added.
+
+All live prompts and writes were synthetic, isolated by existing e2e/setup.ts in
+.e2e-sandbox before store imports. Existing terminal sign-ins were reused, API keys
+removed from probe-server environments, and native provider tools remained disabled.
+No owner/repository context was transmitted or personal state written. Product calls
+are separate from workflow launches: no supervisor/worker, budget remains 2/6 used.
+All isolated servers on 3024 and probe browsers stopped; source preservation checks
+passed. HANDOFF.md stays untouched and untracked. No push or publication occurred.
+
+### Actual provider evidence
+
+.agent/provider-http-acceptance-result.json records seven passed checks using an
+isolated production server: six positively estimated drafts (15.308s), Friday
+follow-up preserving titles/estimates (10.964s), one apply/Undo for all six (121ms),
+Watchlist extraction/apply/Undo with no Today tasks (4.475s), read-Dune clarification
+(4.765s), GPT streaming chat (3.332s) and Claude streaming chat (4.347s). Both replies
+persisted complete. Server PID 14644 stopped. Prior controlled browser checks cover
+card editing, in-flight merge and collection Add; this is complementary HTTP evidence.
+
+.agent/provider-attachment-acceptance-result.json records both models reading text
+visible only in a synthetic PNG (GPT 4.800s, Claude 7.520s), Claude reading a generated
+PDF heading (3.291s), and explicit unsupported Codex-terminal PDF refusal (1ms).
+The original four capability checks passed, but cleanup hit the correct shared file
+manifest conflict after a later PDF upload/Undo. Do not call that run clean.
+.agent/provider-attachment-cleanup-result.json verifies sandbox-only exact manifest
+matching before force-Undo of the earlier image, removal and no remaining browser.
+No owner data or API PDF inference is covered.
+
+.agent/provider-knowledge-first.log retains the real invalid-directory proposal and
+400 refusal before the repair. The final real-provider run in
+.agent/provider-knowledge-acceptance-result.json used dev server with fake provider
+explicitly disabled. Search-before-valid-mapped-note and repeat-without-duplicate
+passed (36.157s); stable fact, transient/forget refusal and short auto-applied habit
+passed (53.725s); 160-line profile proposed shorter Rewrite plus one detail note,
+answered the question and preserved original bytes (66.412s).
+
+Real distillation and real theme generation also completed, but that original five
+case run has three passing cases and two failed readback assertions, not a clean run.
+The summary assertion compared frontmatter Markdown with a body-only proposal;
+the standalone theme probe used default data-testid instead of the app's data-ui,
+reading an empty token map. Both ignored probe scripts were corrected.
+.agent/provider-readback-acceptance-result.json then passed two retained-result
+checks WITHOUT another model call: two session actions targeted the same path,
+final body was 73 words from a seeded 24-message/12-exchange synthetic transcript,
+with exact decisions/names/numbers and unresolved venue/facilitator last (14ms).
+Actual saved palette editor matched all 29 tokens, both base modes previewed,
+Save/reload preserved dark base and tokens (4.281s). Server PID 31780 stopped.
+Summary body and both palette screenshots were inspected:
+.agent/provider-synthetic-summary-final.md, .agent/provider-generated-light.png,
+.agent/provider-generated-dark.png, .agent/provider-generated-tokens.json.
+This covers synthetic decision quality and one neutral moonlit palette, not every
+owner conversation or every possible generated aesthetic.
+
+### Verification and retained failures
+
+Final deterministic run: 811/811 across 74 files in 63.03s, no skips;
+90 plain-Node library modules, TypeScript and production build all passed.
+Logs: .agent/unit-live-final.log, .agent/lib-live-final.log,
+.agent/tsc-live-final.log, .agent/build-live-final.log. Source hook: five files clean.
+Affected settings/terminal/polish browser group passed 15/15 in 42.3s at
+.agent/ui-provider-repair-final.log. Before the repair, computed unsaved background
+failed (.agent/theme-preview-negative.log). The first repaired group was 14/15:
+new Base label selection was wrong; explicit accessible label/role corrected it
+(.agent/ui-provider-repair.log). No timeout, threshold or quarantine changed.
+
+### Running app and remaining work
+
+The earlier recorded PID 77396 was already gone. Temporary owned app PID 20348 was
+stopped before UI checks. Final production app is running at http://localhost:3000,
+PID 29440, saved in .agent/app-server.pid; logs:
+.agent/app-live-acceptance-production.log and
+.agent/app-live-acceptance-production-error.log. Verified command is Next start,
+hostname 127.0.0.1, port 3000. Readback retains dark, gpt-6.1-sol, terminal and
+simple Files (technicalFiles false).
+
+A status-only urllib health probe that closed the streamed HTML early reproduced
+Next's controller[kState].transformAlgorithm warning. Full response reads of /,
+/chat, /calendar and /settings all returned 200, with zero new warning bytes.
+Actual real-provider chat streams also completed. No framework-warning source fix
+is claimed, and the early-close warning is not evidence of a chat-provider defect.
+Future page health checks should consume the whole response body.
+
+No implementation checks remain unfinished for this continuation. Next steps are
+owner review/use of the running app and explicit residual checklist items: native
+OS drag/Shift, physical audio/microphone, Git Bash mintty Ctrl+C, live Build SDK,
+and API-provider-specific inference (including API PDF). No additional acceptance
+work or supervisor launch is needed to close this continuation.

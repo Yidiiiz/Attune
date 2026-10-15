@@ -237,21 +237,15 @@ Selecting Ask survives reload. The old Phase 9 placeholder/tooltip is superseded
 The temporary Phase 6 refusal was replaced by real streaming Ask. Task context and the current
 sheet behavior were exercised from Today and Calendar on 2026-10-15; see 6a.3.
 
-### 5.5 A prompt becomes a preview, and a follow-up revises it — **partially verified, 2026-10-15 — residual pending**
+### 5.5 A prompt becomes a preview, and a follow-up revises it — **verified with live terminal provider and separate UI checks, 2026-10-15**
 
-**Current evidence and limit:** Controlled extraction verifies editable/inferred cards, in-flight merge, clarification UI and collection shape. Real sentence-to-six-drafts and model follow-up behavior remain blocked on an application API key.
+**Current evidence:** Real extraction returned six estimated drafts; a follow-up preserved titles/estimates and changed all deadlines to Friday. One ordinary batch added all six and one Undo removed them. Real Watchlist extraction/application/Undo and `read Dune` clarification passed. Existing controlled browser checks cover editable/inferred cards and in-flight merge; the real-provider check used HTTP, not a live-provider browser run. Evidence: `.agent/provider-http-acceptance-result.json`.
 
 §17: *"six tasks from one prompt → one batch → one undo removes all six; a follow-up revises the
 preview in place; 'add these three movies to my watchlist' proposes a collection write; 'read Dune'
 returns a question."*
 
-Blocked on an API key, and named here rather than left to be discovered: the four checks in
-this row are the only ones in Phase 5 that need a provider, and none of them can be run until one is
-set. The batch half is verified: six drafts posted with a `prompt` made one commit
-`task: add 6 tasks from prompt` with `meta.prompt`, and one undo removed all six. What no offline
-check can do is turn a sentence into those six drafts.
-
-Steps, once a key is set: type `pset 4 due friday, laundry, call mum, book flights, gym, groceries`
+Steps, with terminal sign-in or API access: type `pset 4 due friday, laundry, call mum, book flights, gym, groceries`
 and send. Then, with the cards up, type `make them all Friday` and send again.
 
 Expected: six cards, each field editable. Fields the model filled in from context carry a dotted
@@ -573,14 +567,11 @@ scroll (`preventScroll`). Clicking away with text in the box **keeps** it — th
 discarded because someone looked back at the sentence. `Esc` closes it. Clicking away while it is
 empty closes it. When it becomes a card, the card is where the box was, in one frame.
 
-### 6b.7 A picture actually arrives — **pending**
+### 6b.7 A picture actually arrives — **supported terminal attachments verified; API PDF inference pending, 2026-10-15**
 
-Amendment `o`. The browser checks confirm the file is uploaded, carried on the message, and refused
-when it cannot be sent; none of them can confirm the model *saw* it, because the scripted provider
-answers without looking and a real one needs a key (`5.5` is the same gap).
+**Current evidence and limit:** GPT-6.1 Sol and Claude Opus 5.5 both transcribed text visible only in a synthetic PNG through actual attachment loading. Claude read a synthetic PDF heading. Codex terminal PDF returned explicit `unsupported` without dropping the file; it requires API mode. API PDF inference remains unverified. The four capability checks passed; the original cleanup assertion hit the shared-manifest Undo guard, then sandbox-only cleanup verified exact manifest bytes before Undo. The original run is not called clean. See `.agent/provider-attachment-acceptance-result.json` and `.agent/provider-attachment-cleanup-result.json`.
 
-Steps: with an API key set, attach a screenshot with legible text and ask what it says. Then attach
-a PDF and ask for its first heading.
+Amendment `o`. Repeat with terminal sign-in or API access, using a supported image/PDF transport.
 
 Expected: the answer quotes something only visible in the file. If it does not, the attachment is
 being dropped somewhere between `loadAttachments` and the provider — and the whole point of the
@@ -606,16 +597,15 @@ points on Send, then clicks by coordinate. The library half is `lib/agent/auto-a
 **Amendment `u`'s Stop check is a known flake** (Decision 83): `check:ui` runs it after the rest,
 under its own heading, and its result never sets the exit code. A clean run reads `clean`.
 
-**Every proposal in those checks comes from a scripted-provider directive**, which is the only
-coverage the Phase 7 prompts get until a key exists. The four rows below are what the prompts are
-*for*, and none of them can be run offline. They are listed as blocked rather than left out, the same
-way `5.5` is.
+**Those browser proposals use the scripted provider.** The dated rows below now add actual terminal-provider evidence with synthetic sandbox data; they do not claim owner-context inference.
 
-### 7.1 A real model searches before it proposes a note — **blocked on an API key**
+### 7.1 A real model searches before it proposes a note — **verified in synthetic live terminal scenarios, 2026-10-15**
+
+**Current evidence:** Actual search preceded a valid mapped thesis note proposal. After applying it, a new conversation repeating the synthetic fact proposed no duplicate or write. The first probe exposed an invalid note directory; Decision 127 now validates canonical paths before proposal emission. See `.agent/provider-knowledge-acceptance-result.json` and `.agent/provider-readback-acceptance-result.json`.
 
 §6.3's second rule, which is prompt text in `lib/agent/prompts.ts` and nothing a check can enforce.
 
-Steps, once a key is set: in a fresh conversation, tell it something note-shaped that the seed does
+Steps, with terminal sign-in or API access: in a fresh conversation, tell it something note-shaped that the seed does
 not hold ("my thesis uses Zotero with Better BibTeX exporting to the thesis folder"). Then, in another
 conversation, say it again in different words.
 
@@ -624,7 +614,9 @@ Expected: the first turn calls `search_knowledge` (the debug view, or the server
 append to the note the first created — never a second note. If it proposes a second note anyway,
 `filterWrites` should still turn it into an append when the titles are close; the card says so.
 
-### 7.2 A real model follows §6.4's heuristic — **blocked on an API key**
+### 7.2 A real model follows §6.4's heuristic — **verified in synthetic live terminal scenarios, 2026-10-15**
+
+**Current evidence:** The synthetic stable course fact was remembered; transient exhaustion and a forget request produced no proposals or automatic writes. A short evening-planning habit automatically appended with its marker. Prior browser evidence covers toast/Undo. See `.agent/provider-knowledge-acceptance-result.json` and `.agent/provider-readback-acceptance-result.json`.
 
 Steps: across a few turns, say one stable fact ("I'm taking MATH 221 this term"), one transient state
 ("I'm exhausted today"), and one thing to forget ("forget that I mentioned my landlord").
@@ -633,17 +625,21 @@ Expected: at most the first becomes a proposal. The transient state and the forg
 none. A stated habit ("I always plan tomorrow the evening before") of three lines or fewer applies
 itself to `habits.md` with a toast and a marker; anything longer is a card.
 
-### 7.3 A profile file over 150 lines makes the next turn propose a distillation — **blocked on an API key**
+### 7.3 A profile file over 150 lines makes the next turn propose a distillation — **verified in synthetic live terminal scenarios, 2026-10-15**
+
+**Current evidence:** A history-written synthetic 160-line habits profile triggered a shorter Rewrite plus one detail note while still answering the question. Original profile bytes remained unchanged; neither proposal auto-applied. See `.agent/provider-knowledge-acceptance-result.json` and `.agent/provider-readback-acceptance-result.json`.
 
 The instruction is checked (`lib/agent/context.test.ts`: it appears past 150 lines, not at 150, and sits
-behind the cache breakpoint). Whether a model acts on it is not.
+behind the cache breakpoint). Actual model behavior is now exercised above.
 
-Steps: give `knowledge/profile/habits.md` 160 lines by hand, then ask anything in Chat.
+Steps: in an isolated sandbox, give `knowledge/profile/habits.md` 160 lines through history, then ask anything in Chat.
 
 Expected: the reply answers the question *and* the tray holds a `Rewrite` card for `habits.md`, shorter,
 with notes proposed for the detail it moves out. Nothing applies itself: a replace is never auto-applied.
 
-### 7.4 Distill gives a summary worth keeping — **blocked on an API key**
+### 7.4 Distill gives a summary worth keeping — **verified in synthetic live terminal scenarios, 2026-10-15**
+
+**Current evidence:** A seeded 24-message / 12-exchange synthetic decision transcript was distilled by the real model. The final 73-word summary preserved names, numbers and decisions, listed open venue/facilitator questions last, and omitted greetings. Add and a second real distillation replaced the same session path. This was a seeded transcript, not 12 live chat exchanges. The original body-versus-frontmatter readback assertion failed; corrected retained-result readback passed without another model call. See `.agent/provider-knowledge-acceptance-result.json` and `.agent/provider-readback-acceptance-result.json`.
 
 The menu item, the route and the tray are checked with the scripted provider, which answers the
 request by echoing it. This row is whether the summary is any good.
@@ -678,15 +674,11 @@ adding anything.
 Expected: the tray scrolls inside its own 40vh rather than pushing the message list off screen, the
 composer stays where it was, and each card's Add acts on that card alone.
 
-### 7.7 The preview panel's collection Add, in Tasks mode — **partially verified, 2026-10-15 — residual pending**
+### 7.7 The preview panel's collection Add, in Tasks mode — **verified with live extraction and separate collection UI checks, 2026-10-15**
 
-**Current evidence and limit:** Controlled Tasks extraction now exercises this exact collection Add surface: one real knowledge batch writes unchecked items, preview clears, all four Today sections are unchanged. Real model extraction remains blocked on an application API key.
+**Current evidence:** Actual terminal extraction proposed Arrival, Dune and Sicario as a Watchlist collection. Ordinary apply wrote unchecked lines; Undo removed the collection and no Today tasks appeared. Existing controlled browser checks exercise collection Add, preview clearing and unchanged Today sections. These are complementary checks, not a claim of one live-provider browser run. See `.agent/provider-http-acceptance-result.json`.
 
-A known gap, listed so it is not mistaken for coverage (the Phase 7 close). The Add is wired through
-the same `CollectionCard` the tray uses, and the tray's use of it is checked. The preview panel's use
-is not, because Tasks mode's extraction is a `parse` call and the scripted provider refuses those.
-
-Steps, once a key is set: in the sheet's Tasks mode, ask for something list-shaped ("films people
+Steps, with terminal sign-in or API access: in the sheet's Tasks mode, ask for something list-shaped ("films people
 keep recommending: Stalker, Paris Texas, Close-Up"). Press the collection card's Add.
 
 Expected: one batch and one commit, a `knowledge/collections/<slug>.md` with the items as unchecked
@@ -824,7 +816,9 @@ Full regression 93/93 gating, and subsequent Settings checks 9/9. Light/dark and
 screenshots inspected. The delayed-read guard was mutation-checked: removing it loses
 a newly typed name, restoring it passes. No real generated aesthetic is claimed.
 
-### 10.2 Real generated palette — **pending provider access**
+### 10.2 Real generated palette — **one actual generated palette verified, 2026-10-15**
+
+**Current evidence:** A real terminal provider generated an unsaved neutral moonlit palette. Both base modes were inspected in screenshots; 29 saved tokens matched editor readback, Save and reload. Decision 128 fixes immediate visual application of validated unsaved drafts. Original standalone readback used the wrong test-id attribute; corrected retained-result readback passed without another model call. This verifies one palette, not every possible generated aesthetic. See `.agent/provider-generated-light.png`, `.agent/provider-generated-dark.png` and `.agent/provider-readback-acceptance-result.json`.
 
 Use a real provider with a palette request, inspect the unsaved result in both base modes,
 save and reload. The scripted map checks UI behavior; it cannot verify prompt adherence.
@@ -955,3 +949,19 @@ passed across selective groups; earlier 39/40 and 40/42 groups retain their stal
 selector/label failures in docs/progress.md. Screenshots inspected. Full final
 suite: 810/810 in 74 files; TypeScript and 90 library loads passed. No broad manual
 or provider acceptance close is claimed by these local checks.
+
+
+### 11.9 Live provider acceptance and targeted repairs — **verified locally, 2026-10-15**
+
+Source `7a255e8` validates canonical knowledge proposal paths and immediately previews
+validated unsaved theme edits. Final deterministic suite: 811/811 in 74 files
+(63.03 seconds); TypeScript, 90 plain-Node module loads and production build passed.
+Affected browser group: 15/15 in 42.3 seconds. Earlier negative preview check and
+14/15 selector failure are retained, not described as clean runs.
+
+Real terminal task/chat, knowledge, distillation, supported attachment and palette
+scenarios used only synthetic isolated data. Both requested chat models completed
+actual HTTP streaming turns and persisted complete replies. No owner-data write,
+supervisor, extra worker, push, publication or budget reset occurred; budget stays 2/6.
+Native OS pointer/Shift, actual audio/microphone, mintty Ctrl+C, live Build SDK and
+API-provider-specific inference remain explicit residuals. See docs/progress.md.

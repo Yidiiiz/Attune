@@ -2,6 +2,18 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Live terminal acceptance close — 2026-10-15.** Source 7a255e8 validates
+canonical knowledge proposal paths and previews validated unsaved theme edits
+(Decisions 127–128). Real synthetic terminal task/follow-up/collection, both chat
+models, memory/search/distillation, both model images, Claude PDF and one generated
+palette were exercised. Codex terminal PDF explicitly requires API mode. Retained
+failed probes and corrected readbacks are distinguished in docs/progress.md;
+no owner-data writes. Final 811/811 in 74 files, TypeScript, 90 library loads and
+production build passed; affected browser group 15/15. App runs at localhost:3000,
+PID 29440. Physical/manual, live Build SDK and API-specific residuals remain explicit.
+No supervisor, extra worker, push, publication or budget reset; budget stays 2/6.
+See docs/CHECKLIST.md and docs/progress.md for exact evidence and limitations.
+
 **Terminal chat and simple Files close — 2026-10-15.** Source a6cc432 implements
 Decision 126: terminal sign-in by default, explicit API selection, fixed isolated
 Codex/Claude invocations with native tools disabled, validated app-tool responses

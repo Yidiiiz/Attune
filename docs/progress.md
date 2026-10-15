@@ -250,3 +250,59 @@ provider key through Settings. No real GPT/Claude inference was claimed. Existin
 manual/provider acceptance remains pending. No supervisor or additional worker is
 needed. Production startup here is intentional; do not report that all servers
 were stopped. Private data and the untracked owner handoff were preserved.
+
+
+## Neutral UI refinement and requested test items — 2026-10-15
+
+The owner asked for neutral dark mode without blue/purple, Today-style quiet controls,
+consistent adjacent sizes/gutters, a centered file icon, an hourly schedule ruler and
+GPT-6.1 Sol as default. Decision 124 records the update. Both bases now use grayscale
+surfaces, text and accents; semantic warning/error/success colors remain meaningful.
+Standard fields/toolbars are 32 px; message input/attach/Send share a 40 px variant.
+Main chat/document gutters are 24 px, and spacing uses 4/8/12/16/24 px tokens.
+Schedule and Add blend into the surrounding surfaces. Calendar headers wrap on phones.
+The folder outline and its SVG/button centers were measured, not guessed.
+
+Schedule now draws hourly guides independently of packed tasks; empty gaps no longer
+show one lone start timestamp. Five-minute drag, explicit time edits and Undo retain
+their existing logic. The closed composer is explicitly hidden so it cannot paint
+below the viewport in full-page captures. Light/dark, phone Calendar, Settings,
+Chat and empty schedule screenshots were inspected and retained under
+.agent/ui-neutral-screenshots/.
+
+Browser verification spans 49 distinct affected checks across selective runs:
+.agent/ui-neutral-first.log was 26/27, finding a real 38 px chat input beside 40 px
+buttons. A 40 px minimum fixed it. The subsequent chat/browser/alignment group passed
+24/24 in 2.0 minutes (.agent/ui-neutral-final.log); the final sheet/visual/composer
+group passed 13/13 in 54.9 seconds (.agent/ui-neutral-sheet-final.log). The latter
+also regenerated closed-sheet screenshots. No timing thresholds or checks weakened.
+A newly created sandbox conversation was read back as gpt-6.1-sol. Existing owner
+conversation choices were not rewritten. No inference or model worker was launched.
+
+The owner explicitly requested eight personal test items. They were created once
+through POST /api/tasks as one ordinary undoable batch, tagged test and scheduled
+by the supplied month/day in 2026. Several written weekdays disagree with those dates;
+the date/year assumption was stated before creation and original wording is retained
+in the task bodies. No appointment times or assessment deadlines were invented.
+Read-only verification found exactly eight requested, dated, tagged records.
+The private batch receipt is .agent/requested-test-tasks-result.json; task contents
+were not copied into code, seed, screenshots or tracked documentation. Other personal
+data and HANDOFF.md were preserved. This authorized task batch is the exception to
+prior acceptance sessions' no-personal-write scope, not a blanket data-edit permission.
+
+Final deterministic/build results and intentional app restart are recorded below.
+
+
+Final source d19c04e passed 796/796 deterministic checks across 71 files in
+95.12 seconds, TypeScript, 88 plain-Node library loads and production build
+(native exit 0). Evidence: .agent/unit-neutral-final.log, .agent/tsc-neutral-final.log,
+.agent/lib-neutral-final.log and .agent/build-neutral-final.log. The code hook
+scanned all 14 staged source/test files clean.
+
+Production was restarted at http://localhost:3000, PID 8832, also saved in
+.agent/app-server.pid. Logs are .agent/app-neutral-production.log and
+.agent/app-neutral-production-error.log. All four main pages returned HTTP 200;
+effective settings read back dark and gpt-6.1-sol. All eight requested test records
+were verified again after restart. The app is intentionally left running for the
+owner to test. No model inference, source push, publication, worker or budget reset.
+Budget remains 2/6 used. Refresh the existing browser tab to load the rebuilt assets.

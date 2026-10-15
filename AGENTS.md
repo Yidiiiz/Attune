@@ -29,6 +29,20 @@ Screenshots inspected. No new dependency, live inference, worker, supervisor, bu
 reset, source push or publication. Production app intentionally running at localhost:3000;
 see docs/progress.md for PID/logs, timings, negative evidence and remaining checks.
 
+**Neutral interface refinement — 2026-10-15.** Source d19c04e follows the owner's
+Today-style reference: neutral bases without blue/violet, shared control/spacing
+scales, quiet Schedule/Add, centered file SVG and independent hourly timeline guides.
+A measured 38/40 px composer mismatch was corrected. Forty-nine distinct affected
+browser checks passed across selective runs; final groups 24/24 and 13/13. Full
+796/796 deterministic checks in 71 files, TypeScript, 88 library loads and production
+build passed. A new sandbox conversation persisted gpt-6.1-sol. The owner explicitly
+authorized eight private dated test tasks; one undoable API batch added them, tagged
+test, using 2026 month/day dates and preserving the conflicting original weekday
+wording in their notes. No other personal data was edited. Details stay out of source
+and seed; the receipt is ignored under .agent/. Production intentionally runs on
+localhost:3000 for review. No inference, worker, budget reset, source push or publication.
+See docs/progress.md and docs/DESIGN.md for evidence and the current visual contract.
+
 ## Phase status
 
 ### Continuation authorization — 2026-10-14

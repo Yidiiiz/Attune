@@ -896,3 +896,20 @@ GPT-6.1 Sol is the effective default for new chat/extraction, and Claude Opus 5.
 available. Responses transport/tool continuation/schema/cancellation are verified
 with mocked network events. Real provider inference remains unverified. The app is
 running locally in production mode; all four main pages returned HTTP 200.
+
+
+### 11.6 Neutral palette, control rhythm and hourly timeline — **verified locally, 2026-10-15**
+
+Source d19c04e: grayscale base surfaces/accents, quiet Schedule/Add, consistent 32 px
+controls and 40 px composer controls, 24 px chat/document gutters, centered folder
+SVG and phone Calendar wrapping were exercised. Empty schedules show hourly guides;
+actual timeline dragging, time edits and Undo still pass. A newly created sandbox
+conversation persisted gpt-6.1-sol. Closed sheets do not paint off-screen.
+
+Forty-nine distinct affected checks passed across file-selective runs; final groups
+were 24/24 in 2.0 minutes and 13/13 in 54.9 seconds. The initial 26/27 run caught a
+real two-pixel composer mismatch and is retained as negative evidence. Light/dark,
+Settings, Chat, schedule and phone screenshots inspected. Full deterministic checks:
+796/796 in 71 files, TypeScript, library loads and production build passed. No real
+provider behavior is inferred from these fixtures; earlier manual/provider residuals
+remain pending. The app was restarted for the owner's local review.

@@ -13,6 +13,7 @@
 import CollectionCard from "./CollectionCard";
 import KnowledgeCard from "./KnowledgeCard";
 import TaskCard from "./TaskCard";
+import TaskUpdateCard from "./TaskUpdateCard";
 import type { Tray, TrayItem } from "./useProposals";
 import styles from "./Composer.module.css";
 
@@ -28,6 +29,8 @@ export default function ProposalPanel({ tray, categories, status = null }: Propo
 
   const card = (item: TrayItem) => {
     const common = { busy: item.busy, error: item.error, onAdd: () => void tray.add(item.key), onDiscard: () => tray.discard(item.key) };
+
+    if (item.kind === "task_update") return <TaskUpdateCard key={item.key} proposal={item.proposal} {...common} />;
 
     if (item.kind === "knowledge") {
       return (

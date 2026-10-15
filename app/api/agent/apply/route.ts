@@ -17,6 +17,7 @@
 
 import { z } from "zod";
 import { runBatch } from "@/lib/history/batch";
+import { TaskUpdateProposal, applyTaskUpdate } from "@/lib/agent/task-updates";
 import { TaskDraftSchema } from "@/lib/history/actions";
 import { addToCollection, writeKnowledge } from "@/lib/history/knowledge-actions";
 import { createTasks } from "../../tasks/create";
@@ -49,7 +50,7 @@ const Collection = z.object({
 });
 
 const Input = z.object({
-  proposal: z.discriminatedUnion("kind", [Tasks, Knowledge, Collection]),
+  proposal: z.discriminatedUnion("kind", [Tasks, Knowledge, Collection, TaskUpdateProposal]),
   /** The words that produced the proposal, for `meta.prompt` and the §9.5 summary. */
   prompt: z.string().optional(),
   actor: z.enum(["user", "agent"]).default("agent"),
@@ -61,6 +62,12 @@ export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
     const { proposal, prompt, actor, source } = parseInput(Input, await body(request));
     const meta = { source, ...(prompt === undefined ? {} : { prompt }) };
+
+    if (proposal.kind === "task_update") {
+      const action = applyTaskUpdate(proposal);
+      const result = await runBatch({ actor, scope: "user", summary: action.summary, commitPrefix: "task", meta, actions: [action] });
+      return ok({ ...result, updated: 1 });
+    }
 
     if (proposal.kind === "tasks") {
       const result = await createTasks({

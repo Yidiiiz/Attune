@@ -21,6 +21,7 @@ import { useCallback, useRef, useState } from "react";
 import { reportNotice, send } from "@/components/tasks/writes";
 import type { ModelTaskDraft, Proposal } from "@/lib/agent/tools";
 import type { ProposedWrite } from "@/lib/agent/memory";
+import type { TaskUpdateProposal } from "@/lib/agent/task-updates";
 
 interface CardState {
   key: string;
@@ -32,6 +33,7 @@ interface CardState {
 
 export type TrayItem = CardState &
   (
+    | { kind: "task_update"; proposal: TaskUpdateProposal }
     | { kind: "knowledge"; write: ProposedWrite }
     | { kind: "tasks"; drafts: ModelTaskDraft[]; selected: boolean[] }
     | { kind: "collection"; collection: string; items: string[] }
@@ -52,6 +54,7 @@ export interface Tray {
 
 /** What `/api/agent/apply` is sent for a card: what the card holds now, never what first arrived. */
 function proposalOf(item: TrayItem): Record<string, unknown> {
+  if (item.kind === "task_update") return item.proposal;
   if (item.kind === "knowledge") {
     // `rewritten` explains the write and is not part of it; the route would drop it anyway.
     const { path, op, content, reason, mapLink } = item.write;
@@ -65,6 +68,7 @@ function proposalOf(item: TrayItem): Record<string, unknown> {
 
 /** What landed, for the notice that replaces the card. */
 function landed(item: TrayItem): string {
+  if (item.kind === "task_update") return `Updated ${item.proposal.title}`;
   if (item.kind === "knowledge") return `Saved to ${item.write.path}`;
   if (item.kind === "tasks") return "Tasks added";
   return item.collection.startsWith("new:") ? `Started the collection ${item.collection.slice(4)}` : `Added to ${item.collection}`;
@@ -95,7 +99,9 @@ export function useProposals(opts: TrayOptions): Tray {
   const receive = useCallback((proposal: Proposal, from?: "distill") => {
     const fresh = { busy: false, error: null, ...(from === "distill" ? { distilled: true } : {}) };
     const next: TrayItem[] =
-      proposal.kind === "knowledge"
+      proposal.kind === "task_update"
+        ? [{ ...fresh, key: key(), kind: "task_update" as const, proposal }]
+        : proposal.kind === "knowledge"
         ? proposal.writes.map((write) => ({ ...fresh, key: key(), kind: "knowledge" as const, write }))
         : proposal.kind === "tasks"
           ? [{ ...fresh, key: key(), kind: "tasks" as const, drafts: proposal.items, selected: proposal.items.map(() => true) }]

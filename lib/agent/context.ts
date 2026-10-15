@@ -205,6 +205,7 @@ export function tasksTable(tasks: Task[]): string {
 /** One referenced task in full, because "Ask about this" is a question about its contents. */
 function taskDetail(task: Task): string {
   const fields = [
+    "id: " + task.id,
     "title: " + task.title,
     "status: " + task.status,
     "priority: " + task.priority,

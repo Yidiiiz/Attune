@@ -68,8 +68,9 @@ beforeEach(async () => {
 });
 
 describe("the tool table itself", () => {
-  it("offers the seven tools of §13.3, to Tasks and Ask and to nothing else", () => {
+  it("offers the eight tools of §13.3, to Tasks and Ask and to nothing else", () => {
     expect(TOOLS.map((tool) => tool.name)).toEqual([
+      "propose_task_update",
       "read_knowledge",
       "search_knowledge",
       "read_file",
@@ -78,8 +79,8 @@ describe("the tool table itself", () => {
       "propose_knowledge_write",
       "propose_collection_append",
     ]);
-    expect(toolsFor("tasks")).toHaveLength(7);
-    expect(toolsFor("ask")).toHaveLength(7);
+    expect(toolsFor("tasks")).toHaveLength(8);
+    expect(toolsFor("ask")).toHaveLength(8);
     expect(toolsFor("build")).toHaveLength(0);
   });
 

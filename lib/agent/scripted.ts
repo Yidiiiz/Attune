@@ -203,6 +203,12 @@ export async function* streamChat(req: ChatRequest, signal: AbortSignal): AsyncI
   const answeredTool = req.messages.some((message) =>
     message.content.some((part) => part.type === "tool_result"),
   );
+  const edit = prompt.match(/\[\[update-task:([a-z0-9_]+)\]\]/);
+  if (edit && !answeredTool && req.tools.some((tool) => tool.name === "propose_task_update")) {
+    yield { type: "tool_use", id: "toolu_scripted_edit", name: "propose_task_update", input: { id: edit[1], changes: [{ field: "priority", value: 3 }], reason: "Appointment needs normal priority." } };
+    yield { type: "stop", stopReason: "tool_use" };
+    return;
+  }
   if (has(DIRECTIVES.tool) && !answeredTool && req.tools.some((tool) => tool.name === "list_tasks")) {
     yield { type: "text", text: "Let me look at your tasks first.\n\n" };
     yield { type: "tool_use", id: "toolu_scripted_1", name: "list_tasks", input: { from: "", to: "" } };

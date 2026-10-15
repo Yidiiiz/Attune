@@ -1,5 +1,5 @@
-// Owns: the seven tools a turn may call (PROJECT.md §13.3) — what each one is called, what shape it
-// takes, and what running it does. Four read; three collect a proposal and write nothing at all.
+// Owns: the eight tools a turn may call (PROJECT.md §13.3) — what each one is called, what shape it
+// takes, and what running it does. Four read; four collect a proposal and write nothing at all.
 // The split is the point: nothing a model can invoke here reaches `runBatch`, so a turn cannot
 // change a file. Every write in this app still starts with a person pressing a button (§9.5).
 //
@@ -18,6 +18,8 @@ import type { ProposedWrite } from "./memory.ts";
 import { tasksInScope, tasksTable } from "./context.ts";
 import type { ToolDefinition } from "./registry.ts";
 import type { TreeNode } from "../store/files.ts";
+import { TaskUpdateInput, proposeTaskUpdate } from "./task-updates.ts";
+import type { TaskUpdateProposal } from "./task-updates.ts";
 
 /**
  * §9.4's `TaskDraft`, as the model must send it: every field present, absent ones sent as null.
@@ -48,6 +50,7 @@ export const KnowledgeWriteSchema = z.object({
 export type KnowledgeWrite = z.infer<typeof KnowledgeWriteSchema>;
 
 export type Proposal =
+  | TaskUpdateProposal
   | { kind: "tasks"; items: ModelTaskDraft[] }
   /** After `filterWrites`: a duplicate note arrives as the append it became, saying why (§6.3). */
   | { kind: "knowledge"; writes: ProposedWrite[] }
@@ -73,6 +76,11 @@ function schemaFor(shape: z.ZodType): Record<string, unknown> {
 }
 
 export const TOOLS: ToolDefinition[] = [
+  {
+    name: "propose_task_update",
+    description: "Propose changes to an existing task by its exact id. Send only fields the user wants changed, as field/value pairs. Priority: 1 Critical, 2 High, 3 Normal, 4 Someday. Writes nothing until the user presses Apply; unmentioned fields stay unchanged.",
+    schema: schemaFor(TaskUpdateInput),
+  },
   {
     name: "read_knowledge",
     description:
@@ -124,7 +132,7 @@ export const TOOLS: ToolDefinition[] = [
   },
 ];
 
-/** §13.3: Tasks and Ask both offer all seven. Build mode uses the Agent SDK and none of these. */
+/** §13.3: Tasks and Ask both offer all eight. Build mode uses the Agent SDK and none of these. */
 export function toolsFor(mode: "ask" | "tasks" | "build" | "schedule" | "theme"): ToolDefinition[] {
   return mode === "ask" || mode === "tasks" ? TOOLS : [];
 }
@@ -133,7 +141,7 @@ export interface ToolOutcome {
   /** What goes back to the model as the tool's result. */
   result: string;
   isError?: boolean;
-  /** Set by the three collectors, for the caller to surface in the preview panel. */
+  /** Set by the four collectors, for the caller to surface in the preview panel. */
   proposal?: Proposal;
 }
 
@@ -182,6 +190,8 @@ async function search(query: string): Promise<string> {
 
 async function run(name: string, input: unknown): Promise<ToolOutcome> {
   switch (name) {
+    case "propose_task_update":
+      return { result: "Recorded for review, not applied. The user can press Apply on the edit card.", proposal: await proposeTaskUpdate(input) };
     case "read_knowledge": {
       const { path } = ReadKnowledge.parse(input);
       if (!path.startsWith(KNOWLEDGE_DIR)) {
@@ -197,7 +207,7 @@ async function run(name: string, input: unknown): Promise<ToolOutcome> {
       const { from, to } = ListTasks.parse(input);
       return { result: tasksTable(tasksInScope(await listTasks(), from, to)) };
     }
-    // The three collectors answer "recorded" and nothing else (§13.2). A summary here would be the
+    // The creation collectors answer "recorded" and nothing else (§13.2). A summary here would be the
     // model reading its own proposal back as though something had happened to it.
     case "propose_tasks":
       return { result: "recorded", proposal: { kind: "tasks", items: ProposeTasks.parse(input).items.map(withEstimate) } };

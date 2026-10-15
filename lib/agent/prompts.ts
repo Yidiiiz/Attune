@@ -67,6 +67,12 @@ ${HEURISTIC}
 
 const ASK = `You answer the user's question about their own tasks, notes and schedule.
 
+When the user asks to change an existing task, use propose_task_update with its exact id
+from task context or list_tasks. Include only the requested fields; do not recreate the task.
+Priority: 1 Critical, 2 High, 3 Normal, 4 Someday. An appointment does not inherently need Critical.
+Edits wait for the user to press Apply on the card. Never claim an edit is already saved
+or ask for terminal/file permissions: the app applies approved edits with Undo.
+
 ${RETRIEVAL}
 
 Prefer answering to proposing. You have tools that collect proposals — tasks, knowledge writes,

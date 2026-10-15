@@ -369,3 +369,95 @@ records are now exactly five due-only deadlines and three scheduled-only events.
 The app is intentionally left running. Refresh the existing tab for new assets.
 No implementation checks remain unfinished for this requested refinement; owner
 visual review and the pre-existing manual/provider residuals are the next steps.
+
+
+## Terminal chat, rolling weeks and simple Files — 2026-10-15
+
+Decision 126 follows the owner's request to use installed terminal clients instead
+of requiring API keys. Settings → Chat connection defaults to Terminal sign-in;
+API remains explicit. GPT-6.1 Sol uses Codex; Claude Opus 5.5 uses Claude. Installed
+Codex login reports ChatGPT authentication. No global client configuration or
+credentials were edited. Build retains its existing guarded Claude SDK.
+
+Terminal requests use fixed shell-free argument arrays and stdin in unique temporary
+working directories. Codex ignores user configuration/project rules, uses read-only
+sandboxing and disables shell, multi-agent, patch, hooks, plugins and web tools.
+Claude uses safe/restricted mode, empty native tools and strict empty MCP config.
+API keys are removed from inherited transport environment, leaving client sign-in.
+Structured responses produce only offered app-tool requests; Attune validates and
+executes them through its existing read/proposal/history flow. Missing completion,
+malformed output/tool arguments, unknown/duplicate tools and process failures fail
+visibly. Stop kills the process tree on Windows; a real local subprocess check passed.
+Transport schemas and Codex image copies are store-owned temporary artifacts with
+verified isolation and cleanup, not personal history records. Optional schema
+omissions use the same normalization as the API provider. Terminal answers arrive
+when the structured response completes. Codex PDFs explicitly require API mode;
+images and Claude attachment paths retain separate live/manual acceptance limits.
+
+Live evidence used only synthetic prompts with no repository or owner context:
+.agent/terminal-chat-probe-gpt.log passed a structured answer in 2655 ms;
+.agent/terminal-chat-probe-claude-final.log passed in 3165 ms with final safe-mode
+flags. .agent/terminal-chat-loop-probe.log records both exact models completing
+an app read_file round with a synthetic tool result, never reading an actual file.
+These are product-provider calls requested by the owner, not supervisor/worker
+launches. No automation budget was used or reset; it remains 2/6.
+
+Rolling Calendar now uses four complete Sunday–Saturday weeks, the anchor week
+first, with weekday headers and month-style cells. Month/Week retain the configured
+first weekday. Past dates have a distinct subtle neutral surface; adjacent-month
+text stays muted. First/last cell corners match the rounded enclosing grid.
+Search/Sync spacing and selected-tab radius/padding stay proportional at phone
+widths. The composer toggle is 40 px closed, 32 px open and aligned with the input;
+model selection shares the Tasks/Ask/Build row and reaches extraction/Ask requests.
+Build displays its Settings model without bypassing its existing SDK restriction.
+
+Files defaults to useful content folders, friendly task titles and outline
+chevrons. The document shows readable properties rather than raw metadata and
+uses the title in its input placeholder. Title/details/controls/body share one
+column; screenshot inspection caught their initial margin override and it was
+fixed and pinned by a geometry check. Settings → Interface → Technical file view
+restores raw metadata editing, paths and Whole repo. No underlying files were
+moved, renamed or reorganized. Existing technical-write checks explicitly select
+that view and retain their original filesystem/Undo assertions.
+
+Every new task/proposal receives an editable 30-minute planning estimate when no
+estimate is supplied; supplied estimates stay intact and proposal defaults are
+marked inferred. Legacy null estimates show the same planning default. The owner
+clarified the appointment as October 15, 2026 at 17:30. Its time had already been
+set, so the guard initially refused a stale date-only assumption; readback confirmed
+the owner edit and it was preserved. One guarded undoable batch then added Critical
+priority and editable estimates to only the eight requested test records. Readback
+confirmed the appointment first in Today's focus and all eight estimated. Private
+receipt: .agent/requested-test-estimates-result.json, batch b_20261015_044643_099e.
+Personal task content was not added to source, seed or tracked documentation.
+
+Browser evidence: .agent/ui-terminal-main.log is 39/40 in 2.2 minutes, its new
+connection test selecting the named section rather than the dropdown. The corrected
+role selector passed subsequently. .agent/ui-terminal-files.log is 40/42 in 2.4
+minutes, finding stale lowercase-folder and raw todo expectations after the new
+friendly labels; neither was an app/write failure. The final complete Files group
+passed 42/42 in 1.7 minutes (.agent/ui-terminal-files-final.log). Across groups,
+79 distinct affected cases passed; neither earlier failed group is called clean.
+No timeout, quarantine or threshold changed. Light/dark rolling, simple/technical
+Files and desktop/phone composer screenshots were inspected and retained under
+.agent/ui-terminal-screenshots/. Earlier manual/provider rows remain separate.
+
+Final deterministic verification passed 810/810 in 74 files in 85.21 seconds;
+TypeScript and 90 plain-Node library loads passed. Logs: .agent/unit-terminal-final.log,
+.agent/tsc-terminal-final.log, .agent/lib-terminal-final.log. Production build and
+restart details follow. Source pushes, publication, supervisor and extra workers
+were not used; HANDOFF.md remains the owner's untouched untracked file.
+
+
+Source a6cc432 passed the final production build (native exit 0), retained at
+.agent/build-terminal-final.log. The source commit hook scanned all 49 files clean.
+Production restarted at http://localhost:3000, PID 77396 (saved in
+.agent/app-server.pid); logs are .agent/app-terminal-production.log and
+.agent/app-terminal-production-error.log. All four main pages return HTTP 200.
+Readback confirms terminal connection, simple Files, dark theme and gpt-6.1-sol.
+All eight requested test items have estimates; the appointment retains the
+confirmed date/time, Critical priority and first position in Today's focus.
+The app is intentionally left running. Refresh the existing tab for the new assets.
+No implementation checks remain unfinished for this refinement. Next steps are
+owner visual/use review and the explicitly remaining checklist/manual/provider rows;
+synthetic terminal probes do not claim those broader workflows are accepted.

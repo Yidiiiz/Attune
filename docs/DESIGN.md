@@ -29,7 +29,7 @@ including a cloud silhouette. Do not use platform emoji as interface icons.
 
 The fixed 48 px shell bar remains visible during page and conversation scrolling.
 The body reserves that height and Chat uses the remaining dynamic viewport height.
-The floating 56 px Add control uses the shared large radius, elevated surface and text color. It remains
+The floating 40 px Add control uses the shared medium radius, elevated surface and text color. It remains
 24 px from the bottom/right and rotates its plus while open. Its toggle is excluded
 from outside dismissal, avoiding a mouse-down close followed by click reopening.
 Animations respect reduced-motion preferences. Keep layout independent of theme.
@@ -79,10 +79,33 @@ The empty floating composer is 89 px tall on desktop, with no duplicate close
 control or permanent keyboard hint. Its toggle, Escape and outside-click behavior
 remain. On phones, the input gets its own row, with Send and the compact toggle
 separated. Calendar uses equal side columns to center its period independently
-of neighboring controls; adjacent-month dates are muted, current-month past dates
-are not, and the current date keeps a thin rounded inset highlight.
+of neighboring controls; adjacent-month dates are muted, past dates use a separate subtle neutral surface, and the current date keeps a thin rounded inset highlight.
 
 Settings → Deadlines supplies the local cutoff for untimed due dates. The default
 00:00 ends the due date; explicitly timed tasks retain their own time. Date-only
 storage keeps deadlines on the correct Calendar day. Task editing can set or clear
 an optional due time and preserves an unchanged explicit timestamp exactly.
+
+
+The composer mode row now includes model selection. The open 32 px toggle aligns
+with the input row; its closed state is 40 px. Top-bar Search and Sync have at least
+8 px separation. A 24 px selected tab uses an 8 px radius inside a 32 px track with
+12 px radius; phone tabs retain zero vertical padding to keep that geometry.
+
+Rolling uses four complete Sunday–Saturday weeks starting with the anchor's week,
+with weekday headings and the same cell treatment as Month. Past-day fill differs
+subtly from future days; neighboring-month text stays muted. First and last cell
+corners match the enclosing grid when highlighted.
+
+Simple Files is the default: useful content folders, task titles, outline chevrons,
+readable status/date/duration/priority and a friendly document input label. Title,
+details, controls and body share the document column. The Technical file view
+setting restores raw metadata, paths and Whole repo. Names and views do not move,
+rename or hide underlying data from the technical view.
+
+Terminal sign-in is the default connection. Fixed CLI arguments, isolated temporary
+workspaces, disabled native tools and validated structured app-tool requests retain
+Attune's proposals/Undo behavior. API remains an explicit alternative. Synthetic
+structured answers and app-tool rounds were exercised with both installed clients.
+Official Codex references: [CLI commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)
+and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).

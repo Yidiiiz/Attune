@@ -930,3 +930,28 @@ distinct checks). Screenshots inspected in both themes and at phone width.
 Full deterministic suite: 800/800 in 71 files; TypeScript and library boundaries
 passed. Earlier live provider, native-pointer, audio and terminal residuals remain
 explicitly pending. These local checks do not close those rows.
+
+
+### 11.8 Terminal chat, simple Files and rolling weeks — **verified locally, 2026-10-15**
+
+Terminal sign-in is the default connection, with explicit API selection. Both
+GPT-6.1 Sol and Claude Opus 5.5 answered synthetic structured prompts and completed
+synthetic app-tool rounds without repository/owner context. Local process stdin,
+failure, cancellation, structured schemas, offered-tool confinement and disposable
+artifact cleanup are deterministic checks. Terminal image/PDF behavior and full
+owner-context provider workflows are not inferred from those probes; Codex PDFs
+explicitly require API mode. Existing Build/audio/native-pointer residuals remain.
+
+Rolling is four complete Sun–Sat weeks with the current week on top. Distinct past
+surfaces, muted neighboring-month text, rounded grid-edge cells, proportional shell
+selection, Search/Sync spacing, compact toggle and composer model selection passed
+browser checks. Simple Files hides raw metadata/paths, uses readable task titles
+and chevrons and aligns its content column; the Settings technical toggle restores
+metadata editing and repository browsing. Existing technical edits/Undo still pass.
+Missing durations receive editable estimates in created tasks and proposal previews.
+
+Final Files/new-UI run: 42/42 in 1.7 minutes. Seventy-nine distinct affected cases
+passed across selective groups; earlier 39/40 and 40/42 groups retain their stale
+selector/label failures in docs/progress.md. Screenshots inspected. Full final
+suite: 810/810 in 74 files; TypeScript and 90 library loads passed. No broad manual
+or provider acceptance close is claimed by these local checks.

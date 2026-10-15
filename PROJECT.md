@@ -449,7 +449,7 @@ These override anything else in this document.
 3. **No AI-authorship attribution anywhere.** No `Co-Authored-By`, no "generated with", no assistant name in commits, docs, comments, or UI copy. Model IDs in code and settings are fine.
 4. **Secrets never touch `data/`.** See §11.5.
 5. **No source file over ~300 lines.** Split by feature, not by layer. The cap applies to modules containing logic; CSS modules and test files are bounded by their subject instead (Decision 56).
-6. **Every write goes through the history layer.** No component or route writes to disk directly. There are exactly three exceptions: `.env.local` (through `lib/store/env.ts`, logged by key name); files the Agent SDK writes in Build mode, captured afterward as one `code.change` batch; and `history.streamingWrite()`, which may write only `data/chats/*/messages/*.md` files whose `status` is `streaming`, and whose final content is always logged and committed through `runBatch` at finalize (§8).
+6. **Every write goes through the history layer.** No component or route writes to disk directly. There are exactly four exceptions: `.env.local` (through `lib/store/env.ts`, logged by key name); files the Agent SDK writes in Build mode, captured afterward as one `code.change` batch; disposable terminal-transport schemas/images in isolated temporary directories, cleaned after each call (Decision 126); and `history.streamingWrite()`, which may write only `data/chats/*/messages/*.md` files whose `status` is `streaming`, and whose final content is always logged and committed through `runBatch` at finalize (§8).
 7. **`lib/store/` is the only module that touches the filesystem; `lib/agent/` is the only module that talks to a model provider.** Everything else calls async functions.
 
 ---
@@ -647,7 +647,7 @@ Chapters 4.1–4.3. Office hours Thursday if 4.3 is still unclear.
 
 **Required:** `id`, `title`, `status`, `createdAt`, `updatedAt`. A file with only `title` loads: `readTask` fills `id` from the filename hash, `status: todo`, timestamps from file mtime, and writes the completed frontmatter back on the next save (not on read).
 
-**Defaults for optional fields:** `priority: 3`, `estimateMin: null` (ranker treats as 30), `due: null`, `scheduled: null`, `completedAt: null`, `category: null`, `context: null`, `tags: []`, `links: []`, `repeat: null`, `repeatUntil: null`, `source: "manual"`, `collection: null`, `createdBy: "user"`.
+**Defaults for optional fields:** `priority: 3`, `estimateMin: null` in legacy records (ranker and row treat as 30; newly created tasks receive an editable 30-minute estimate when none was supplied), `due: null`, `scheduled: null`, `completedAt: null`, `category: null`, `context: null`, `tags: []`, `links: []`, `repeat: null`, `repeatUntil: null`, `source: "manual"`, `collection: null`, `createdBy: "user"`.
 
 **Id format:** `t_<YYYYMMDD>_<4 lowercase hex>`; hex from `crypto.randomBytes(2)`. Regenerate on collision (check `listTasks()`).
 
@@ -1032,7 +1032,7 @@ redoBatch(batch: string): Promise<UndoResult>
 
 ### 9.1 Button and sheet
 
-`components/composer/ComposerButton.tsx`: fixed, bottom-right (`right: 24px; bottom: 24px`), 56 px rounded square using `--radius-lg`, z-tier 30. Rendered by the Today and Calendar pages only; the Chat page never mounts it. While the sheet is open the same button rotates 45° and closes it.
+`components/composer/ComposerButton.tsx`: fixed, bottom-right (`right: 24px; bottom: 24px`), 40 px rounded square using `--radius-md`, z-tier 30. Rendered by the Today and Calendar pages only; the Chat page never mounts it. While the sheet is open the same button becomes 32 px, aligns with the input row, rotates 45° and closes it.
 
 `ComposerSheet.tsx`: slides up from the bottom edge (transform transition 180 ms), rests along the bottom, max height 70vh, z-tier 30. Closes on `Esc`, on button click, and on outside click **only if the textarea is empty** (HANDOFF §G). A sheet with typed text stays open and its draft persists in `localStorage` under `composer.draft`.
 
@@ -1201,9 +1201,9 @@ Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed differ
 
 ### 10.3 Calendar
 
-`app/calendar/page.tsx`. Views: **Rolling** (default: today plus the next 27 days as 4 rows of 7, scrolling by a week with ↑/↓), **Month**, **Week**. Arrows move by the current unit; a Today button returns.
+`app/calendar/page.tsx`. Views: **Rolling** (default: four complete Sunday–Saturday weeks with the current week on top, scrolling by a week with ↑/↓), **Month**, **Week**. Arrows move by the current unit; a Today button returns.
 
-- Each cell lists tasks by `due` (or `scheduled` if set and no due), and, on today and past days, also whatever was completed that day by `completedAt`. A past day therefore shows both what was finished and what was due and missed — an open overdue task keeps its place on the day it was due, with the same overdue treatment Today gives it (Decision 54). Adjacent-month dates are muted; earlier dates in the selected month keep the normal surface and text. Today has a rounded, thin inset outline. A cell scrolls internally past five items with a "+N more" line that expands it.
+- Each cell lists tasks by `due` (or `scheduled` if set and no due), and, on today and past days, also whatever was completed that day by `completedAt`. A past day therefore shows both what was finished and what was due and missed — an open overdue task keeps its place on the day it was due, with the same overdue treatment Today gives it (Decision 54). Adjacent-month dates are muted; past dates use a subtly different neutral surface while current-month date text remains readable. Today has a rounded, thin inset outline. A cell scrolls internally past five items with a "+N more" line that expands it.
 - Clicking an item selects it and shows the Today `⋯` menu actions in a small toolbar below the grid. Edit opens the same `TaskEditForm` there rather than inside the cell, which has no room for it.
 - Native HTML5 drag: dropping an item on another day sets `scheduled` (or `due` when `Shift` is held, and the drop hint says so). One `task.update` batch per drop.
 - `GET /api/calendar?from&to` returns `{ days: Record<date, { due: Task[]; completed: Task[] }> }`.
@@ -1216,7 +1216,7 @@ Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed differ
 
 ### 11.1 Sections
 
-Identity · Timezone (select from `Intl.supportedValuesOf("timeZone")`) · Weather (query text, Resolve button, geolocation button that asks browser permission on first use, units, Clear; attribution line "Weather data by Open-Meteo, CC-BY 4.0") · Theme (§11.3) · Day shape (start, end allowing past midnight, blocks editor, break length) · List behavior (focus size, lookahead, show completed) · Deadlines (untimed due time; midnight ends the due date) · Categories (editable chips) · First day of week · Models (§11.4) · API keys (§11.5) · History (opens the sheet) · Sync (push toggle, debounce, Sync now, remote URL read-only).
+Identity · Timezone (select from `Intl.supportedValuesOf("timeZone")`) · Weather (query text, Resolve button, geolocation button that asks browser permission on first use, units, Clear; attribution line "Weather data by Open-Meteo, CC-BY 4.0") · Theme (§11.3) · Day shape (start, end allowing past midnight, blocks editor, break length) · List behavior (focus size, lookahead, show completed) · Deadlines (untimed due time; midnight ends the due date) · Categories (editable chips) · First day of week · Models (§11.4) · Chat connection (Terminal sign-in or API) · Interface (Technical file view) · API keys (§11.5) · History (opens the sheet) · Sync (push toggle, debounce, Sync now, remote URL read-only).
 
 ### 11.2 First run
 

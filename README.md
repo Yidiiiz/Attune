@@ -33,10 +33,22 @@ script policy, use `npm.cmd` in place of `npm`.
 ## Assistant and privacy
 
 Chat, task extraction and theme generation default to GPT-6.1 Sol through the
-OpenAI Responses API; Claude Opus 5.5 is also available. Set the matching OpenAI
-or Anthropic key in Settings; keys are stored only in ignored `.env.local` and
-displayed masked. Build uses Claude through the installed Agent SDK and can use
-a saved Claude login when no Anthropic API key is set.
+installed Codex terminal client. Claude Opus 5.5 uses the installed Claude client.
+Sign in once with `codex login` or `claude auth login`; Attune reuses that sign-in.
+Settings → Chat connection can select API instead; set the matching OpenAI or
+Anthropic key there. Keys stay in ignored `.env.local` and display masked.
+Build retains its guarded Claude Agent SDK. Terminal chat runs without native
+file/shell tools; Attune validates and executes its own app tool requests.
+Codex terminal attachments support images; PDFs require the API connection.
+Terminal answers arrive when a structured response completes, with Stop available
+while the client runs. Attune does not silently switch connections on failure.
+
+Files opens a simple view with task titles and readable details. Settings → Interface
+→ Technical file view enables raw paths, metadata editing and repository browsing.
+Rolling Calendar shows four Sunday–Saturday weeks with the current week on top.
+Missing task durations get an editable 30-minute planning estimate. Settings →
+Deadlines controls untimed due cutoffs; midnight ends the listed date.
+
 Requests send the prompt and relevant context to the provider. Local task and file
 features work without provider access.
 
@@ -78,8 +90,9 @@ the project is not declared fully accepted while those rows remain pending.
 
 The bounded foreground workflow, strict task contracts and review/budget rules are
 in [docs/SUPERVISOR.md](docs/SUPERVISOR.md). It includes the one-session startup prompt.
-Offline runner checks pass; the live signed-client probe remains unrun pending approval
-of repository transmission. Do not interpret that as unattended background execution.
+Offline runner checks and the approved two-task transport probe passed; the launch
+budget remains 2/6 used. This separate workflow is not required to use Attune or its
+terminal chat. Do not interpret it as unattended background execution.
 
 ## Layout
 

@@ -2,6 +2,27 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Terminal chat and simple Files close — 2026-10-15.** Source a6cc432 implements
+Decision 126: terminal sign-in by default, explicit API selection, fixed isolated
+Codex/Claude invocations with native tools disabled, validated app-tool responses
+and process cancellation/temporary cleanup. Both exact requested models passed
+synthetic structured answers and app-tool rounds with no owner/repository context.
+These owner-requested product calls are separate from supervisor/worker launches;
+the workflow budget remains 2/6. Rolling shows four complete Sun–Sat weeks with the
+current week first, past surfaces differ subtly and edge highlights keep rounding.
+Simple Files uses friendly names/details and chevrons; Settings restores technical
+paths/metadata/repository view. Composer model selection, smaller toggle, header
+spacing and proportionate tabs are locally accepted. The authorized appointment
+and eight test-item estimates were updated through one guarded Undo batch, preserving
+the owner's already-correct time. No unrelated private writes or file reorganization.
+Final deterministic 810/810 in 74 files, TypeScript, 90 library loads and production
+build passed. Final Files/UI group 42/42; 79 distinct affected cases passed across
+selective groups. Earlier 39/40 and 40/42 selector/label failures remain documented.
+Screenshots inspected. App is running at localhost:3000, PID 77396. No supervisor,
+extra worker, push, publication or budget reset; manual/provider residuals remain.
+See docs/progress.md and docs/CHECKLIST.md for exact evidence and limitations.
+
+
 **Compact UI close — 2026-10-15.** Source 87c4af9 implements the owner's slimmer
 neutral navigation/shadows, compact composer without duplicate close control,
 aligned chat empty state, bottom model selector and centered Calendar with rounded

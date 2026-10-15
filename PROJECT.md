@@ -400,6 +400,16 @@ between tool rounds, validates structured output with Zod, and refuses incomplet
 No new runtime dependency is needed. Live provider success requires a configured key and is
 reported separately from mocked transport verification.
 
+124. **Owner refinement: neutral themes and consistent rhythm, 2026-10-15.** Replace the
+blue-tinted dark base and violet accent with neutral grays in both bases. Today is the reference
+for quiet surfaces; secondary controls blend in and share a 32 px height, 13 px label and 8/12/16/24
+spacing rhythm. Center SVG geometry and remove default button padding from rail icons. The Schedule
+toggle uses a quiet selected state, and the timeline draws independent hourly guides even when the
+packer returns one long empty gap. Do not change packing or five-minute drag semantics. GPT-6.1 Sol
+remains the verified new-conversation default; existing conversation choices stay intact. The owner
+also explicitly authorized eight dated test tasks in personal data, created through one ordinary
+undoable API batch. Their content stays private and out of source, seed and documentation.
+
 ## 1. Hard rules
 
 These override anything else in this document.

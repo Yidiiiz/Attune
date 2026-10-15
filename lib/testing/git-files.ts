@@ -25,6 +25,7 @@ export const GIT_FILES = [
   "app/api/files/routes.test.ts",
   "app/api/settings/routes.test.ts",
   "lib/agent/auto-apply.test.ts",
+  "lib/agent/task-updates.test.ts",
   "lib/agent/build.test.ts",
   "lib/agent/distill.test.ts",
   "lib/agent/turn.test.ts",

@@ -22,7 +22,7 @@ export default function Tabs() {
   const pathname = usePathname();
 
   return (
-    <nav className={styles.bar}>
+    <nav className={styles.bar} aria-label="Main">
       <div className={styles.tabs}>
         {TABS.map((tab) => (
           <Link

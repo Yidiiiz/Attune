@@ -24,6 +24,7 @@
     "lookaheadDays": 14,
     "showCompleted": true
   },
+  "deadlines": { "defaultTime": "00:00" },
   "categories": ["school", "personal"],
   "firstDayOfWeek": "monday",
   "models": {

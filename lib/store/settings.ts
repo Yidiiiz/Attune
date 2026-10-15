@@ -45,6 +45,9 @@ export const SettingsSchema = z.looseObject({
     lookaheadDays: z.number().int().default(14),
     showCompleted: z.boolean().default(true),
   }).default({ focusSize: 5, lookaheadDays: 14, showCompleted: true }),
+  deadlines: z.looseObject({
+    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("00:00"),
+  }).default({ defaultTime: "00:00" }),
   categories: z.array(z.string()).default(["school", "personal"]),
   firstDayOfWeek: z.enum(["monday", "sunday"]).default("monday"),
   models: z.looseObject({

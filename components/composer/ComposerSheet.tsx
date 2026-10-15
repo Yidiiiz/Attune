@@ -192,10 +192,6 @@ export default function ComposerSheet(props: ComposerSheetProps) {
               about &lsquo;{askingAbout.title}&rsquo;
             </span>
           )}
-          <span className={styles.spacer} />
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Close composer">
-            ×
-          </button>
         </div>
 
         {mode === "build" ? <BuildPanel turn={build} approval={approval} onApproval={chooseApproval} /> : null}
@@ -286,7 +282,6 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           </button>
         </div>
 
-        <p className={styles.hint}>Enter sends · Shift+Enter for a new line · Esc closes</p>
       </div>
     </div>
   );

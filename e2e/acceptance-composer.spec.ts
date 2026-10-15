@@ -34,7 +34,8 @@ test("floating button geometry, sheet closing, draft reload and mode memory", as
   await input(page).fill(""); await page.mouse.click(20, 150); await expect(page.locator('[data-composer="button"]')).toHaveAttribute("aria-expanded", "false");
   await page.getByRole("button", { name: "Open composer", exact: true }).click();
   await page.screenshot({ path: info.outputPath("composer-open.png") });
-  await sheet(page).getByRole("button", { name: "Close composer", exact: true }).click();
+  await expect(sheet(page).getByRole("button", { name: "Close composer", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await expect(page.locator('[data-composer="button"]')).toHaveAttribute("aria-expanded", "false");
 });
 

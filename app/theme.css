@@ -39,7 +39,7 @@
   --focus-ring: #404040;
   --selection: #dedede;
 
-  --shadow: 0 2px 4px rgb(0 0 0 / 3%), 0 12px 36px rgb(0 0 0 / 6%);
+  --shadow: 0 2px 8px rgb(0 0 0 / 5%);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
@@ -85,7 +85,7 @@
   --focus-ring: #d4d4d4;
   --selection: #414141;
 
-  --shadow: 0 2px 6px rgb(0 0 0 / 16%), 0 16px 40px rgb(0 0 0 / 24%);
+  --shadow: 0 2px 10px rgb(0 0 0 / 14%);
 
   --priority-1: #f19aae;
   --priority-2: #e7bd77;

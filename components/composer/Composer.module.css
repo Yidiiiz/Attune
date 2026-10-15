@@ -59,7 +59,7 @@
   display: flex;
   flex-direction: column;
   max-height: 70vh;
-  border-top: 1px solid var(--border-strong);
+  border-top: 1px solid var(--border);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: var(--bg-elevated);
   box-shadow: var(--shadow);
@@ -84,41 +84,21 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   width: 100%;
   max-width: 780px;
   min-height: 0;
   margin: 0 auto;
-  padding: 12px 24px 16px;
+  padding: 8px 24px;
 }
 
 .top {
+  --control-height: 28px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.spacer {
-  flex: 1;
-}
-
-.close {
-  width: var(--control-height);
-  height: var(--control-height);
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.close:hover {
-  color: var(--fg);
-}
 
 /* ---------- mode selector (§9.3) ---------- */
 
@@ -168,6 +148,7 @@
 
 .textarea {
   flex: 1;
+  min-width: 0;
   min-height: var(--composer-control-height);
   padding: 9px 10px;
   border: 1px solid var(--border);
@@ -257,11 +238,6 @@
   }
 }
 
-.hint {
-  margin: 0;
-  color: var(--fg-faint);
-  font-size: 12px;
-}
 
 /* ---------- attachments (§9.2) ---------- */
 
@@ -622,3 +598,11 @@
 }
 
 .iconButton { display: grid; place-items: center; }
+
+@media (max-width: 640px) {
+  .inner { padding: 8px 12px; }
+  .inputRow { flex-wrap: wrap; }
+  .textarea { flex-basis: 100%; }
+  .send { margin-right: 64px; }
+  .buttonOpen { width: 40px; height: 40px; right: 16px; bottom: 8px; }
+}

@@ -53,14 +53,14 @@ import { useChatScroll } from "./useChatScroll";
 import { useConversation } from "./useConversation";
 import { useDistill } from "./useDistill";
 import { useHandover } from "./useHandover";
-import type { ModelChoice } from "./ConversationHeader";
+import type { ModelChoice } from "./ChatComposer";
 import type { ConversationState } from "./useConversation";
 import type { Message, MessageId } from "@/lib/chat/types";
 import styles from "./Chat.module.css";
 
 export interface ChatViewProps {
   initial: ConversationState;
-  /** The registry's models, read on the server — see `ConversationHeader` for why not imported. */
+  /** The registry's models, read on the server — passed as labels to keep provider modules out of the client. */
   models: ModelChoice[];
   /** True while `ATTUNE_FAKE_PROVIDER` is answering, so the page says so rather than looking odd. */
   scripted: boolean;
@@ -191,13 +191,10 @@ export default function ChatView({ initial, models, scripted, categories, distil
         data-conversation={state.conversation.id}
       >
         <ConversationHeader
-          models={models}
           title={state.conversation.title}
-          model={state.conversation.model}
           scripted={scripted}
           contextOpen={contextOpen}
           onToggleContext={() => setContextOpen((open) => !open)}
-          onModelChange={(model) => void setModel(model)}
           offPath={groups.offPath.length}
           hidden={hiddenCount}
           onShowOffPath={() => {
@@ -257,6 +254,7 @@ export default function ChatView({ initial, models, scripted, categories, distil
         </div>
 
         <ChatComposer
+          modelChoice={{ models, model: state.conversation.model, onChange: (model) => void setModel(model) }}
           onSend={(text, attachments) => { follow(); return send(text, { attachments }); }}
           onStop={stop}
           streaming={streamingId !== null}

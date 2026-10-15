@@ -27,7 +27,14 @@ import Attachments, { AttachButton } from "@/components/composer/Attachments";
 import type { Attachment } from "@/components/composer/Attachments";
 import styles from "./Chat.module.css";
 
+/** Just enough of a `ModelEntry` to draw an option — server-provided labels keep provider code out of client bundles. */
+export interface ModelChoice {
+  id: string;
+  label: string;
+}
+
 export interface ChatComposerProps {
+  modelChoice?: { models: ModelChoice[]; model: string; onChange: (model: string) => void };
   /** Returns a message to show inline, or null when the send landed. */
   onSend: (text: string, attachments: string[]) => Promise<string | null>;
   onStop: () => void;
@@ -50,6 +57,7 @@ export interface ChatComposerProps {
 const MAX_ROWS = 10;
 
 export default function ChatComposer({
+  modelChoice,
   onSend,
   onStop,
   streaming,
@@ -167,6 +175,24 @@ export default function ChatComposer({
           </button>
         )}
       </div>
+      {modelChoice === undefined ? null : <div className={styles.composerMeta}>
+        <select
+          className={styles.modelSelect}
+          data-ui="model-select"
+          value={modelChoice.model}
+          aria-label="Model for this conversation"
+          onChange={(event) => modelChoice.onChange(event.target.value)}
+        >
+          {/* A conversation whose model has left the registry still shows what it says, rather than
+              silently displaying a different one because the select had no matching option. */}
+          {modelChoice.models.some((entry) => entry.id === modelChoice.model) ? null : <option value={modelChoice.model}>{modelChoice.model}</option>}
+          {modelChoice.models.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+      </div>}
     </div>
   );
 }

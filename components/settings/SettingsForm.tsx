@@ -45,6 +45,10 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
       <label>Lookahead days<input type="number" min="0" max="365" value={value.list.lookaheadDays} onChange={event => form.change("list", { ...value.list, lookaheadDays: Number(event.target.value) })} onBlur={() => void form.save("list")} /></label>
       <label>Show completed<input type="checkbox" checked={value.list.showCompleted} onChange={event => form.change("list", { ...value.list, showCompleted: event.target.checked })} onBlur={() => void form.save("list")} /></label>
     </div>)}
+    {section("deadlines", "Deadlines", <>
+      <label>Untimed due time<input type="time" value={value.deadlines.defaultTime} onChange={event => form.change("deadlines", { ...value.deadlines, defaultTime: event.target.value })} onBlur={() => void form.save("deadlines")} /></label>
+      <p className={styles.note}>Midnight ends the due date. Specific task times take precedence.</p>
+    </>)}
     {section("categories", "Categories", <>
       <div className={styles.chips}>{value.categories.map((item, index) => <div key={index} className={styles.row}>
         <label>Category {index + 1}<input value={item} onChange={event => form.change("categories", value.categories.map((old, at) => at === index ? event.target.value : old))} onBlur={() => void form.save("categories")} /></label>

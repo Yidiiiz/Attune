@@ -13,13 +13,15 @@
 }
 
 .header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
 
 .views {
+  justify-self: start;
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -52,7 +54,6 @@
 
 .period {
   display: flex;
-  flex: 1;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
@@ -73,7 +74,7 @@
   align-items: center;
   justify-content: center;
   padding: 0 var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--fg-muted);
   font-size: var(--control-font-size);
@@ -83,7 +84,7 @@
 
 .arrow:hover,
 .todayLink:hover {
-  border-color: var(--border-strong);
+  background: var(--bg-sunken);
   color: var(--fg);
 }
 
@@ -157,16 +158,9 @@
   border-left: 1px solid var(--border);
 }
 
-/* Past days are darkened; today is outlined (§10.3). */
-.pastCell {
-  background: var(--bg-sunken);
-}
-
-.todayCell {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
+/* Month membership controls muting; the current date has a rounded, quiet outline. */
+.todayCell { border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.outsideCell { background: var(--bg-sunken); }
 .outsideCell .dayNumber {
   color: var(--fg-faint);
 }
@@ -183,7 +177,7 @@
 }
 
 .dayNumber {
-  color: var(--fg-muted);
+  color: var(--fg);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -383,8 +377,10 @@
 
 @media (max-width: 640px) {
   .calendar { padding: var(--space-4) var(--space-3) 64px; }
-  .header { flex-wrap: wrap; gap: var(--space-2); }
-  .period { order: 2; flex: 1 0 100%; }
+  .header { grid-template-columns: 1fr auto; gap: var(--space-2); }
+  .period { grid-column: 1 / -1; grid-row: 2; }
   .periodLabel { min-width: 0; }
-  .todayLink { margin-left: auto; }
+  .todayLink { margin-left: 0; }
 }
+
+.todayLink { justify-self: end; }

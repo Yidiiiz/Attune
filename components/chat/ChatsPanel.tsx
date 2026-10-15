@@ -117,7 +117,7 @@ export default function ChatsPanel(props: ChatsPanelProps) {
 
       <nav className={styles.panelList}>
         {matching.length === 0 ? (
-          <p className={styles.empty}>
+          <p className={styles.panelEmpty}>
             {props.conversations.length === 0 ? "No conversations yet." : "Nothing matches."}
           </p>
         ) : null}

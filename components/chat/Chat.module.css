@@ -950,5 +950,9 @@
 }
 
 /* Conversation header controls share one baseline and quiet neutral states. */
-.modelSelect, .contextToggle, .headerCount { height: var(--control-height); padding: 0 var(--space-2); font: inherit; font-size: var(--control-font-size); }
+.contextToggle, .headerCount { height: var(--control-height); padding: 0 var(--space-2); font: inherit; font-size: var(--control-font-size); }
 .railButton svg { display: block; }
+
+.panelEmpty { margin: 0; padding: 12px 16px; color: var(--fg-muted); font-size: 13px; }
+.composerMeta { max-width: 46rem; margin: 4px auto 0; padding-left: 48px; }
+.composerMeta .modelSelect { height: 24px; max-width: 100%; padding: 0 8px; border: 0; background: transparent; }

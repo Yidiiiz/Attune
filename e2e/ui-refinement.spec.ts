@@ -29,14 +29,22 @@ test("new chats use GPT and adjacent controls and file icon are aligned", async 
  const created=await request.post("/api/chats",{data:{title:"Neutral alignment check"}});const id=(await created.json()).id;
  const saved=await (await request.get(`/api/chats/${id}`)).json();expect(saved.conversation.model).toBe("gpt-6.1-sol");
  await page.goto(`/chat?c=${id}`);
- const header=page.getByTestId("conversation-header"), model=header.getByTestId("model-select"), context=header.getByTestId("context-toggle");
- const m=(await model.boundingBox())!,c=(await context.boundingBox())!;expect(m.height).toBe(32);expect(c.height).toBe(32);expect(Math.abs(m.y-c.y)).toBeLessThanOrEqual(1);
+ const header=page.getByTestId("conversation-header"), model=page.getByTestId("composer").getByTestId("model-select"), context=header.getByTestId("context-toggle");
+ await expect(header.getByTestId("model-select")).toHaveCount(0);
+ expect((await context.boundingBox())!.height).toBe(32);
+ expect((await model.boundingBox())!.height).toBe(24);
  const input=page.getByTestId("chat-input"),send=page.getByTestId("send"),attach=page.getByTitle("Attach a file",{exact:true});
  const i=(await input.boundingBox())!,s=(await send.boundingBox())!,a=(await attach.boundingBox())!;
+ expect((await model.boundingBox())!.y).toBeGreaterThanOrEqual(i.y+i.height);
  expect(i.height).toBe(40);expect(s.height).toBe(40);expect(a.height).toBe(40);expect(Math.abs(s.y-a.y)).toBeLessThanOrEqual(1);
  const centered=await page.getByTestId("rail-files").evaluate(el=>{const button=el.getBoundingClientRect(),svg=el.querySelector("svg")!,box=svg.getBoundingClientRect(),path=svg.querySelector("path")!.getBBox();return {dx:Math.abs(button.x+button.width/2-box.x-box.width/2),dy:Math.abs(button.y+button.height/2-box.y-box.height/2),pathX:path.x+path.width/2,pathY:path.y+path.height/2};});
  expect(centered.dx).toBeLessThanOrEqual(.5);expect(centered.dy).toBeLessThanOrEqual(.5);expect(centered.pathX).toBe(12);expect(centered.pathY).toBe(12);
  for(const theme of ["light","dark"]){await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.themeBase=theme;},theme);await page.screenshot({path:info.outputPath(`chat-${theme}.png`)});}
+ await page.getByTestId("chat-search").fill("no-conversation-matches-this-filter");
+ const empty = page.getByText("Nothing matches.", {exact:true});
+ await expect(empty).toBeVisible();
+ expect(await empty.evaluate(el=>getComputedStyle(el).paddingLeft)).toBe("16px");
+ await page.screenshot({path:info.outputPath("chat-empty-alignment.png")});
  await page.goto("/settings");
  const region=page.getByRole("region",{name:"Theme",exact:true});
  const sizes=await region.locator('button,select,input:not([type="checkbox"]):not([type="hidden"])').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().height));

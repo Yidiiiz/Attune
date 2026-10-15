@@ -11,7 +11,7 @@
 // whole list, so it is caught per task and treated as undated — one unreadable field costs that
 // task its urgency, never the day its ranking.
 
-import { datePart, daysUntil, minutesFromMidnight, splitLocalIso, todayIn } from "./dates.ts";
+import { advanceDate, datePart, daysUntil, minutesFromMidnight, splitLocalIso, todayIn } from "./dates.ts";
 import type { Task } from "../store/tasks.ts";
 import type { Settings } from "../store/settings.ts";
 
@@ -47,6 +47,18 @@ function dueInDays(task: Task, viewDate: string): number | null {
   } catch {
     return null;
   }
+}
+
+/** Date-only deadlines use the configured local cutoff; midnight ends the listed date. */
+export function isOverdue(task: Task, viewDate: string, settings: Settings, now: Date): boolean {
+  if (task.due === null || dueInDays(task, viewDate) === null) return false;
+  const { date, time } = splitLocalIso(task.due);
+  const cutoff = time || settings.deadlines?.defaultTime || "00:00";
+  const cutoffDate = !time && cutoff === "00:00" ? advanceDate(date, "daily") : date;
+  if (cutoffDate !== viewDate) return cutoffDate < viewDate;
+  const [hour, minute] = cutoff.split(":").map(Number);
+  const viewedMinute = viewDate === todayIn(settings.timezone, now) ? minutesFromMidnight(now, settings.timezone) : 0;
+  return viewedMinute >= hour * 60 + minute;
 }
 
 /** Every column of §10.1's score, and their sum. */
@@ -126,7 +138,7 @@ export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now
     if (task.completedAt && splitLocalIso(task.completedAt).date === viewDate) doneToday.push(task);
     if (!isOpen(task)) continue;
 
-    if (task.due !== null && datePart(task.due) < viewDate) {
+    if (isOverdue(task, viewDate, settings, now)) {
       overdue.push(task);
       continue;
     }

@@ -4,7 +4,7 @@
 // change to the weights fails here before it reaches a screen.
 
 import { describe, expect, it } from "vitest";
-import { availableMinutes, rankDay, scoreParts } from "./rank.ts";
+import { availableMinutes, isOverdue, rankDay, scoreParts } from "./rank.ts";
 import type { Task } from "../store/tasks.ts";
 import type { Settings } from "../store/settings.ts";
 
@@ -244,5 +244,31 @@ describe("rankDay", () => {
     expect(rankDay([], VIEW_DATE, settings(), NOW)).toEqual({
       overdue: [], focus: [], alsoPossible: [], doneToday: [],
     });
+  });
+});
+
+describe("deadline cutoffs", () => {
+  it("keeps an untimed due date open through its day and expires at the following local midnight across DST", () => {
+    const item = task({ id: "midnight", title: "Deadline", due: "2026-03-08" });
+    const config = settings();
+    expect(isOverdue(item, "2026-03-08", config, new Date("2026-03-09T03:59:59Z"))).toBe(false);
+    expect(isOverdue(item, "2026-03-09", config, new Date("2026-03-09T04:00:00Z"))).toBe(true);
+    expect(rankDay([item], "2026-03-09", config, new Date("2026-03-09T04:00:00Z")).overdue).toEqual([item]);
+  });
+  it("uses the configured cutoff on the due date while explicit times take precedence", () => {
+    const config = { ...settings(), deadlines: { defaultTime: "17:00" } };
+    const item = task({ id: "custom", title: "Deadline", due: "2026-09-08" });
+    expect(isOverdue(item, VIEW_DATE, config, new Date("2026-09-08T20:59:59Z"))).toBe(false);
+    expect(isOverdue(item, VIEW_DATE, config, new Date("2026-09-08T21:00:00Z"))).toBe(true);
+    expect(isOverdue({ ...item, due: "2026-09-08T18:00" }, VIEW_DATE, config, new Date("2026-09-08T21:00:00Z"))).toBe(false);
+    expect(isOverdue({ ...item, due: "2026-09-08T00:00" }, VIEW_DATE, config, NOW)).toBe(true);
+  });
+  it("uses day-start for other dates and treats absent or malformed deadlines as undated", () => {
+    const config = { ...settings(), deadlines: { defaultTime: "17:00" } };
+    const item = task({ id: "other", title: "Deadline", due: "2026-09-09" });
+    expect(isOverdue(item, "2026-09-09", config, NOW)).toBe(false);
+    expect(isOverdue(item, "2026-09-10", config, NOW)).toBe(true);
+    expect(isOverdue({ ...item, due: null }, VIEW_DATE, config, NOW)).toBe(false);
+    expect(isOverdue({ ...item, due: "invalid" }, VIEW_DATE, config, NOW)).toBe(false);
   });
 });

@@ -34,6 +34,7 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
   const [priority, setPriority] = useState(String(task.priority));
   const [estimate, setEstimate] = useState(task.estimateMin === null ? "" : String(task.estimateMin));
   const [due, setDue] = useState(task.due ? datePart(task.due) : "");
+  const [dueTime, setDueTime] = useState(timePart(task.due));
   const [day, setDay] = useState(task.scheduled ? datePart(task.scheduled) : "");
   const [time, setTime] = useState(timePart(task.scheduled));
   const [notes, setNotes] = useState(task.body);
@@ -49,7 +50,8 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
       context: context.trim() || null,
       priority: Number(priority),
       estimateMin: estimate.trim() === "" ? null : Number(estimate),
-      due: due || null,
+      due: due === (task.due ? datePart(task.due) : "") && dueTime === timePart(task.due)
+        ? task.due : due ? (dueTime ? `${due}T${dueTime}` : due) : null,
       scheduled,
       body: notes,
     };
@@ -98,6 +100,10 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
         <label>
           <span>Due</span>
           <input type="date" value={due} onChange={(event) => setDue(event.target.value)} />
+        </label>
+        <label>
+          <span>Due time (optional)</span>
+          <input type="time" value={dueTime} disabled={!due} onChange={(event) => setDueTime(event.target.value)} />
         </label>
         <label>
           <span>Scheduled</span>

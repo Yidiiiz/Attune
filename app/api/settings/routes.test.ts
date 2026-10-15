@@ -37,6 +37,8 @@ describe("section transactions", () => {
   });
   it("rejects impossible sections before logging and permits a day ending after midnight", async () => {
     for (const value of [
+      { section: "deadlines", value: { defaultTime: "24:00" } },
+      { section: "deadlines", value: { defaultTime: "17:60" } },
       { section: "list", value: { focusSize: -1 } },
       { section: "timezone", value: "not/a/timezone" },
       { section: "day", value: { startMin: 600, endMin: 500, blocks: [], breakMin: 10 } },
@@ -45,6 +47,17 @@ describe("section transactions", () => {
     expect(await readActions()).toHaveLength(0);
     expect((await settings.PUT(request({ section: "day", value: { startMin: 600, endMin: 1560, blocks: [[600, 780], [1440, 1500]], breakMin: 10 } }))).status).toBe(200);
   });
+});
+
+it("saves an untimed cutoff as an undoable section without changing other settings", async () => {
+  const before = await readSettings();
+  expect(before.deadlines.defaultTime).toBe("00:00");
+  const response = await settings.PUT(request({ section: "deadlines", value: { defaultTime: "17:00" } }));
+  const answer = await response.json(); expect(response.status).toBe(200);
+  expect((await readSettings()).deadlines.defaultTime).toBe("17:00");
+  expect((await readSettings()).day).toEqual(before.day);
+  expect(await undoBatch(answer.batch)).toMatchObject({ ok: true });
+  expect((await readSettings()).deadlines.defaultTime).toBe("00:00");
 });
 
 describe("custom themes", () => {

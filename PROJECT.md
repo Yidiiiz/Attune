@@ -372,6 +372,15 @@ UI-only preview tests; no real model adherence, audible speech, microphone or mi
 is inferred. HTML5 event checks cover Shift/drop writes; native OS drag automation stalled and its
 manual pointer residual stays explicit. No timeout, secret pattern or deferred amendment changes.
 
+121. **Interrupted-message recovery restores a reachable conversation path in the same batch.**
+A real server kill/restart exposed repaired complete/failed files behind a null saved leaf,
+so the conversation reopened empty and offered no Retry. Recovery now strictly reads each
+conversation's metadata and selects its newest non-deleted orphan tip by the UUIDv7 creation
+order (§4.7), unless a newer leaf is already saved. The metadata action shares the message repair
+batch, so Undo restores the previous path and exact file bytes. Malformed-log and live-turn guards
+remain unchanged. An isolated first-turn crash, dev startup wrapper recovery, Retry UI,
+clean restart and exact Undo were exercised; no owner data or model inference was involved.
+
 ## 1. Hard rules
 
 These override anything else in this document.

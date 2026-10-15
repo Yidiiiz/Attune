@@ -449,6 +449,15 @@ can correct them; never display an unusable proposal or silently relocate it.
 Keep the store/history guards as the final write authority. Verify with a
 no-write regression and the same synthetic live-provider scenario.
 
+128. **Live acceptance: unsaved theme preview is visual, 2026-10-15.** The
+existing generation check asserted the editor and unsaved state, but only checked
+colors after Save. A strengthened computed-style check reproduced that generated
+and edited tokens never reached the preview before saving. Apply validated draft
+themes whenever the draft changes, including its base. Invalid partial drafts must
+not throw or change persistence. Discard restores the selected saved theme; only
+Save writes it. Pin colors and base before Save and the Discard restoration in the
+existing browser check, then inspect a real generated palette in the sandbox.
+
 ## 1. Hard rules
 
 These override anything else in this document.

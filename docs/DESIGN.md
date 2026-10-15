@@ -67,3 +67,22 @@ The schedule draws an independent hourly ruler from the configured day window,
 including empty periods. Empty gap blocks do not repeat a single start label over
 the entire day. Task packing, clock-time edits, five-minute dragging and Undo keep
 the same semantics. Grid lines and selected controls use quiet neutral surfaces.
+
+Compact refinement: selected shell tabs are 24 px inside a 32 px group and retain
+that fill on hover. Use one small shared shadow (light: 2/8 px at 5%; dark: 2/10 px
+at 14%), including search results. Keep ordinary secondary controls borderless
+where their grouping already makes them clear. The empty conversation list uses
+the same left inset as conversation titles. Model selection sits below the chat
+input as quiet 24 px metadata; the document composer has no model selector.
+
+The empty floating composer is 89 px tall on desktop, with no duplicate close
+control or permanent keyboard hint. Its toggle, Escape and outside-click behavior
+remain. On phones, the input gets its own row, with Send and the compact toggle
+separated. Calendar uses equal side columns to center its period independently
+of neighboring controls; adjacent-month dates are muted, current-month past dates
+are not, and the current date keeps a thin rounded inset highlight.
+
+Settings → Deadlines supplies the local cutoff for untimed due dates. The default
+00:00 ends the due date; explicitly timed tasks retain their own time. Date-only
+storage keeps deadlines on the correct Calendar day. Task editing can set or clear
+an optional due time and preserves an unchanged explicit timestamp exactly.

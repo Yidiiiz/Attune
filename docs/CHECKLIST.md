@@ -913,3 +913,20 @@ Settings, Chat, schedule and phone screenshots inspected. Full deterministic che
 796/796 in 71 files, TypeScript, library loads and production build passed. No real
 provider behavior is inferred from these fixtures; earlier manual/provider residuals
 remain pending. The app was restarted for the owner's local review.
+
+
+### 11.7 Compact surfaces and untimed deadlines — **verified locally, 2026-10-15**
+
+Slim selected tabs, smaller neutral shadows, aligned conversation empty state,
+compact composer without a duplicate close control, phone Send hit target,
+conversation model at the input, centered Calendar period, adjacent-month muting
+and rounded current-date highlight passed existing isolated browser checks.
+Configured untimed cutoffs save on blur, and renaming preserves exact explicit
+due timestamps. Midnight ends the listed due date; DST, custom cutoff precedence,
+invalid settings and settings Undo passed deterministic checks.
+
+Affected browser runs: 37/37 in 2.4 minutes and final 12/12 in 1.1 minutes (44
+distinct checks). Screenshots inspected in both themes and at phone width.
+Full deterministic suite: 800/800 in 71 files; TypeScript and library boundaries
+passed. Earlier live provider, native-pointer, audio and terminal residuals remain
+explicitly pending. These local checks do not close those rows.

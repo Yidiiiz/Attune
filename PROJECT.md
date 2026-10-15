@@ -1085,7 +1085,7 @@ Identical to Build mode in the Chat tab (§13.4); the sheet shows the plan, the 
 
 **Body:**
 
-1. **Overdue** — `status ∈ {todo, doing}` and `due < viewDate`, sorted by `due` asc. Red left border. Absent when empty.
+1. **Overdue** — `status ∈ {todo, doing}` and the due cutoff has passed, sorted by `due` asc. Date-only values use `deadlines.defaultTime`; `00:00` means the following local midnight, ending the listed date. Explicit times take precedence. Today compares the local clock; other viewed days compare their start. Red left border. Absent when empty.
 2. **Today's focus** — the top `settings.list.focusSize` of the eligible ranked list.
 3. **Also possible** — the remaining eligible tasks, grayed, collapsed by default with a count.
 4. **Done today** — tasks with `completedAt` on `viewDate`, shown struck through when `settings.list.showCompleted`.
@@ -1173,7 +1173,7 @@ Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed differ
 - Over 400 nodes: render only the 2-hop neighborhood of the focused node (default: the most connected), with a "Show all" override.
 - Empty `data/` renders "Nothing here yet" and no simulation.
 
-**Conversation behavior** is in §16. **Per-message actions:** copy, edit-and-resend, regenerate, branch from here, annotate, delete, read aloud (`speechSynthesis`, per-message play/stop). The model that produced each assistant message is shown under it. A model selector in the conversation header sets `conversation.model` from the registry.
+**Conversation behavior** is in §16. **Per-message actions:** copy, edit-and-resend, regenerate, branch from here, annotate, delete, read aloud (`speechSynthesis`, per-message play/stop). The model that produced each assistant message is shown under it. A compact model selector beside the bottom input sets `conversation.model` from the registry.
 
 **Context debug view:** a "Context" toggle in the conversation header shows the exact blocks `assembleContext` sent for the last turn, with per-block token estimates and total.
 
@@ -1183,7 +1183,7 @@ Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed differ
 
 `app/calendar/page.tsx`. Views: **Rolling** (default: today plus the next 27 days as 4 rows of 7, scrolling by a week with ↑/↓), **Month**, **Week**. Arrows move by the current unit; a Today button returns.
 
-- Each cell lists tasks by `due` (or `scheduled` if set and no due), and, on today and past days, also whatever was completed that day by `completedAt`. A past day therefore shows both what was finished and what was due and missed — an open overdue task keeps its place on the day it was due, with the same overdue treatment Today gives it (Decision 54). Past days are darkened; today is outlined. A cell scrolls internally past five items with a "+N more" line that expands it.
+- Each cell lists tasks by `due` (or `scheduled` if set and no due), and, on today and past days, also whatever was completed that day by `completedAt`. A past day therefore shows both what was finished and what was due and missed — an open overdue task keeps its place on the day it was due, with the same overdue treatment Today gives it (Decision 54). Adjacent-month dates are muted; earlier dates in the selected month keep the normal surface and text. Today has a rounded, thin inset outline. A cell scrolls internally past five items with a "+N more" line that expands it.
 - Clicking an item selects it and shows the Today `⋯` menu actions in a small toolbar below the grid. Edit opens the same `TaskEditForm` there rather than inside the cell, which has no room for it.
 - Native HTML5 drag: dropping an item on another day sets `scheduled` (or `due` when `Shift` is held, and the drop hint says so). One `task.update` batch per drop.
 - `GET /api/calendar?from&to` returns `{ days: Record<date, { due: Task[]; completed: Task[] }> }`.
@@ -1196,7 +1196,7 @@ Panels 2 and 3 are the same component, `components/browser/Tree.tsx`, fed differ
 
 ### 11.1 Sections
 
-Identity · Timezone (select from `Intl.supportedValuesOf("timeZone")`) · Weather (query text, Resolve button, geolocation button that asks browser permission on first use, units, Clear; attribution line "Weather data by Open-Meteo, CC-BY 4.0") · Theme (§11.3) · Day shape (start, end allowing past midnight, blocks editor, break length) · List behavior (focus size, lookahead, show completed) · Categories (editable chips) · First day of week · Models (§11.4) · API keys (§11.5) · History (opens the sheet) · Sync (push toggle, debounce, Sync now, remote URL read-only).
+Identity · Timezone (select from `Intl.supportedValuesOf("timeZone")`) · Weather (query text, Resolve button, geolocation button that asks browser permission on first use, units, Clear; attribution line "Weather data by Open-Meteo, CC-BY 4.0") · Theme (§11.3) · Day shape (start, end allowing past midnight, blocks editor, break length) · List behavior (focus size, lookahead, show completed) · Deadlines (untimed due time; midnight ends the due date) · Categories (editable chips) · First day of week · Models (§11.4) · API keys (§11.5) · History (opens the sheet) · Sync (push toggle, debounce, Sync now, remote URL read-only).
 
 ### 11.2 First run
 

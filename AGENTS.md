@@ -2,6 +2,20 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Compact UI close — 2026-10-15.** Source 87c4af9 implements the owner's slimmer
+neutral navigation/shadows, compact composer without duplicate close control,
+aligned chat empty state, bottom model selector and centered Calendar with rounded
+current-day highlighting and adjacent-month muting. Decision 125 adds configurable
+untimed due cutoffs (midnight ends the listed date) and preserves explicit due
+timestamps on unrelated edits. 800/800 deterministic checks in 71 files passed;
+TypeScript, 88 plain-Node library loads and production build passed. Affected browser
+groups passed 37/37 and final 12/12 (44 distinct checks); screenshots inspected.
+The authorized test-item correction is one undoable batch, five deadlines and three
+scheduled events; private contents remain out of source. App runs in production
+at localhost:3000, PID 80816. No provider inference, worker, push, publication or
+budget reset; existing manual/provider residuals remain. See docs/progress.md.
+
+
 **Direct acceptance close — 2026-10-15.** Under the owner's direct Codex instruction,
 source 4577695 adds 27 browser acceptance cases and fixes the observed layout,
 preview, scroll, menu, annotation and crash-recovery defects (Decisions 120–121).

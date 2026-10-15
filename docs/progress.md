@@ -306,3 +306,66 @@ effective settings read back dark and gpt-6.1-sol. All eight requested test reco
 were verified again after restart. The app is intentionally left running for the
 owner to test. No model inference, source push, publication, worker or budget reset.
 Budget remains 2/6 used. Refresh the existing browser tab to load the rebuilt assets.
+
+
+## Compact UI and untimed deadlines — 2026-10-15
+
+The owner requested further neutral UI refinement, smaller shadows and a shorter
+floating composer, corrected alignment, centered Calendar periods and configurable
+untimed deadlines. Decision 125 records the behavior. No extension project work
+was undertaken; that intervening instruction was explicitly canceled by the owner.
+
+Shell selection is 24 px inside a 32 px group, stable on hover. Shared shadows are
+small and used consistently by search results too. The empty chat list has the
+conversation-title inset. The model selector moved from the conversation header
+to quiet metadata beside the bottom input; the shared document composer retains
+its existing behavior. The empty floating composer measures 89 px on desktop,
+with no duplicate close button or permanent keyboard hint. Toggle, Escape and
+outside-click closing remain. On phones, its input has a full row and Send stays
+clear of the compact floating toggle.
+
+Calendar's equal side columns center the period independently of its controls.
+Adjacent-month cells and dates are muted; current-month past dates retain normal
+surfaces. The current date has a thin rounded inset highlight. Existing Calendar
+navigation, drag/drop, selection toolbar and Undo acceptance checks still pass.
+
+Settings → Deadlines adds the default local cutoff for date-only due values.
+00:00 ends the listed date, at the following midnight. Explicit task times take
+precedence. Date-only storage and Calendar placement are preserved. Tests cover
+the New York DST boundary, exact midnight and configured cutoff, explicit time
+precedence, section validation and Undo. Task editing exposes an optional due
+time and retains an unchanged timestamp, including seconds/offset, exactly.
+
+The optional clarification received no answer before correction. The stated
+assumption was five assessment/course-permission deadlines and three scheduled
+events. Only the five previously requested test records were changed, in guarded
+undoable batch b_20261015_032019_f969; original date wording is retained. Newer
+record changes would have refused the correction. The private receipt lives at
+.agent/requested-test-deadlines-result.json. No appointment time was invented;
+other personal records and the owner's untracked HANDOFF.md were preserved.
+
+Verification: 44/44 focused deterministic checks passed. Affected browser group
+37/37 passed in 2.4 minutes (.agent/ui-polish-first.log); final chat/layout group
+12/12 passed in 1.1 minutes (.agent/ui-polish-final.log), spanning 44 distinct
+checks. Light/dark Calendar, desktop/phone composer, chat footer and empty-list
+screenshots were inspected and retained at .agent/ui-polish-screenshots/.
+File-selective runs retain Decision 67's existing justification and no thresholds
+were changed. No live provider inference is claimed from scripted browser replies.
+
+Full deterministic verification: 800/800 across 71 files in 123.31 seconds;
+TypeScript and 88 plain-Node library loads passed. Logs are .agent/unit-polish-final.log,
+.agent/tsc-polish-final.log and .agent/lib-polish-final.log. Production build and
+restart details follow. Earlier manual/provider checklist residuals remain pending;
+no supervisor, worker, remote publication, push or budget reset. Budget stays 2/6.
+
+
+Source 87c4af9 passed production build (native exit 0), retained at
+.agent/build-polish-final.log. The commit hook scanned all 23 source/test files
+clean. Production restarted at http://localhost:3000, PID 80816, saved in
+.agent/app-server.pid. Logs: .agent/app-polish-production.log and
+.agent/app-polish-production-error.log. All four main pages return HTTP 200.
+Readback confirms dark, gpt-6.1-sol and untimed cutoff 00:00; the eight requested
+records are now exactly five due-only deadlines and three scheduled-only events.
+The app is intentionally left running. Refresh the existing tab for new assets.
+No implementation checks remain unfinished for this requested refinement; owner
+visual review and the pre-existing manual/provider residuals are the next steps.

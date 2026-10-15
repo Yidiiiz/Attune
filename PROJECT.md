@@ -40,7 +40,7 @@ Every call the brief left open, or where this spec deviates from it. One line of
 
 **Assistant**
 
-23. **Default model `claude-opus-5`, effort `high`, adaptive thinking (SDK default, nothing sent).** Task extraction defaults to the same model at effort `medium` rather than a cheaper model: same cache namespace, lower cost, one prompt-caching story. Change it in Settings if you want a cheaper model.
+23. **Default model `gpt-6.1-sol`, effort `high`; extraction uses the same model at `medium`.** The owner updated the default in Decision 123. Claude Opus 5.5 is also available; Build uses `claude-opus-5-5` through its existing Agent SDK. Existing conversation model choices remain intact.
 24. **One conversation loop, three tool sets.** Tasks, Ask, and knowledge proposals all run through `runChatTurn()`; modes differ only in system prompt and which tools are offered. Proposals (`propose_tasks`, `propose_knowledge_write`, `propose_collection_append`) are collected, never executed, and shown in the preview panel.
 25. **Knowledge retrieval is a tool the model calls** (`read_knowledge(path)`, `search_knowledge(query)`), not a retriever we build. `index.md` and `profile/` are always in the system prompt; everything else the model asks for by path.
 26. **Refusal fallbacks are not wired in v1.** A to-do app is unlikely to trip a safety classifier; if it does, the message fails visibly and can be retried on another model.
@@ -756,9 +756,9 @@ The message text, verbatim markdown.
   "categories": ["school", "personal"],
   "firstDayOfWeek": "monday",
   "models": {
-    "default": { "model": "claude-opus-5", "effort": "high" },
-    "extract": { "model": "claude-opus-5", "effort": "medium" },
-    "build": { "model": "claude-opus-5" }
+    "default": { "model": "gpt-6.1-sol", "effort": "high" },
+    "extract": { "model": "gpt-6.1-sol", "effort": "medium" },
+    "build": { "model": "claude-opus-5-5" }
   },
   "sync": { "pushDebounceMs": 30000, "autoPush": true }
 }
@@ -992,7 +992,7 @@ redoBatch(batch: string): Promise<UndoResult>
 
 ### 9.1 Button and sheet
 
-`components/composer/ComposerButton.tsx`: fixed, bottom-right (`right: 24px; bottom: 24px`), 56 px circle, z-tier 30. Rendered by the Today and Calendar pages only; the Chat page never mounts it. While the sheet is open the same button rotates 45° and closes it.
+`components/composer/ComposerButton.tsx`: fixed, bottom-right (`right: 24px; bottom: 24px`), 56 px rounded square using `--radius-lg`, z-tier 30. Rendered by the Today and Calendar pages only; the Chat page never mounts it. While the sheet is open the same button rotates 45° and closes it.
 
 `ComposerSheet.tsx`: slides up from the bottom edge (transform transition 180 ms), rests along the bottom, max height 70vh, z-tier 30. Closes on `Esc`, on button click, and on outside click **only if the textarea is empty** (HANDOFF §G). A sheet with typed text stays open and its draft persists in `localStorage` under `composer.draft`.
 
@@ -1051,7 +1051,7 @@ Identical to Build mode in the Chat tab (§13.4); the sheet shows the plan, the 
 
 ### 10.0 Shell
 
-`app/layout.tsx`: top bar with the three tabs (`/`, `/chat`, `/calendar`), a search field, the sync indicator, and a settings gear (`/settings`). Global keyboard: `Ctrl/Cmd+K` focuses search, `Ctrl/Cmd+Z` opens history (outside inputs), `1`/`2`/`3` switch tabs when focus is on the body.
+`app/layout.tsx`: fixed 48 px top bar with the three tabs (`/`, `/chat`, `/calendar`), a search field, the sync indicator, and a settings gear (`/settings`). Global keyboard: `Ctrl/Cmd+K` focuses search, `Ctrl/Cmd+Z` opens history (outside inputs), `1`/`2`/`3` switch tabs when focus is on the body.
 
 **Search:** `GET /api/search?q=` scans task titles and bodies, note titles and bodies, collection titles and items, conversation titles. Scoring: exact title substring 100, title subsequence match 60 (chars of the query appear in order), body substring 30, body subsequence 10; ties by `updatedAt` desc; top 20. Results open in the document view (`/chat?open=<rel path>`) or the conversation. No index; the scan reads files through the store's mtime cache.
 
@@ -1196,15 +1196,17 @@ If `settings.identity.name` is empty, the Today header shows a one-time card: na
 --node-task --node-note --node-map --node-collection --node-chat --node-file
 ```
 
-Custom themes are applied by `app/layout.tsx` injecting a `<style>` with `[data-theme="<name>"] { … }` from the theme file. Theme picker: base themes marked protected; **Duplicate to new theme** writes `data/settings/themes/<name>.json` (`settings.update`); custom themes have a token editor (color inputs) and Delete. **Create by prompting:** a text field ("warm sepia, low contrast") calls `POST /api/agent/theme`, which returns a token map through the provider's `parse` — `output_config.format` over `messages.stream`, per Decision 27 — and opens it in the editor unsaved.
+Custom themes are applied by `app/layout.tsx` injecting a `<style>` with `[data-theme="<name>"] { … }` from the theme file. Theme picker: base themes marked protected; **Duplicate to new theme** writes `data/settings/themes/<name>.json` (`settings.update`); custom themes have a token editor (color inputs) and Delete. **Create by prompting:** a text field ("warm sepia, low contrast") calls `POST /api/agent/theme`, which returns a token map through the provider's `parse` — Claude structured streaming per Decision 27, or OpenAI Responses structured output per Decision 123 — and opens it in the editor unsaved.
 
 ### 11.4 Models
 
 `lib/agent/registry.ts`:
 
 ```ts
-interface ModelEntry { id: string; label: string; provider: "anthropic"; images: boolean; pdf: boolean; effort: boolean }
+interface ModelEntry { id: string; label: string; provider: "anthropic" | "openai"; images: boolean; pdf: boolean; effort: boolean }
 export const MODELS: ModelEntry[] = [
+  { id: "gpt-6.1-sol", label: "GPT-6.1 Sol", provider: "openai", images: true, pdf: true, effort: true },
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5", provider: "anthropic", images: true, pdf: true, effort: true },
   { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic", images: true, pdf: true, effort: true },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic", images: true, pdf: true, effort: true },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "anthropic", images: true, pdf: true, effort: false },
@@ -1213,14 +1215,14 @@ interface Provider { streamChat(req: ChatRequest, signal: AbortSignal): AsyncIte
 export const PROVIDERS: Record<ModelEntry["provider"], Provider>
 ```
 
-Adding a provider = one file implementing `Provider`, one entry in `PROVIDERS`, entries in `MODELS`, and a key name in `env.ts`'s known list. Settings shows default model + effort, and per-mode overrides for extract and build. Effort values: `low | medium | high | xhigh | max`; sent as `output_config.effort` only when `entry.effort` is true.
+Adding a provider = one file implementing `Provider`, one entry in `PROVIDERS`, entries in `MODELS`, and a key name in `env.ts`'s known list. Settings shows default model + effort, and per-mode overrides for extract and build. Effort values: `low | medium | high | xhigh | max`; sent only when `entry.effort` is true. Claude uses `output_config.effort`; OpenAI uses `reasoning.effort`, mapping `max` to its `xhigh`. Build accepts Claude models only.
 
 ### 11.5 API keys
 
-- Stored only in `.env.local` as `ANTHROPIC_API_KEY=…`. `lib/store/env.ts` reads and rewrites that file line-wise, preserving unrelated lines.
+- Stored only in `.env.local` as `OPENAI_API_KEY=…` or `ANTHROPIC_API_KEY=…`. `lib/store/env.ts` reads and rewrites that file line-wise, preserving unrelated lines.
 - Settings shows each known key masked (`••••…a1b2`), with Set / Change / Remove. Changes go through `runBatch` with a `settings.update` action whose `targets` is `[".env.local"]` and whose snapshots are `{ fields: { ANTHROPIC_API_KEY: "set" | "unset" } }`, so the log records the name and never the value. This batch commits nothing (`commit: false`) because `.env.local` is ignored.
 - After a key write, `process.env` is updated in place so the running server uses it without restart.
-- `npm run check-secrets` scans staged files (or all tracked files with `--all`) for: `sk-ant-[A-Za-z0-9_-]{20,}`, `sk-[A-Za-z0-9]{32,}`, `AKIA[0-9A-Z]{16}`, `ghp_[A-Za-z0-9]{36}`, `xox[bap]-`, `-----BEGIN [A-Z ]*PRIVATE KEY-----`, and `(api[_-]?key|secret|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{24,}`. Exit 1 with file and line on a hit. `.githooks/pre-commit` runs it. `scripts/postinstall.mjs`, wired as the `postinstall` script in `package.json`, sets `git config core.hooksPath .githooks` on every `npm install`, so a clone on a second machine is protected before its first commit; it is a no-op outside a git checkout (Decision 39).
+- `npm run check-secrets` scans staged files (or all tracked files with `--all`) for: `sk-ant-[A-Za-z0-9_-]{20,}`, `sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}`, `sk-[A-Za-z0-9]{32,}`, `AKIA[0-9A-Z]{16}`, `ghp_[A-Za-z0-9]{36}`, `xox[bap]-`, `-----BEGIN [A-Z ]*PRIVATE KEY-----`, and `(api[_-]?key|secret|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{24,}`. Exit 1 with file and line on a hit. `.githooks/pre-commit` runs it. `scripts/postinstall.mjs`, wired as the `postinstall` script in `package.json`, sets `git config core.hooksPath .githooks` on every `npm install`, so a clone on a second machine is protected before its first commit; it is a no-op outside a git checkout (Decision 39).
 - The pattern list lives in `lib/security/secrets.ts`; `scripts/check-secrets.mjs` imports it. One definition, because the scanner that refuses a commit and the history log that records the refusal have to agree on what a credential looks like, and a second copy would drift silently.
 - The scanner reports **file, line, and pattern name — never the matched text**. Its output reaches a terminal, a CI log, and git's error message; echoing the line it found would copy the secret into all three. `scripts/check-secrets.test.ts` asserts it.
 - **The write path refuses first.** `runBatch` scans the summaries, `meta`, target paths, and both sides of every snapshot with `findSecret` before appending a line, and refuses the whole batch on a hit — rolled back, nothing logged, nothing committed, `StoreError("secret_rejected")` → 422. `findSecret` returns the pattern *name*, never the match, so a rejection message cannot echo a credential any more than the scanner can. The UI obligation is §13.5's: a refused save leaves the composer, the editor, and the file exactly as they were (Decision 50).

@@ -172,3 +172,81 @@ Work is saved locally. Resume only the pending procedures in docs/CHECKLIST.md;
 there is no additional implementation phase queued and no running worker/server.
 The owner's HANDOFF.md is still the sole untracked file and was byte-hash verified
 against its prior contents. Do not add it to a commit or export.
+
+
+## Owner-directed interface refresh — 2026-10-15
+
+The owner requested an always-visible top bar, no emoji UI, a modern minimal
+light/dark visual system, a coordinated floating Add button, reliable second-click
+menu closing, faster loading, GPT-6.1 Sol as default and Claude Opus 5.5 support.
+The bottom-left N was explained before work: Next's development indicator, now
+turned off in next.config.mjs. Decisions 122–123 record authorization and boundaries.
+
+Implemented a fixed 48 px shell with matching body/Chat viewport geometry, cool
+neutral surfaces with a violet accent, shared radii/typography/control states,
+monochrome SVG rail/attachment/microphone/weather icons, and the token-based Add.
+The cloud silhouette remains. The empty composer toggle is excluded from outside
+dismissal using a direct element ref; a mouse-down close cannot reopen on click.
+Chat rail, row and message second-click toggles were exercised. docs/DESIGN.md is
+the role/palette reference; custom themes still use the existing validated tokens.
+Route loading feedback is immediate and independent file reads start in parallel.
+Production serving is used for the final startup to avoid dev compilation per route.
+
+OpenAI Responses is implemented without a dependency: streamed UTF-8/SSE text,
+function calls, encrypted reasoning continuation between tool rounds, strict JSON
+schemas and Zod validation, PDF/image inputs, cancellation and sanitized errors.
+Missing final/incomplete/refused/malformed answers cannot complete. Keys are masked
+in the existing editor; the shared scanner now also recognizes project/service
+account key formats. The default for chat/extraction is gpt-6.1-sol; Claude's current
+option and Build SDK default are claude-opus-5-5. Old conversations and deliberately
+changed settings are retained. A former untouched factory bundle upgrades on read
+without rewriting personal settings. Build only accepts its compatible Claude
+provider, guarded in the selector, section validation and SDK adapter.
+
+Browser evidence: 20/20 in 1.3 minutes in .agent/ui-refresh-accepted.log, plus the
+20 unaffected Composer/Calendar/sidebar cases that passed in the first selection:
+40 distinct affected checks passed across selective runs. The final direct-ref
+correction passed the three new UI regressions again in 22.3 seconds
+(.agent/ui-refresh-toggle-ref.log). Both providers' masked Set/Change/Remove,
+unrelated env preservation and name-only log/Undo refusal were exercised with
+dummy keys in the sandbox. Light, dark and 360 px screenshots were inspected and
+retained under .agent/ui-refresh-screenshots/. No real model inference occurred.
+
+Negative evidence remains in .agent/ui-refresh-first.log (29/31) and
+.agent/ui-refresh-final.log (17/19): old tests assumed a single key row, a new test
+used a label lookup instead of its correct accessible combobox name, and a resting
+palette assertion initially ran while the pointer still hovered Add. Tests now
+scope the relevant key row, exercise both providers, use accessible roles and move
+the pointer away. Theme snapshots use reduced motion to avoid transition frames.
+The first broad unit run was 794/796; it caught the prohibited test-hook selector
+and missing shared secret-pattern sample. Both were corrected without weakening
+checks, then 21 focused convention/provider checks and three browser regressions
+passed. The final broad run and production build are recorded below.
+
+No workers, supervisor, model calls, new dependencies, budget resets, source pushes
+or remote publication. Owner HANDOFF.md stays untracked. Real provider availability
+and the earlier device/manual checklist residuals are separate from this UI work.
+
+
+Final source fb82167 passed 796/796 deterministic checks across 71 files in
+91.58 seconds, TypeScript, all 88 plain-Node library loads and production build
+(native exit 0 for each). Logs: .agent/unit-ui-refresh-accepted.log,
+.agent/tsc-ui-refresh.log, .agent/lib-ui-refresh.log, .agent/build-ui-refresh.log.
+The code commit hook scanned 35 staged files clean. Earlier failed runs remain
+retained; neither is described as clean.
+
+The app is intentionally running in production mode at http://localhost:3000,
+PID 77396 (also .agent/app-server.pid). Its stdout/stderr are
+.agent/app-production.log and .agent/app-production-error.log. All four main routes
+returned 200: Today 46 ms, Chat 75 ms, Calendar 75 ms, Settings 82 ms in this local
+HTTP measurement after readiness. These are server timings, not end-to-end browser
+or model latency. The effective default was read back as gpt-6.1-sol. Refresh any
+previously open tab to replace development assets. To restart after code edits:
+stop this owned server, run `npm.cmd run build`, then `npm.cmd run start`; use
+`npm.cmd run dev` only when live development recompilation is wanted.
+
+Next: the owner can review the refreshed interface and configure the appropriate
+provider key through Settings. No real GPT/Claude inference was claimed. Existing
+manual/provider acceptance remains pending. No supervisor or additional worker is
+needed. Production startup here is intentional; do not report that all servers
+were stopped. Private data and the untracked owner handoff were preserved.

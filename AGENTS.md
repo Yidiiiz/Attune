@@ -17,6 +17,18 @@ Manual/provider residuals remain explicit in docs/CHECKLIST.md. No Claude,
 additional worker, model call, remote publication or personal-data write occurred.
 Budget remains 2/6 used. See docs/progress.md for exact evidence and next steps.
 
+**Owner-directed interface refresh — 2026-10-15.** Source fb82167 implements the
+requested fixed top bar, shared modern light/dark palette and controls, monochrome
+SVGs, token-based Add and direct-ref dismissal fix; Next's development indicator is
+hidden. GPT-6.1 Sol is the new chat/extraction default, Claude Opus 5.5 is available,
+and Build remains on its compatible Claude SDK. Existing non-factory choices and
+private bytes are preserved. 796/796 tests in 71 files, TypeScript, 88 library loads
+and production build passed. Forty distinct affected browser checks passed across
+selective runs; three toggle/model regressions passed again after the ref correction.
+Screenshots inspected. No new dependency, live inference, worker, supervisor, budget
+reset, source push or publication. Production app intentionally running at localhost:3000;
+see docs/progress.md for PID/logs, timings, negative evidence and remaining checks.
+
 ## Phase status
 
 ### Continuation authorization — 2026-10-14

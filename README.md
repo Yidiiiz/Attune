@@ -13,6 +13,10 @@ npm run init
 npm run dev
 ```
 
+For everyday use without first-visit development compilation, run `npm run build`
+then `npm run start` instead of `npm run dev`. The shared palette and control rules
+are documented in [docs/DESIGN.md](docs/DESIGN.md).
+
 Open http://localhost:3000. Initialization copies `seed/` into `data/` and refuses
 to replace an existing nonempty directory. On Windows PowerShell with a restricted
 script policy, use `npm.cmd` in place of `npm`.
@@ -28,9 +32,11 @@ script policy, use `npm.cmd` in place of `npm`.
 
 ## Assistant and privacy
 
-Chat, task extraction and theme generation use the Anthropic API. Set your own key
-in Settings; it is stored only in ignored `.env.local` and displayed masked. Build
-uses the installed Agent SDK and can use a saved Claude login when no API key is set.
+Chat, task extraction and theme generation default to GPT-6.1 Sol through the
+OpenAI Responses API; Claude Opus 5.5 is also available. Set the matching OpenAI
+or Anthropic key in Settings; keys are stored only in ignored `.env.local` and
+displayed masked. Build uses Claude through the installed Agent SDK and can use
+a saved Claude login when no Anthropic API key is set.
 Requests send the prompt and relevant context to the provider. Local task and file
 features work without provider access.
 

@@ -881,3 +881,18 @@ Fresh sanitized snapshot 8f2e482 also passed static/historical/shared-secret aud
 offline locked installation, canonical initialization, knowledge checks, production
 build and empty-app startup; its server and temporary directory were cleaned.
 Evidence: .agent/fresh-acceptance.log. No publication occurred.
+
+
+### 11.5 Owner-directed UI/provider refresh — **verified locally, 2026-10-15**
+
+Source fb82167: 796/796 deterministic checks in 71 files, TypeScript, library loading
+and production build passed. Forty distinct affected browser checks passed across
+file-selective runs; the final 20-case selection and three direct-ref regression
+checks were clean. Light/dark and phone screenshots inspected. Top-bar visibility,
+composer/rail/chat-menu second-click closing, SVG icons, shared palettes and both
+masked provider key editors were exercised. See docs/DESIGN.md for the visual system.
+
+GPT-6.1 Sol is the effective default for new chat/extraction, and Claude Opus 5.5 is
+available. Responses transport/tool continuation/schema/cancellation are verified
+with mocked network events. Real provider inference remains unverified. The app is
+running locally in production mode; all four main pages returned HTTP 200.

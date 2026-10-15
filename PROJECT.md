@@ -420,6 +420,26 @@ defaulting to 00:00 at the end of the due date. Explicit times override it. Pres
 and Calendar placement; do not invent appointment times. Correct only the owner's previously added
 test items through ordinary undoable history actions, retaining their original date wording.
 
+126. **Owner refinement: terminal chat and understandable browsing, 2026-10-15.**
+Chat/extraction can use the installed signed-in Codex or Claude terminal client, selected
+by model, with Terminal as the default and API an explicit Settings choice. Launch
+fixed arguments without a shell in an isolated temporary working directory, no
+repository instructions, native tools or workers; app tool requests remain validated
+and executed by Attune's existing loop/history layer. Keep cancellation, structured
+output validation and visible failures. Temporary schema/image artifacts are store-owned
+and cleaned; terminal authentication stays with the client. Build retains its existing
+guarded SDK. Live verification uses only a synthetic prompt, never owner context.
+Rolling Calendar shows four complete Sunday–Saturday weeks starting at the anchor's
+week, with weekday headers; Month/Week retain their configured first weekday. Use a
+subtle separate surface for past dates, muted adjacent-month text and inherited outer
+corner clipping. Simple Files is the default: friendly names, task titles/details and
+no raw metadata; Settings exposes Technical files, raw paths and repository browsing.
+Use outline chevrons for folder expansion, a compact centered composer toggle, and
+mode/model controls sharing the input row. Tasks without a supplied estimate use an
+editable 30-minute planning estimate; explicit estimates remain intact. The requested
+security appointment date/time, priority and original test-task estimates are logged
+updates only, with any ambiguous date clarified independently of implementation.
+
 ## 1. Hard rules
 
 These override anything else in this document.

@@ -875,3 +875,9 @@ device, mintty and native Calendar drag residuals above remain pending.
 
 Source 4577695: 789/789 deterministic checks in 70 files, TypeScript and library
 boundaries passed. The source commit hook scanned all 19 staged files clean.
+
+
+Fresh sanitized snapshot 8f2e482 also passed static/historical/shared-secret audits,
+offline locked installation, canonical initialization, knowledge checks, production
+build and empty-app startup; its server and temporary directory were cleaned.
+Evidence: .agent/fresh-acceptance.log. No publication occurred.

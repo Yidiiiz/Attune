@@ -88,6 +88,13 @@ describe("runExtract routes the three answers of §9.4", () => {
     expect(result.note).toBeUndefined();
   });
 
+  it("supplies an inferred planning estimate only when no estimate was given", async () => {
+    const result = await extract(answer({tasks:[draft("Unspecified",{estimateMin:null}), draft("Specific",{estimateMin:75})]}));
+    if(result.kind!=="tasks") throw new Error("Expected tasks");
+    expect(result.items[0].estimateMin).toBe(30); expect(result.items[0].inferred).toContain("estimateMin");
+    expect(result.items[1].estimateMin).toBe(75); expect(result.items[1].inferred).not.toContain("estimateMin");
+  });
+
   it("returns a collection with its target and items", async () => {
     const result = await extract(
       answer({

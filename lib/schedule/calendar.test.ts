@@ -75,24 +75,22 @@ describe("startOfWeek", () => {
 });
 
 describe("gridFor — rolling", () => {
-  it("is four rows of seven starting at the anchor, not at a week boundary", () => {
+  it("shows four complete Sunday–Saturday weeks starting with the anchor week", () => {
     const grid = gridFor("rolling", "2026-09-10", "monday");
     expect(grid.rows).toHaveLength(4);
-    expect(grid.rows.every((row) => row.length === 7)).toBe(true);
-    expect(grid.rows[0][0]).toBe("2026-09-10"); // a Thursday: the anchor, not the Monday before it
-    expect(grid.from).toBe("2026-09-10");
-    expect(grid.to).toBe("2026-10-07");
-    expect(grid.rows[3][6]).toBe("2026-10-07");
+    expect(grid.from).toBe("2026-09-06"); expect(grid.to).toBe("2026-10-03");
+    expect(grid.weekdays).toEqual(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+    for (const row of grid.rows) { expect(row).toHaveLength(7); expect(weekdayOf(row[0])).toBe(0); expect(weekdayOf(row[6])).toBe(6); }
+    expect(grid.rows[0]).toContain("2026-09-10");
   });
-
-  it("has no weekday header, because column three is a different weekday each row", () => {
-    expect(gridFor("rolling", "2026-09-10", "monday").weekdays).toEqual([]);
-  });
-
-  it("ignores firstDayOfWeek", () => {
-    const mon = gridFor("rolling", "2026-09-10", "monday");
-    const sun = gridFor("rolling", "2026-09-10", "sunday");
-    expect(sun.rows).toEqual(mon.rows);
+  it("keeps complete weeks across year and DST boundaries, independent of the Month setting", () => {
+    for (const anchor of ["2026-01-01", "2026-03-08", "2026-11-01", "2026-12-31"]) {
+      const grid = gridFor("rolling", anchor, "monday");
+      expect(grid.rows).toEqual(gridFor("rolling", anchor, "sunday").rows);
+      expect(grid.rows.flat()).toHaveLength(28);
+      expect(grid.rows[0]).toContain(anchor);
+      for (const row of grid.rows) { expect(weekdayOf(row[0])).toBe(0); expect(weekdayOf(row[6])).toBe(6); }
+    }
   });
 });
 

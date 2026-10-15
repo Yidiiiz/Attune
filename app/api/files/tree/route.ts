@@ -12,6 +12,7 @@
 // the data tree does not depend on git and still answers.
 
 import { z } from "zod";
+import { listTasks } from "@/lib/store/tasks";
 import { dataTree, repoTree } from "@/lib/store/browse";
 import { trackedFiles } from "@/lib/history/git";
 import { rowPolicies } from "@/lib/history/write-policy";
@@ -26,6 +27,8 @@ export async function GET(request: Request): Promise<Response> {
     const { all } = parseInput(Query, Object.fromEntries(new URL(request.url).searchParams));
     if (all === "1") return ok({ root: "repo", tree: repoTree(await trackedFiles()) });
     const tree = await dataTree();
-    return ok({ root: "data", tree, policies: rowPolicies(tree) });
+    const tasks = await listTasks();
+    const labels = { tasks: "Tasks", notes: "Notes", collections: "Collections", knowledge: "Knowledge", files: "Uploads", ...Object.fromEntries(tasks.map(task => [task.path, task.title])) };
+    return ok({ root: "data", tree, labels, policies: rowPolicies(tree) });
   });
 }

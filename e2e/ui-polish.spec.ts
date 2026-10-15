@@ -34,7 +34,8 @@ test("Calendar period is centered, adjacent months are muted and current date is
   const colors = await page.locator('[data-date]').evaluateAll((nodes) => nodes.map(node => ({ date:node.getAttribute("data-date")!, bg:getComputedStyle(node).backgroundColor, color:getComputedStyle(node.firstElementChild!.firstElementChild!).color })));
   const current = colors.filter(cell => cell.date.startsWith(date.slice(0,7)));
   const outside = colors.filter(cell => !cell.date.startsWith(date.slice(0,7)));
-  expect(new Set(current.map(cell=>cell.bg)).size).toBe(1);
+  expect(new Set(current.filter(cell=>cell.date >= date).map(cell=>cell.bg)).size).toBe(1);
+  if(current.some(cell=>cell.date < date)) expect(current.find(cell=>cell.date < date)!.bg).not.toBe(current.find(cell=>cell.date === date)!.bg);
   expect(outside.length).toBeGreaterThan(0); expect(outside[0].bg).not.toBe(current[0].bg); expect(outside[0].color).not.toBe(current[0].color);
   for(const theme of ["light","dark"]){
     await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.themeBase=theme;},theme);

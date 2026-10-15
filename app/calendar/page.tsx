@@ -37,7 +37,7 @@ export default async function Page({ searchParams }: Search) {
   return (
     <>
       <CalendarView grid={grid} days={groupDays(tasks, grid.from, grid.to)} today={today} errors={errors} />
-      <ComposerButton categories={settings.categories} viewDate={anchor} />
+      <ComposerButton models={settings.models} categories={settings.categories} viewDate={anchor} />
     </>
   );
 }

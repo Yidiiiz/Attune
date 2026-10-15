@@ -25,6 +25,7 @@ import { mergeDraft, mergeSelection } from "./draft";
 
 export interface TurnInput {
   viewDate?: string;
+  model?: string;
   askingAbout?: { id: string; title: string };
   /** Attachment paths, appended to every draft's `links` when they are added (§9.2). */
   links: string[];
@@ -50,7 +51,7 @@ export interface Turn {
   pick: (index: number, selected: boolean) => void;
 }
 
-export function useComposerTurn({ viewDate, askingAbout, links, onAdded, onAddRefused }: TurnInput): Turn {
+export function useComposerTurn({ model, viewDate, askingAbout, links, onAdded, onAddRefused }: TurnInput): Turn {
   const [result, setResult] = useState<ExtractResult | null>(null);
   const [drafts, setDrafts] = useState<ModelTaskDraft[]>([]);
   const [selected, setSelected] = useState<boolean[]>([]);
@@ -84,6 +85,7 @@ export function useComposerTurn({ viewDate, askingAbout, links, onAdded, onAddRe
       method: "POST",
       body: JSON.stringify({
         prompt: following ? asked : text,
+        ...(model === undefined ? {} : { model }),
         ...(following ? { followUp: text } : {}),
         ...(result?.kind === "tasks" ? { draft: drafts } : {}),
         ...(viewDate === undefined ? {} : { viewDate }),

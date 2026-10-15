@@ -18,11 +18,13 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import Icon from "@/components/ui/Icon";
 import type { TreeNode } from "@/lib/store/files";
 import { readStored, writeStored } from "./remember.ts";
 import styles from "./Browser.module.css";
 
 export interface TreeProps {
+  labels?: Record<string, string>;
   nodes: TreeNode[];
   /** Where this tree's expanded folders are remembered. */
   storageKey: string;
@@ -35,7 +37,7 @@ export interface TreeProps {
   under?: (node: TreeNode) => ReactNode;
 }
 
-export default function Tree({ nodes, storageKey, active, hrefFor, menu, under }: TreeProps) {
+export default function Tree({ nodes, storageKey, active, hrefFor, menu, under, labels }: TreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   useEffect(() => setExpanded(new Set(readStored<string[]>(storageKey, []))), [storageKey]);
 
@@ -52,6 +54,7 @@ export default function Tree({ nodes, storageKey, active, hrefFor, menu, under }
   const draw = (list: TreeNode[], depth: number) => (
     <ul className={styles.treeList} role={depth === 0 ? "tree" : "group"}>
       {list.map((node) => {
+        const label = labels?.[node.path] ?? (labels ? node.name.replace(/\.md$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/-/g, " ") : node.name);
         const open = expanded.has(node.path);
         const opens = node.children !== undefined && (node.type === "dir" || node.children.length > 0);
         const indent = { paddingLeft: `${8 + depth * 14}px` };
@@ -59,11 +62,11 @@ export default function Tree({ nodes, storageKey, active, hrefFor, menu, under }
           <button
             type="button"
             className={styles.treeChevron}
-            aria-label={`${open ? "Collapse" : "Expand"} ${node.name}`}
+            aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
             aria-expanded={open}
             onClick={() => toggle(node.path)}
           >
-            <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+            <Icon name="chevron" size={14} style={{ transform: open ? "rotate(90deg)" : undefined }} />
           </button>
         ) : (
           <span className={styles.treeChevron} aria-hidden="true" />
@@ -75,7 +78,7 @@ export default function Tree({ nodes, storageKey, active, hrefFor, menu, under }
               <div className={styles.treeRow} style={indent} data-folder={node.path}>
                 {chevron}
                 <button type="button" className={styles.treeFolder} onClick={() => toggle(node.path)}>
-                  {node.name}
+                  {label}
                 </button>
                 {menu?.(node)}
               </div>
@@ -86,9 +89,9 @@ export default function Tree({ nodes, storageKey, active, hrefFor, menu, under }
                   className={styles.treeFile}
                   href={hrefFor(node.path)}
                   aria-current={node.path === active ? "page" : undefined}
-                  title={node.path}
+                  title={labels ? label : node.path}
                 >
-                  {node.name}
+                  {label}
                 </Link>
                 {menu?.(node)}
               </div>

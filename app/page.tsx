@@ -52,7 +52,7 @@ export default async function Page({ searchParams }: Search) {
         errors={errors}
         nowMs={now.getTime()}
       />
-      <ComposerButton categories={settings.categories} viewDate={date} />
+      <ComposerButton models={settings.models} categories={settings.categories} viewDate={date} />
     </>
   );
 }

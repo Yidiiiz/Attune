@@ -16,6 +16,10 @@ import type { Page } from "@playwright/test";
 import { SANDBOX } from "./setup";
 
 test.use({ testIdAttribute: "data-ui" });
+// These cases exercise raw paths, frontmatter and repository operations in the explicit technical view.
+test.beforeEach(async ({ request }) => { await request.put("/api/settings", { data: { section: "interface", value: { technicalFiles: true } } }); });
+test.afterEach(async ({ request }) => { await request.put("/api/settings", { data: { section: "interface", value: { technicalFiles: false } } }); });
+
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname.slice(1)), "..");
 const onDisk = (rel: string): string => path.join(SANDBOX, "data", rel);
@@ -498,7 +502,7 @@ test("a task's document view completes it, and the menu is Today's", async ({ pa
   const rel = targets[0];
 
   await open(page, rel);
-  await expect(page.getByTestId("task-status")).toHaveText("todo");
+  await expect(page.getByTestId("task-status")).toHaveText("To do");
   await page.getByTestId("task-complete").click();
 
   await expect(page.getByTestId("task-status")).toHaveText("done");

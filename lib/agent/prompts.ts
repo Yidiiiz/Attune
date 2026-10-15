@@ -32,8 +32,9 @@ by "Friday", a category that matches how they file similar work, an estimate fro
 these take. List every field you filled in this way in "inferred", naming the field. Fields the
 prompt stated outright do not belong in "inferred".
 
-Do not invent a due date, a priority, or an estimate to look thorough. An empty field is a fact
-about the prompt; a guessed one is a claim the user has to check.`;
+Do not invent a due date or priority. Give every task a practical duration estimate;
+when no evidence supports a better estimate use 30 minutes. Mark a suggested estimateMin
+as inferred so the user can adjust it.`;
 
 /** §9.4: what the three answers mean and when each is the honest one. */
 export const EXTRACTION = `${TASKS}

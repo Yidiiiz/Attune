@@ -432,3 +432,10 @@
 }
 
 .stripButton, .back { height: var(--control-height); display: inline-flex; align-items: center; padding: 0 var(--space-2); font-size: var(--control-font-size); }
+
+.simpleTitle { margin: 8px auto 16px; font-size: 24px; font-weight: 600; letter-spacing: -.025em; }
+.simpleDetails { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 0 auto 24px; }
+.simpleDetails div { display: flex; gap: 8px; align-items: baseline; }
+.simpleDetails dt { color: var(--fg-muted); font-size: 12px; }
+.simpleDetails dd { margin: 0; font-size: 13px; }
+.treeChevron svg { display: block; }

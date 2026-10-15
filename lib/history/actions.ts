@@ -83,7 +83,7 @@ export function createTask(draft: TaskDraft): ActionSpec {
       const id = await store.tasks.newTaskId();
       const rel = await store.tasks.pathForNewTask(draft.title, draft.due ?? null, timezone);
 
-      const parsed = store.tasks.TaskSchema.parse({ ...fields, id, createdAt: now, updatedAt: now });
+      const parsed = store.tasks.TaskSchema.parse({ ...fields, estimateMin: fields.estimateMin ?? 30, id, createdAt: now, updatedAt: now });
       await store.tasks.writeTask({ ...parsed, path: rel, body: body ?? "" } as Task);
 
       return {

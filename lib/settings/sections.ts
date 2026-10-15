@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { modelEntry } from "../agent/models.ts";
 import { SettingsSchema } from "../store/settings.ts";
-export const SECTION_KEYS = ["identity", "timezone", "weather", "theme", "day", "list", "deadlines", "categories", "firstDayOfWeek", "models", "sync"] as const;
+export const SECTION_KEYS = ["interface", "assistant", "identity", "timezone", "weather", "theme", "day", "list", "deadlines", "categories", "firstDayOfWeek", "models", "sync"] as const;
 export const SectionKey = z.enum(SECTION_KEYS);
 export type Section = z.infer<typeof SectionKey>;
 const bounded = (max: number) => z.number().int().min(0).max(max);

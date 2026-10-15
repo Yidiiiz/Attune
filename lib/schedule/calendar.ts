@@ -27,12 +27,12 @@ export type FirstDayOfWeek = "monday" | "sunday";
 
 export interface CalendarGrid {
   view: CalendarView;
-  /** The date the view sits on: the first cell in Rolling, a day inside the unit otherwise. */
+  /** The date the view sits on: the a day inside the first displayed week or month. */
   anchor: string;
   /** First and last date in `rows`, inclusive — the range `GET /api/calendar` is asked for. */
   from: string;
   to: string;
-  /** Column labels, `Mon`-first or `Sun`-first. Empty for Rolling, which has no fixed weekdays. */
+  /** Column labels, `Mon`-first or `Sun`-first. Rolling always uses Sun-first. */
   weekdays: string[];
   /** Rows of exactly seven dates. */
   rows: string[][];
@@ -87,18 +87,11 @@ function monthBounds(date: string): { first: string; days: number } {
   return { first, days: new Date(Date.UTC(year, month, 0, 12)).getUTCDate() };
 }
 
-/**
- * The dates a view shows, as rows of seven.
- *
- * Rolling starts *at* the anchor rather than at a week boundary — §10.3 asks for "today plus the
- * next 27 days", which is deliberately not week-aligned, so it carries no weekday header: column
- * three is a different weekday next week. Month and Week align to `firstDayOfWeek` and do have
- * one. Month pads with adjacent-month days to whole weeks: four rows for a 28-day February that
- * starts in the first column, six for a 31-day month that starts late in the week.
- */
+/** Whole weeks; Rolling starts with the anchor week, Sunday first, for four rows. */
 export function gridFor(view: CalendarView, anchor: string, firstDay: FirstDayOfWeek): CalendarGrid {
   if (view === "rolling") {
-    return { view, anchor, from: anchor, to: addDays(anchor, 27), weekdays: [], rows: rowsFrom(anchor, 4) };
+    const start = startOfWeek(anchor, "sunday");
+    return { view, anchor, from: start, to: addDays(start, 27), weekdays: weekdayLabels("sunday"), rows: rowsFrom(start, 4) };
   }
 
   if (view === "week") {

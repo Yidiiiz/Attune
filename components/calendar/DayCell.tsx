@@ -61,6 +61,7 @@ export default function DayCell(props: DayCellProps) {
 
   const classes = [
     styles.cell,
+    past ? styles.pastCell : "",
     isToday ? styles.todayCell : "",
     outside ? styles.outsideCell : "",
     active !== null ? styles.dropTarget : "",

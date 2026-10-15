@@ -44,6 +44,7 @@ import { useDocumentDraft } from "./useDocumentDraft.ts";
 import styles from "./Browser.module.css";
 
 export interface DocumentViewProps {
+  technical?: boolean;
   path: string;
   where: Where;
   /** The conversation this was opened from, which "← Back to chat" returns to. */
@@ -53,7 +54,7 @@ export interface DocumentViewProps {
 const size = (bytes: number): string =>
   bytes < 1024 ? `${bytes} bytes` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
-export default function DocumentView({ path, where, conversation }: DocumentViewProps) {
+export default function DocumentView({ path, where, conversation, technical = false }: DocumentViewProps) {
   const { doc, error, reload } = useDocument(path, where);
   const draft = useDocumentDraft(path, doc, reload);
   const body = useRef<HTMLDivElement>(null);
@@ -87,6 +88,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
   const readOnly = doc?.policy.save ?? null;
   const editable = doc !== null && readOnly === null && (doc.body !== undefined || doc.text !== undefined);
   const name = path.split("/").pop() ?? path;
+  const friendlyName = String(doc?.fields?.title ?? name.replace(/\.md$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/-/g, " "));
 
   /** Leaving is the one way a draft is lost, so it is the one thing that asks. */
   const mayLose = (): boolean => !draft.dirty || window.confirm(`Discard the unsaved changes to ${name}?`);
@@ -113,7 +115,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
         </Link>
         <span className={styles.stripPath} data-ui="document-path" title={path}>
           {where === "repo" ? <span className={styles.stripWhere}>Whole repo · </span> : null}
-          {path}
+          {technical ? path : friendlyName}
           {draft.dirty ? (
             <span className={styles.unsaved} data-ui="unsaved">
               {" "}
@@ -179,12 +181,25 @@ export default function DocumentView({ path, where, conversation }: DocumentView
             {doc.policy.kind === "task" && typeof doc.fields?.id === "string" ? (
               <TaskDocument id={doc.fields.id} blocked={draftOpen} onChanged={() => void reload()} />
             ) : null}
-            <FrontmatterTable
+            {technical ? <FrontmatterTable
               fields={doc.fields ?? {}}
               values={draft.draft?.fields ?? undefined}
               readOnly={readOnly ?? (doc.policy.fields ? null : "this file's frontmatter is not editable here")}
               onChange={draft.setField}
-            />
+            /> : <>
+              <h1 className={styles.simpleTitle}>{friendlyName}</h1>
+              <dl className={styles.simpleDetails}>
+                {["status", "due", "scheduled", "estimateMin", "priority", "category"].filter(key => doc.fields?.[key] != null).map(key => {
+                  const value = doc.fields?.[key];
+                  const label = { status: "Status", due: "Due", scheduled: "Scheduled", estimateMin: "Estimate", priority: "Priority", category: "Category" }[key];
+                  const shown = key === "estimateMin" ? `${value} min` : key === "priority"
+                    ? { 1: "Critical", 2: "High", 3: "Normal", 4: "Someday" }[Number(value)]
+                    : key === "status" ? { todo: "To do", doing: "In progress", done: "Done", archived: "Archived" }[String(value)]
+                    : String(value).replace("T", " · ");
+                  return <div key={key}><dt>{label}</dt><dd>{shown}</dd></div>;
+                })}
+              </dl>
+            </>}
             <div ref={body}>
               {draft.editing ? (
                 <DocumentEditor
@@ -245,7 +260,7 @@ export default function DocumentView({ path, where, conversation }: DocumentView
       </div>
 
       {/* §10.2: the composer stays docked in document view, and what it says is about this file. */}
-      <DocumentComposer path={path} conversation={conversation} error={asking} onError={setAsking} />
+      <DocumentComposer label={technical ? undefined : friendlyName} path={path} conversation={conversation} error={asking} onError={setAsking} />
     </section>
   );
 }

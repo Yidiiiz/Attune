@@ -71,7 +71,7 @@ export default async function Page({ searchParams }: Search) {
             />
           ),
           knowledge: <KnowledgePanel />,
-          files: <FilesPanel />,
+          files: <FilesPanel technical={settings.interface.technicalFiles} />,
         }}
       />
 
@@ -83,6 +83,7 @@ export default async function Page({ searchParams }: Search) {
             key={`${where}:${opened}`}
             path={opened}
             where={where}
+            technical={settings.interface.technicalFiles}
             conversation={typeof asked === "string" ? asked : null}
           />
         ) : open === null ? (

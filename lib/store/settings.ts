@@ -34,6 +34,8 @@ export const SettingsSchema = z.looseObject({
     units: z.enum(["fahrenheit", "celsius"]).default("fahrenheit"),
   }).default({ query: "", units: "fahrenheit" }),
   theme: z.string().default("light"),
+  interface: z.looseObject({ technicalFiles: z.boolean().default(false) }).default({ technicalFiles: false }),
+  assistant: z.looseObject({ transport: z.enum(["terminal", "api"]).default("terminal") }).default({ transport: "terminal" }),
   day: z.looseObject({
     startMin: z.number().int().default(600),
     endMin: z.number().int().default(1440), // may exceed 1440: 1560 is 2:00 the next day

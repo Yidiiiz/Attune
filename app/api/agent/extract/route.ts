@@ -11,6 +11,8 @@
 // is 502 and belongs inline in the sheet, beside the text that is still sitting in the box.
 
 import { z } from "zod";
+import { modelEntry } from "@/lib/agent/models";
+import { providerFor } from "@/lib/agent/registry";
 import { runExtract } from "@/lib/agent/chat";
 import { assembleContext } from "@/lib/agent/context";
 import { ModelTaskDraft } from "@/lib/agent/tools";
@@ -21,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 const Input = z.object({
   prompt: z.string().min(1),
+  model: z.string().refine(value => modelEntry(value) !== null, "Unknown model").optional(),
   /** §9.5 steps 2 and 4: the answer to a question, or an instruction that revises the preview. */
   followUp: z.string().optional(),
   /** The cards on screen, inline edits included, so a revision starts from what the user sees. */
@@ -34,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
   return handle(async () => {
     const input = parseInput(Input, await body(request));
     const settings = await readSettings();
-    const { model, effort } = settings.models.extract;
+    const model = input.model ?? settings.models.extract.model, effort = settings.models.extract.effort;
 
     const { system } = await assembleContext({
       mode: "tasks",
@@ -43,6 +46,7 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     const result = await runExtract({
+      provider: providerFor(model, settings.assistant.transport),
       prompt: input.prompt,
       ...(input.followUp === undefined ? {} : { followUp: input.followUp }),
       ...(input.draft === undefined ? {} : { draft: input.draft }),

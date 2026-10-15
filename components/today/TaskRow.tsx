@@ -36,7 +36,7 @@ export default function TaskRow({ task, viewDate, actions, muted, overdue }: Tas
   const done = task.status === "done";
   const progress = subtaskProgress(task.body);
   const due = relativeDue(viewDate, task.due);
-  const estimate = durationLabel(task.estimateMin);
+  const estimate = durationLabel(task.estimateMin ?? 30);
 
   if (actions.editingId === task.id) {
     return (
@@ -79,7 +79,7 @@ export default function TaskRow({ task, viewDate, actions, muted, overdue }: Tas
               {due}
             </span>
           ) : null}
-          {estimate ? <span className={styles.chip} title="Estimate">{estimate}</span> : null}
+          {estimate ? <span className={styles.chip} title={task.estimateMin === null ? "Default planning estimate — edit to adjust" : "Estimate"}>{estimate}</span> : null}
           {showsPriority(task.priority) ? (
             <span
               className={styles.chip}

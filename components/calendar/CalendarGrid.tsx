@@ -2,9 +2,6 @@
 // one, and the rows of cells. Layout only: it holds no state and makes no writes, so everything
 // interactive is one level up in `CalendarView` and one level down in `DayCell`.
 //
-// Rolling has no weekday header on purpose: it starts at today rather than at a week boundary, so
-// column three is a different weekday in every row and a header would be wrong four times over.
-
 "use client";
 
 import type { Task } from "@/lib/store/tasks";
@@ -30,7 +27,7 @@ const EMPTY = { due: [], completed: [] };
 
 export default function CalendarGrid({ grid, days, ...rest }: CalendarGridProps) {
   /** Month pads to whole weeks with the days either side; those are drawn faintly. */
-  const month = grid.view === "month" ? grid.anchor.slice(0, 7) : null;
+  const month = grid.view !== "week" ? grid.anchor.slice(0, 7) : null;
 
   return (
     <div className={styles.grid}>

@@ -16,6 +16,10 @@ import { newConversation } from "./helpers";
 import { SANDBOX } from "./setup";
 
 test.use({ testIdAttribute: "data-ui" });
+// These cases exercise raw paths, frontmatter and repository operations in the explicit technical view.
+test.beforeEach(async ({ request }) => { await request.put("/api/settings", { data: { section: "interface", value: { technicalFiles: true } } }); });
+test.afterEach(async ({ request }) => { await request.put("/api/settings", { data: { section: "interface", value: { technicalFiles: false } } }); });
+
 
 const onDisk = (rel: string): string => path.join(SANDBOX, "data", rel);
 const read = (rel: string): string => readFileSync(onDisk(rel), "utf8");

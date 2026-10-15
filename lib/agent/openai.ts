@@ -132,13 +132,17 @@ export async function parse<T>(req: ParseRequest<T>): Promise<T> {
     const content = result.output.filter(item => item.type === "message").flatMap(item => item.content as Item[]);
     if (content.some(part => part.type === "refusal")) throw new AgentError("provider", "OpenAI declined this request.");
     const answer = JSON.parse(content.filter(part => part.type === "output_text").map(part => part.text).join(""));
-    // Omitted optional theme overrides were represented as null in the strict wire schema.
-    const clean = (v: unknown, schema: Item): unknown => {
-      if (Array.isArray(v)) return v.map(child => clean(child, (schema.items ?? {}) as Item));
-      if (!v || typeof v !== "object" || !schema.properties) return v;
-      const required = new Set(schema.required as string[] ?? []), properties = schema.properties as Record<string, Item>;
-      return Object.fromEntries(Object.entries(v).filter(([key, value]) => value !== null || required.has(key)).map(([key, value]) => [key, clean(value, properties[key] ?? {})]));
-    };
-    return req.schema.parse(clean(answer, z.toJSONSchema(req.schema) as Item));
+    return parseStructured(req.schema, answer);
   } catch (error) { throw failure(error, req.signal); }
+}
+
+/** Restore omitted optional fields represented as null by the strict provider schema. */
+export function parseStructured<T>(schema: z.ZodType<T>, answer: unknown): T {
+  const clean = (v: unknown, schema: Item): unknown => {
+    if (Array.isArray(v)) return v.map(child => clean(child, (schema.items ?? {}) as Item));
+    if (!v || typeof v !== "object" || !schema.properties) return v;
+    const required = new Set(schema.required as string[] ?? []), properties = schema.properties as Record<string, Item>;
+    return Object.fromEntries(Object.entries(v).filter(([key, value]) => value !== null || required.has(key)).map(([key, value]) => [key, clean(value, properties[key] ?? {})]));
+  };
+  return schema.parse(clean(answer, z.toJSONSchema(schema) as Item));
 }

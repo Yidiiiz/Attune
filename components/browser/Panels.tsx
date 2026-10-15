@@ -40,6 +40,7 @@ interface Loaded {
   errors: string[];
   /** What each row may do, by path — the data tree only (Decision 105). */
   policies: Record<string, RowPolicy>;
+  labels: Record<string, string>;
 }
 
 /** Read `url` once per change of it or of `revision`; a read that finishes after a newer one is dropped. */
@@ -56,6 +57,7 @@ function useTree(url: string, revision = 0): { loaded: Loaded | null; error: str
           loaded: {
             tree: answer.data.tree as TreeNode[],
             errors: (answer.data.errors as string[] | undefined) ?? [],
+            labels: (answer.data.labels as Record<string, string> | undefined) ?? {},
             policies: (answer.data.policies as Record<string, RowPolicy> | undefined) ?? {},
           },
           error: null,
@@ -118,21 +120,21 @@ export function KnowledgePanel() {
   );
 }
 
-export function FilesPanel() {
+export function FilesPanel({ technical = false }: { technical?: boolean }) {
   const open = useOpen();
   const [whole, setWhole] = useState(false);
   useEffect(() => setWhole(readStored<boolean>("browser.wholeRepo", false)), []);
-  const where: Where = whole ? "repo" : "data";
+  const where: Where = technical && whole ? "repo" : "data";
   const [revision, setRevision] = useState(0);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const ops = useFileOps(() => setRevision((n) => n + 1));
-  const { loaded, error } = useTree(whole ? "/api/files/tree?all=1" : "/api/files/tree", revision);
+  const { loaded, error } = useTree(where === "repo" ? "/api/files/tree?all=1" : "/api/files/tree", revision);
 
   return (
     <div className={chat.panel} data-ui="files-panel">
       <div className={chat.panelHead}>
         <h2 className={styles.panelTitle}>Files</h2>
-        <label className={styles.wholeRepo}>
+        {technical ? <label className={styles.wholeRepo}>
           <input
             type="checkbox"
             checked={whole}
@@ -143,11 +145,12 @@ export function FilesPanel() {
             }}
           />
           Whole repo
-        </label>
+        </label> : null}
       </div>
       <TreeBody key={where} name={where === "repo" ? "repo" : "files"} loaded={loaded} error={error}>
         <Tree
-          nodes={loaded?.tree ?? []}
+          nodes={technical ? loaded?.tree ?? [] : (loaded?.tree ?? []).filter(node => ["tasks","notes","collections","knowledge","files"].includes(node.name))}
+          labels={technical ? undefined : loaded?.labels}
           storageKey={`browser.expanded.${where === "repo" ? "repo" : "files"}`}
           active={open.where === where ? open.path : null}
           hrefFor={(path) => documentHref(path, where, open.conversation)}

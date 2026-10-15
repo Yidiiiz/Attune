@@ -41,7 +41,7 @@ export interface AskTurn {
   applied: AutoApplied[];
   /** Forget one after its Undo landed; the log already says it is undone. */
   dropApplied: (batch: string) => void;
-  ask: (text: string, taskIds: string[]) => Promise<string | null>;
+  ask: (text: string, taskIds: string[], model?: string) => Promise<string | null>;
   stop: () => void;
   reset: () => void;
 }
@@ -69,14 +69,14 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
   }, []);
 
   const ask = useCallback(
-    async (text: string, taskIds: string[]): Promise<string | null> => {
+    async (text: string, taskIds: string[], model?: string): Promise<string | null> => {
       const key = taskIds.join(",");
       let id = conversationId ?? (key.length > 0 ? started.get(key) ?? null : null);
 
       if (id === null) {
         const created = await post("/api/chats", {
           method: "POST",
-          body: JSON.stringify({ context: { file: null, taskIds } }),
+          body: JSON.stringify({ context: { file: null, taskIds }, ...(model === undefined ? {} : { model }) }),
         });
         if (created.error !== null) {
           reportFailure("The conversation was not started", created.error);
@@ -84,6 +84,10 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
         }
         id = created.data.id as string;
         if (key.length > 0) started.set(key, id);
+      }
+      if (model !== undefined) {
+        const changed = await post(`/api/chats/${id}`, { method: "PATCH", body: JSON.stringify({ model }) });
+        if (changed.error !== null) return changed.error;
       }
       setConversationId(id);
       setReply("");

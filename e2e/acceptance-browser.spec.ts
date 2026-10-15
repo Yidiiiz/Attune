@@ -101,7 +101,7 @@ test("Files note and folder menus stay inside the viewport at minimum panel widt
     const resize = page.getByRole("separator", { name: "Resize the panel" }); const r = (await resize.boundingBox())!;
     await page.mouse.move(r.x + 1, r.y + 10); await page.mouse.down(); await page.mouse.move(150, r.y + 10, { steps: 6 }); await page.mouse.up();
     expect((await page.getByTestId("panel").boundingBox())!.width).toBe(240);
-    for (const folder of ["knowledge", "notes"]) { const folderRow = page.locator(`[data-folder="${folder === "knowledge" ? folder : "knowledge/notes"}"]`); await expect(folderRow).toBeVisible(); const expand = folderRow.getByRole("button", { name: `Expand ${folder}`, exact: true }); if (await expand.count()) await expand.click(); }
+    for (const folder of ["knowledge", "notes"]) { const folderRow = page.locator(`[data-folder="${folder === "knowledge" ? folder : "knowledge/notes"}"]`); await expect(folderRow).toBeVisible(); const expand = folderRow.getByRole("button", { name: new RegExp(`^Expand ${folder}$`, "i") }); if (await expand.count()) await expand.click(); }
     for (const row of [page.locator(`[data-file="${NOTE}"]`), page.locator('[data-folder="knowledge/notes"]')]) {
       await row.getByTestId("file-menu-button").click(); const menu = page.getByTestId("file-menu"); await expect(menu).toBeVisible();
       const rect = (await menu.boundingBox())!; expect(rect.x).toBeGreaterThanOrEqual(0); expect(rect.y).toBeGreaterThanOrEqual(0); expect(rect.x + rect.width).toBeLessThanOrEqual(page.viewportSize()!.width); expect(rect.y + rect.height).toBeLessThanOrEqual(page.viewportSize()!.height);

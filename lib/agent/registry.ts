@@ -12,6 +12,7 @@
 // because silently answering with a different model than the settings asked for is worse than not
 // answering: the reply would be attributed to a model that never saw the prompt.
 
+import * as terminal from "./terminal.ts";
 import * as openai from "./openai.ts";
 import * as anthropic from "./anthropic.ts";
 import * as scripted from "./scripted.ts";
@@ -116,12 +117,12 @@ export const PROVIDERS: Record<ModelEntry["provider"], Provider> = { anthropic, 
  * The model id is still validated first: a scripted run must fail on an unknown model exactly
  * where a real one would, or a check would pass against a model the app cannot actually use.
  */
-export function providerFor(model: string): Provider {
+export function providerFor(model: string, transport: "terminal" | "api" = "api"): Provider {
   const entry = modelEntry(model);
   if (entry === null) {
     throw new AgentError("unsupported", `${model} is not a model this app knows about`);
   }
-  return scripted.isScripted() ? scripted : PROVIDERS[entry.provider];
+  return scripted.isScripted() ? scripted : transport === "terminal" ? terminal : PROVIDERS[entry.provider];
 }
 
 /** The effort to send, or null when this model does not take one (§11.4). */

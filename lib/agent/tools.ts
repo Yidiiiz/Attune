@@ -31,6 +31,12 @@ export const ModelTaskDraft = TaskDraftSchema.required().extend({
 
 export type ModelTaskDraft = z.infer<typeof ModelTaskDraft>;
 
+/** An omitted duration gets a visible, adjustable planning estimate in every proposal surface. */
+export function withEstimate(task: ModelTaskDraft): ModelTaskDraft {
+  return task.estimateMin === null ? { ...task, estimateMin: 30, inferred: [...new Set([...task.inferred, "estimateMin"])] } : task;
+}
+
+
 export const KnowledgeWriteSchema = z.object({
   path: z.string(),
   op: z.enum(["create", "append", "replace"]),
@@ -194,7 +200,7 @@ async function run(name: string, input: unknown): Promise<ToolOutcome> {
     // The three collectors answer "recorded" and nothing else (§13.2). A summary here would be the
     // model reading its own proposal back as though something had happened to it.
     case "propose_tasks":
-      return { result: "recorded", proposal: { kind: "tasks", ...ProposeTasks.parse(input) } };
+      return { result: "recorded", proposal: { kind: "tasks", items: ProposeTasks.parse(input).items.map(withEstimate) } };
     case "propose_knowledge_write": {
       // Filtered here rather than on the card, so every surface that shows a knowledge proposal shows
       // the write that will actually be applied — never the one the model sent, if they differ.

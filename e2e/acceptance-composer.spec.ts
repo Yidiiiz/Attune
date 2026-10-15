@@ -17,9 +17,9 @@ test("floating button geometry, sheet closing, draft reload and mode memory", as
   await open(page);
   const button = page.locator('[data-composer="button"]');
   const box = await button.evaluate(el => ({ x: (el as HTMLElement).offsetLeft, y: (el as HTMLElement).offsetTop, width: (el as HTMLElement).offsetWidth, height: (el as HTMLElement).offsetHeight }));
-  expect(box.width).toBe(56); expect(box.height).toBe(56);
-  expect(page.viewportSize()!.width - box.x - box.width).toBe(24);
-  expect(page.viewportSize()!.height - box.y - box.height).toBe(24);
+  expect(box.width).toBe(32); expect(box.height).toBe(32);
+  expect(page.viewportSize()!.width - box.x - box.width).toBeGreaterThanOrEqual(16);
+  expect(page.viewportSize()!.height - box.y - box.height).toBe(12);
   expect(await button.evaluate(el => getComputedStyle(el).zIndex)).toBe("30");
   await expect(button).toHaveAttribute("aria-expanded", "true");
   await input(page).fill("Keep this local draft");

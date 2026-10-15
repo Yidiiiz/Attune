@@ -29,6 +29,8 @@ import { useComposerTurn } from "./useComposerTurn";
 import VoiceButton from "./VoiceButton";
 import BuildPanel from "./BuildPanel";
 import { useBuild } from "./useBuild";
+import { MODELS } from "@/lib/agent/models";
+import type { Settings } from "@/lib/store/settings";
 import styles from "./Composer.module.css";
 
 export interface ComposerSheetProps {
@@ -39,6 +41,7 @@ export interface ComposerSheetProps {
   onClose: () => void;
   /** From settings, for the category select on each card. */
   categories: string[];
+  models: Settings["models"];
   /** The day the composer was opened from, which sets the view block of the context (§13.1). */
   viewDate?: string;
   /** Set when the sheet was opened by "Ask about this" on a row (§9.6). */
@@ -49,12 +52,14 @@ const MAX_ROWS = 10;
 const rowsFor = (text: string): number => Math.min(MAX_ROWS, Math.max(1, text.split("\n").length));
 
 export default function ComposerSheet(props: ComposerSheetProps) {
-  const { open, mode, onMode, onClose, categories, viewDate, askingAbout, toggleRef } = props;
+  const { open, mode, onMode, onClose, categories, viewDate, askingAbout, toggleRef, models } = props;
   const router = useRouter();
   const sheet = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const attach = useRef<(files: File[]) => void>(() => {});
 
+  const [chosenModel, setChosenModel] = useState(models.extract.model);
+  useEffect(() => setChosenModel(mode === "build" ? models.build.model : mode === "ask" ? models.default.model : models.extract.model), [mode, models]);
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<Attachment[]>([]);
   const build = useBuild();
@@ -89,6 +94,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
   });
 
   const turn = useComposerTurn({
+    model: chosenModel,
     ...(viewDate === undefined ? {} : { viewDate }),
     ...(askingAbout === undefined ? {} : { askingAbout }),
     links: files.map((file) => file.path),
@@ -158,7 +164,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     // cleared only once the turn has landed, like every other send here.
     if (mode === "ask") {
       turn.setError(null);
-      const problem = await askTurn.ask(text, askingAbout === undefined ? [] : [askingAbout.id]);
+      const problem = await askTurn.ask(text, askingAbout === undefined ? [] : [askingAbout.id], chosenModel);
       if (problem === null) setPrompt("");
       else turn.setError(problem);
       return;
@@ -187,6 +193,9 @@ export default function ComposerSheet(props: ComposerSheetProps) {
       <div className={styles.inner}>
         <div className={styles.top}>
           <ModeSelector mode={mode} onChange={onMode} disabled={busy || build.busy} />
+          <select className={styles.modelSelect} aria-label="Composer model" value={chosenModel} disabled={busy || askTurn.streaming || build.busy || mode === "build"} onChange={event => setChosenModel(event.target.value)}>
+            {MODELS.filter(model => mode !== "build" || model.provider === "anthropic").map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+          </select>
           {askingAbout === undefined ? null : (
             <span className={styles.note} data-composer="context">
               about &lsquo;{askingAbout.title}&rsquo;

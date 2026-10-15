@@ -384,3 +384,11 @@
 }
 
 .todayLink { justify-self: end; }
+
+.pastCell { background: color-mix(in srgb, var(--bg) 55%, var(--bg-sunken)); }
+.outsideCell { background: var(--bg-sunken); }
+/* Clip highlights and cell borders together, including a selected first or last cell. */
+.row:last-child > .cell:first-child { border-bottom-left-radius: calc(var(--radius-md) - 1px); }
+.row:last-child > .cell:last-child { border-bottom-right-radius: calc(var(--radius-md) - 1px); }
+.grid > .row:nth-child(2) > .cell:first-child { border-top-left-radius: calc(var(--radius-md) - 1px); }
+.grid > .row:nth-child(2) > .cell:last-child { border-top-right-radius: calc(var(--radius-md) - 1px); }

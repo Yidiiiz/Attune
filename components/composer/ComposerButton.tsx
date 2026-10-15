@@ -21,6 +21,7 @@ import Icon from "@/components/ui/Icon";
 import ComposerSheet from "./ComposerSheet";
 import { isMode, MODE_KEY } from "./draft";
 import type { Mode } from "./draft";
+import type { Settings } from "@/lib/store/settings";
 import styles from "./Composer.module.css";
 
 export interface OpenRequest {
@@ -40,11 +41,12 @@ export function openComposer(request: OpenRequest = {}): void {
 
 export interface ComposerButtonProps {
   categories: string[];
+  models: Settings["models"];
   /** The day this page is showing, so the context carries the right view block (§13.1). */
   viewDate?: string;
 }
 
-export default function ComposerButton({ categories, viewDate }: ComposerButtonProps) {
+export default function ComposerButton({ categories, viewDate, models }: ComposerButtonProps) {
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>("tasks");
@@ -97,6 +99,7 @@ export default function ComposerButton({ categories, viewDate }: ComposerButtonP
         onMode={chooseMode}
         onClose={close}
         categories={categories}
+        models={models}
         {...(viewDate === undefined ? {} : { viewDate })}
         {...(askingAbout === undefined ? {} : { askingAbout })}
       />

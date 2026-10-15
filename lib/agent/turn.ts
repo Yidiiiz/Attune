@@ -221,6 +221,7 @@ async function* turn(input: ChatTurnInput): AsyncIterable<TurnEvent> {
   try {
     for await (const event of streamModelTurn({
       mode: input.mode,
+      transport: (await readSettings()).assistant.transport,
       model: input.model ?? started.conversation.model,
       ...(input.effort === undefined ? {} : { effort: input.effort }),
       system,

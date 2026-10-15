@@ -10,6 +10,8 @@
     "units": "fahrenheit"
   },
   "theme": "light",
+  "interface": { "technicalFiles": false },
+  "assistant": { "transport": "terminal" },
   "day": {
     "startMin": 600,
     "endMin": 1440,

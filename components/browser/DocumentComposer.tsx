@@ -25,6 +25,7 @@ import { stashHandover } from "./handover.ts";
 
 export interface DocumentComposerProps {
   /** The open document, which becomes the conversation's `context.file`. */
+  label?: string;
   path: string;
   /** The conversation this document was opened from, or null to start one about the file. */
   conversation: string | null;
@@ -32,7 +33,7 @@ export interface DocumentComposerProps {
   onError: (message: string | null) => void;
 }
 
-export default function DocumentComposer({ path, conversation, error, onError }: DocumentComposerProps) {
+export default function DocumentComposer({ path, conversation, error, onError, label }: DocumentComposerProps) {
   const router = useRouter();
 
   /** The conversation to send in, made to carry this file. Returns its id, or a message. */
@@ -84,7 +85,7 @@ export default function DocumentComposer({ path, conversation, error, onError }:
       error={error}
       onDismissError={() => onError(null)}
       onError={onError}
-      placeholder={`Ask about ${path.split("/").pop() ?? path}`}
+      placeholder={`Ask about ${label ?? path.split("/").pop() ?? path}`}
     />
   );
 }

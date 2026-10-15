@@ -98,7 +98,7 @@ export default function TaskDocument({ id, blocked, onChanged }: TaskDocumentPro
         {done ? "Completed" : "Complete"}
       </button>
       <span className={styles.taskStatus} data-ui="task-status">
-        {task.status}
+        {task.status === "todo" ? "To do" : task.status === "doing" ? "In progress" : task.status}
       </span>
       <TaskMenu task={task} actions={actions} busy={busy} />
       {blocked === null ? null : (

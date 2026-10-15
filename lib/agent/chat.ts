@@ -22,7 +22,7 @@
 
 import { z } from "zod";
 import { AgentError, effortFor, providerFor } from "./registry.ts";
-import { executeTool, ModelTaskDraft, toolsFor } from "./tools.ts";
+import { executeTool, ModelTaskDraft, toolsFor, withEstimate } from "./tools.ts";
 import type { ContentPart, Effort, Provider, ProviderMessage } from "./registry.ts";
 import type { ContextBlock } from "./context.ts";
 import type { Proposal, ToolOutcome } from "./tools.ts";
@@ -48,6 +48,7 @@ export type TurnEvent =
 
 export interface TurnInput {
   mode: "ask" | "tasks";
+  transport?: "terminal" | "api";
   model: string;
   effort?: Effort;
   /** Exactly what `assembleContext` returned. */
@@ -60,7 +61,7 @@ export interface TurnInput {
 }
 
 export async function* streamModelTurn(input: TurnInput): AsyncIterable<TurnEvent> {
-  const provider = input.provider ?? providerFor(input.model);
+  const provider = input.provider ?? providerFor(input.model, input.transport);
   const execute = input.execute ?? executeTool;
   const tools = toolsFor(input.mode);
   const messages = [...input.messages];
@@ -183,7 +184,7 @@ function narrow(answer: z.infer<typeof ExtractSchema>): ExtractResult {
     };
   }
 
-  return { kind: "tasks", items: answer.tasks, ...(note === undefined ? {} : { note }) };
+  return { kind: "tasks", items: answer.tasks.map(withEstimate), ...(note === undefined ? {} : { note }) };
 }
 
 export async function runExtract(input: ExtractInput): Promise<ExtractResult> {

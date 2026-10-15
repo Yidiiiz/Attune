@@ -15,6 +15,7 @@
 
 import { activePath, buildTree } from "../chat/tree.ts";
 import { readConversation } from "../store/chats.ts";
+import { readSettings } from "../store/settings.ts";
 import { exists } from "../store/files.ts";
 import { StoreError } from "../store/paths.ts";
 import { estimateTokens } from "./context.ts";
@@ -37,7 +38,7 @@ export async function distillConversation(
 
   const model = conversation.model;
   let text = "";
-  for await (const event of providerFor(model).streamChat(
+  for await (const event of providerFor(model, (await readSettings()).assistant.transport).streamChat(
     {
       model,
       effort: effortFor(model, opts.effort),

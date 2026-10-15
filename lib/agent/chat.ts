@@ -85,6 +85,8 @@ export async function* streamModelTurn(input: TurnInput): AsyncIterable<TurnEven
         if (event.type === "text") {
           said.push({ type: "text", text: event.text });
           yield { type: "delta", text: event.text };
+        } else if (event.type === "reasoning") {
+          said.push(event);
         } else if (event.type === "tool_use") {
           calls.push({ id: event.id, name: event.name, input: event.input });
           said.push({ type: "tool_use", id: event.id, name: event.name, input: event.input });

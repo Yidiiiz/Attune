@@ -6,7 +6,7 @@ export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export interface ModelEntry {
   id: string;
   label: string;
-  provider: "anthropic";
+  provider: "anthropic" | "openai";
   images: boolean;
   pdf: boolean;
   /** Whether `output_config.effort` may be sent. Sent only when this is true (§11.4). */
@@ -14,6 +14,8 @@ export interface ModelEntry {
 }
 
 export const MODELS: ModelEntry[] = [
+  { id: "gpt-6.1-sol", label: "GPT-6.1 Sol", provider: "openai", images: true, pdf: true, effort: true },
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5", provider: "anthropic", images: true, pdf: true, effort: true },
   { id: "claude-opus-5", label: "Claude Opus 5", provider: "anthropic", images: true, pdf: true, effort: true },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5", provider: "anthropic", images: true, pdf: true, effort: true },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "anthropic", images: true, pdf: true, effort: false },

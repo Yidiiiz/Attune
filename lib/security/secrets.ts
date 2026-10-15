@@ -18,6 +18,7 @@ export interface SecretPattern {
 /** §11.5. Deliberately blunt: shape-based, no entropy scoring, no allow-list of "test" keys. */
 export const SECRET_PATTERNS: SecretPattern[] = [
   { name: "anthropic key", re: new RegExp(ANT + "[A-Za-z0-9_-]{20,}") },
+  { name: "openai project key", re: new RegExp("sk" + "-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}") },
   { name: "generic sk- key", re: /sk-[A-Za-z0-9]{32,}/ },
   { name: "aws access key id", re: /AKIA[0-9A-Z]{16}/ },
   { name: "github token", re: /ghp_[A-Za-z0-9]{36}/ },

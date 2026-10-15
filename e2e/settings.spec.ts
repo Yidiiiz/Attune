@@ -102,7 +102,7 @@ test("History opens without undoing, supports Undo and Redo, and leaves editor C
 
 test("key display stays masked and the history records the name only", async ({ page }) => {
   await page.goto("/settings");
-  const keys = page.getByRole("region", { name: "API keys", exact: true });
+  const keys = page.getByRole("region", { name: "API keys", exact: true }).locator('[data-key="ANTHROPIC_API_KEY"]');
   await keys.getByRole("button", { name: "Set", exact: true }).click();
   const value = "browser-test-" + "q".repeat(32);
   await keys.locator("input[type='password']").fill(value);

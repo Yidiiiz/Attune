@@ -48,13 +48,13 @@ export const SettingsSchema = z.looseObject({
   categories: z.array(z.string()).default(["school", "personal"]),
   firstDayOfWeek: z.enum(["monday", "sunday"]).default("monday"),
   models: z.looseObject({
-    default: ModelChoice.default({ model: "claude-opus-5", effort: "high" }),
-    extract: ModelChoice.default({ model: "claude-opus-5", effort: "medium" }),
-    build: ModelChoice.default({ model: "claude-opus-5" }),
+    default: ModelChoice.default({ model: "gpt-6.1-sol", effort: "high" }),
+    extract: ModelChoice.default({ model: "gpt-6.1-sol", effort: "medium" }),
+    build: ModelChoice.default({ model: "claude-opus-5-5" }),
   }).default({
-    default: { model: "claude-opus-5", effort: "high" },
-    extract: { model: "claude-opus-5", effort: "medium" },
-    build: { model: "claude-opus-5" },
+    default: { model: "gpt-6.1-sol", effort: "high" },
+    extract: { model: "gpt-6.1-sol", effort: "medium" },
+    build: { model: "claude-opus-5-5" },
   }),
   sync: z.looseObject({
     pushDebounceMs: z.number().int().default(30000),
@@ -87,7 +87,7 @@ export async function readSettingsResult(): Promise<ReadSettingsResult> {
   }
 
   try {
-    return { settings: SettingsSchema.parse(JSON.parse(text)) };
+    return { settings: upgradeFactoryModels(SettingsSchema.parse(JSON.parse(text))) };
   } catch {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const brokenRel = `${SETTINGS_PATH}.broken-${stamp}`;
@@ -123,4 +123,14 @@ export async function writeJsonAtomic(rel: string, value: unknown): Promise<void
   const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.tmp`);
   await writeFile(tmp, text, "utf8");
   await renameAtomic(tmp, abs);
+}
+
+/** Resolve the former bundled choices without writing or changing deliberate non-factory choices. */
+export function upgradeFactoryModels(settings: Settings): Settings {
+  const m = settings.models;
+  if (m.default.model !== "claude-opus-5" || m.default.effort !== "high" ||
+      m.extract.model !== "claude-opus-5" || m.extract.effort !== "medium" ||
+      m.build.model !== "claude-opus-5" || m.build.effort !== undefined) return settings;
+  return { ...settings, models: { ...m, default: { ...m.default, model: "gpt-6.1-sol" },
+    extract: { ...m.extract, model: "gpt-6.1-sol" }, build: { ...m.build, model: "claude-opus-5-5" } } };
 }

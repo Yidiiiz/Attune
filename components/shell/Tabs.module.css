@@ -1,21 +1,27 @@
 /* Owns: the shell tabs, search and responsive top bar. Failure behavior: narrow widths shrink search while keeping navigation reachable. */
 .bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 48px;
-  padding: 0 16px;
+  height: var(--header-height);
+  padding: 0 24px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elevated);
 }
 
 .tabs {
   display: flex;
-  gap: 2px;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
 }
 
 .tab {
-  padding: 6px 14px;
+  padding: 4px 16px;
   border-radius: var(--radius-md);
   color: var(--fg-muted);
   text-decoration: none;
@@ -28,8 +34,9 @@
 }
 
 .active {
-  background: var(--accent-soft);
+  background: var(--bg-elevated);
   color: var(--accent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 8%, transparent);
 }
 
 .spacer {
@@ -62,11 +69,12 @@
 .searchInput {
   width: 100%;
   min-width: 0;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  background: var(--bg-sunken);
   color: var(--fg);
+  font: inherit;
   font-size: 13px;
 }
 

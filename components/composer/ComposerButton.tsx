@@ -16,7 +16,8 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Icon from "@/components/ui/Icon";
 import ComposerSheet from "./ComposerSheet";
 import { isMode, MODE_KEY } from "./draft";
 import type { Mode } from "./draft";
@@ -45,6 +46,7 @@ export interface ComposerButtonProps {
 
 export default function ComposerButton({ categories, viewDate }: ComposerButtonProps) {
   const [open, setOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>("tasks");
   const [askingAbout, setAskingAbout] = useState<{ id: string; title: string } | undefined>(undefined);
 
@@ -89,6 +91,7 @@ export default function ComposerButton({ categories, viewDate }: ComposerButtonP
   return (
     <>
       <ComposerSheet
+        toggleRef={toggle}
         open={open}
         mode={mode}
         onMode={chooseMode}
@@ -101,13 +104,14 @@ export default function ComposerButton({ categories, viewDate }: ComposerButtonP
       <button
         type="button"
         className={`${styles.button} ${open ? styles.buttonOpen : ""}`}
+        ref={toggle}
         data-composer="button"
         aria-expanded={open}
         aria-label={open ? "Close composer" : "Open composer"}
         onClick={() => (open ? close() : setOpen(true))}
       >
         <span className={styles.glyph} aria-hidden="true">
-          +
+          <Icon name="plus" size={24} />
         </span>
       </button>
     </>

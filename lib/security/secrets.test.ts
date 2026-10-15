@@ -59,6 +59,7 @@ describe("scrubSecrets", () => {
 // shared-pattern invariant in AGENTS.md, held by a test rather than by good intentions.
 const SAMPLES: Record<string, string> = {
   "anthropic key": "sk" + "-ant-" + "a".repeat(24),
+  "openai project key": "sk" + "-proj-" + "a_b-".repeat(12),
   "generic sk- key": "sk-" + "b".repeat(32),
   "aws access key id": "AKIA" + "TESTONLYFAKEKEY1",
   "github token": "ghp_" + "z".repeat(36),

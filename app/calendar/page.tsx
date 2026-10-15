@@ -23,7 +23,7 @@ type Search = { searchParams: Promise<Record<string, string | string[] | undefin
 
 export default async function Page({ searchParams }: Search) {
   const params = await searchParams;
-  const settings = await readSettings();
+  const [settings, tasks] = await Promise.all([readSettings(), listTasks()]);
   const today = todayIn(settings.timezone);
 
   const view = isCalendarView(params.view) ? params.view : "rolling";
@@ -31,7 +31,6 @@ export default async function Page({ searchParams }: Search) {
   const anchor = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : today;
 
   const grid = gridFor(view, anchor, settings.firstDayOfWeek);
-  const tasks = await listTasks();
   const errors = [...listTasks.errors];
 
   // Present here and on Today, absent on Chat (§9.1, §15).

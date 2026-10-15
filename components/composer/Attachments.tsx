@@ -14,6 +14,8 @@
 
 "use client";
 
+import Icon from "@/components/ui/Icon";
+
 import { useEffect, useState } from "react";
 import styles from "./Composer.module.css";
 
@@ -149,7 +151,7 @@ export function AttachButton({
         }}
       />
       <label className={styles.iconButton} htmlFor={id} title="Attach a file">
-        📎
+        <Icon name="attach" size={18} />
       </label>
     </>
   );

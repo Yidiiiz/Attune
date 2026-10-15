@@ -22,7 +22,7 @@ export interface KnownKey {
  * The keys Settings offers to set (§11.4: "a key name in `env.ts`'s known list"). A provider added
  * later adds its line here, and the settings section grows by one row with no other change.
  */
-export const KNOWN_KEYS: KnownKey[] = [{ name: "ANTHROPIC_API_KEY", label: "Anthropic" }];
+export const KNOWN_KEYS: KnownKey[] = [{ name: "OPENAI_API_KEY", label: "OpenAI" }, { name: "ANTHROPIC_API_KEY", label: "Anthropic" }];
 
 /** `KEY=value`, with optional `export `, whitespace, and surrounding quotes. */
 const LINE = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/;

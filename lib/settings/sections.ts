@@ -18,7 +18,8 @@ const Day = SettingsSchema.shape.day.unwrap().extend({ startMin: bounded(1439), 
 });
 export function sectionSchema(section: Section): z.ZodType {
   if (section === "models") return SettingsSchema.shape.models.refine(value =>
-    [value.default, value.extract, value.build].every(choice => modelEntry(choice.model) !== null), "Unknown model");
+    [value.default, value.extract, value.build].every(choice => modelEntry(choice.model) !== null), "Unknown model")
+    .refine(value => modelEntry(value.build.model)?.provider === "anthropic", "Build requires a Claude model");
   if (section === "day") return Day;
   if (section === "timezone") return z.string().refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } });
   if (section === "list") return SettingsSchema.shape.list.unwrap().extend({ focusSize: bounded(100), lookaheadDays: bounded(365) });

@@ -12,6 +12,7 @@
 // because silently answering with a different model than the settings asked for is worse than not
 // answering: the reply would be attributed to a model that never saw the prompt.
 
+import * as openai from "./openai.ts";
 import * as anthropic from "./anthropic.ts";
 import * as scripted from "./scripted.ts";
 import type { ContextBlock } from "./context.ts";
@@ -51,6 +52,7 @@ export class AgentError extends Error {
  * `lib/agent/attachments.ts` before a turn starts (deferred amendment `o`).
  */
 export type ContentPart =
+  | { type: "reasoning"; id: string; encryptedContent: string }
   | { type: "text"; text: string }
   | { type: "image"; mediaType: string; data: string }
   | { type: "document"; mediaType: string; data: string; name?: string }
@@ -80,6 +82,7 @@ export interface ChatRequest {
 }
 
 export type ChatEvent =
+  | { type: "reasoning"; id: string; encryptedContent: string }
   | { type: "text"; text: string }
   | { type: "tool_use"; id: string; name: string; input: unknown }
   | { type: "stop"; stopReason: string };
@@ -102,7 +105,7 @@ export interface Provider {
 // A namespace object rather than a named export, so that this module and `anthropic.ts` can refer
 // to each other — that one needs `AgentError` from here — without either reading a binding the
 // other has not finished initializing. Nothing is dereferenced until a request is actually made.
-export const PROVIDERS: Record<ModelEntry["provider"], Provider> = { anthropic };
+export const PROVIDERS: Record<ModelEntry["provider"], Provider> = { anthropic, openai };
 
 /**
  * The provider for a model id, refusing rather than substituting one.

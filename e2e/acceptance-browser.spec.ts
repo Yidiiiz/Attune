@@ -113,11 +113,11 @@ test("Files note and folder menus stay inside the viewport at minimum panel widt
 });
 
 
-test("key Set/Change/Remove masks values, preserves unrelated env lines and refuses Undo", async ({ page, request }) => {
+for (const provider of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]) test(`key Set/Change/Remove masks values, preserves unrelated env lines and refuses Undo: ${provider}`, async ({ page, request }) => {
   const file = path.join(SANDBOX, ".env.local"), before = existsSync(file) ? readFileSync(file) : null;
   writeFileSync(file, "ACCEPTANCE_UNRELATED=keep-this-line\n");
   try {
-    await page.goto("/settings"); const keys = page.getByRole("region", { name: "API keys", exact: true });
+    await page.goto("/settings"); const keys = page.getByRole("region", { name: "API keys", exact: true }).locator(`[data-key="${provider}"]`);
     await expect(keys).toContainText("not set");
     for (const [label, value] of [["Set", "acceptance-key-1111"], ["Change", "acceptance-key-2222"]]) {
       await keys.getByRole("button", { name: label, exact: true }).click();

@@ -1,4 +1,4 @@
-// Owns: the only place in this app that speaks to a model provider (PROJECT.md §1 rule 6). It
+// Owns: the Claude provider adapter (PROJECT.md §1 rule 6). It
 // translates the neutral request shapes in `registry.ts` into `@anthropic-ai/sdk` calls and the
 // SDK's events and errors back again, so nothing above it imports the SDK or knows a wire format.
 //
@@ -52,7 +52,7 @@ function toSystem(blocks: ContextBlock[]): Anthropic.TextBlockParam[] {
   return out;
 }
 
-function toContent(part: ContentPart): Anthropic.ContentBlockParam {
+function toContent(part: Exclude<ContentPart, { type: "reasoning" }>): Anthropic.ContentBlockParam {
   if (part.type === "text") return { type: "text", text: part.text };
   // Amendment `o`. The registry's `images`/`pdf` flags decided whether these could be built at all
   // (`lib/agent/attachments.ts`), so by here the model is known to accept them.
@@ -79,7 +79,7 @@ function toContent(part: ContentPart): Anthropic.ContentBlockParam {
 }
 
 const toMessages = (messages: ProviderMessage[]): Anthropic.MessageParam[] =>
-  messages.map((message) => ({ role: message.role, content: message.content.map(toContent) }));
+  messages.map((message) => ({ role: message.role, content: message.content.filter(part => part.type !== "reasoning").map(toContent) }));
 
 const toTools = (req: ChatRequest): Anthropic.Tool[] =>
   req.tools.map((tool) => ({

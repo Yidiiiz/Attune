@@ -24,7 +24,7 @@ import { autoAppliedIn } from "@/lib/history/auto-applied";
 import { readSettings } from "@/lib/store/settings";
 import { addDays, todayIn } from "@/lib/schedule/dates";
 import { isScripted } from "@/lib/agent/scripted";
-import { MODELS } from "@/lib/agent/registry";
+import { MODELS } from "@/lib/agent/models";
 import ChatsPanel from "@/components/chat/ChatsPanel";
 import ChatView from "@/components/chat/ChatView";
 import Rail from "@/components/chat/Rail";
@@ -44,14 +44,14 @@ export default async function Page({ searchParams }: Search) {
   const asked = query.c;
   const opened = typeof query.open === "string" && query.open.length > 0 ? query.open : null;
   const where = query.repo === "1" ? "repo" : "data";
-  const settings = await readSettings();
+  const [settings, conversations] = await Promise.all([readSettings(), listConversations()]);
   const today = todayIn(settings.timezone);
-  const conversations = await listConversations();
 
   let open: ConversationState | null = null;
   if (typeof asked === "string" && opened === null) {
     try {
-      open = { ...(await readConversation(asked)), applied: await autoAppliedIn(asked) };
+      const [conversation, applied] = await Promise.all([readConversation(asked), autoAppliedIn(asked)]);
+      open = { ...conversation, applied };
     } catch {
       open = null; // a link to a conversation that has been deleted lands on the empty state
     }

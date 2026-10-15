@@ -33,6 +33,7 @@ import styles from "./Composer.module.css";
 
 export interface ComposerSheetProps {
   open: boolean;
+  toggleRef?: React.RefObject<HTMLButtonElement | null>;
   mode: Mode;
   onMode: (mode: Mode) => void;
   onClose: () => void;
@@ -48,7 +49,7 @@ const MAX_ROWS = 10;
 const rowsFor = (text: string): number => Math.min(MAX_ROWS, Math.max(1, text.split("\n").length));
 
 export default function ComposerSheet(props: ComposerSheetProps) {
-  const { open, mode, onMode, onClose, categories, viewDate, askingAbout } = props;
+  const { open, mode, onMode, onClose, categories, viewDate, askingAbout, toggleRef } = props;
   const router = useRouter();
   const sheet = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -125,7 +126,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
       if (event.key === "Escape") onClose();
     };
     const onDown = (event: MouseEvent): void => {
-      if (prompt.trim() !== "") return;
+      if (prompt.trim() !== "" || toggleRef?.current?.contains(event.target as Node)) return;
       if (sheet.current !== null && !sheet.current.contains(event.target as Node)) onClose();
     };
     document.addEventListener("keydown", onKey);
@@ -134,7 +135,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onDown);
     };
-  }, [open, prompt, onClose]);
+  }, [open, prompt, onClose, toggleRef]);
 
   const dictated = useCallback((said: string) => {
     setPrompt((current) => (current === "" ? said : `${current} ${said}`));

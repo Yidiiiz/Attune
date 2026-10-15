@@ -12,7 +12,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ICON_GLYPH, ICON_LABEL, type Forecast, iconFor } from "@/lib/weather";
+import Icon from "@/components/ui/Icon";
+import { ICON_LABEL, type Forecast, iconFor } from "@/lib/weather";
 import styles from "./DayHeader.module.css";
 
 export interface WeatherProps {
@@ -67,7 +68,7 @@ export default function Weather({ date, today, enabled }: WeatherProps) {
   return (
     <div className={styles.weather} title={`${place}${ICON_LABEL[icon]}${range ? ` · ${range}` : ""}`}>
       <span className={styles.weatherIcon} aria-hidden="true">
-        {ICON_GLYPH[icon]}
+        <Icon name={icon === "clear" ? "sun" : icon === "cloudy" ? "cloud" : icon === "drizzle" ? "rain" : icon} size={20} />
       </span>
       <span className={styles.weatherTemp}>{Math.round(temp)}°</span>
       <span className={styles.visuallyHidden}>

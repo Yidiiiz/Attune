@@ -19,7 +19,7 @@
   height: 56px;
   padding: 0;
   border: 1px solid var(--accent);
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: var(--accent);
   color: var(--accent-fg);
   font-size: 26px;
@@ -30,7 +30,7 @@
 }
 
 .button:hover {
-  filter: brightness(1.06);
+  background: color-mix(in srgb, var(--accent) 88%, var(--fg));
 }
 
 .button:focus-visible {
@@ -45,7 +45,7 @@
 
 .glyph {
   display: block;
-  transform: translateY(-1px);
+  line-height: 0;
 }
 
 /* ---------- the sheet (§9.1) ---------- */

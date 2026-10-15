@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Icon from "@/components/ui/Icon";
 import styles from "./Chat.module.css";
 
 const WIDTH_KEY = "chat.panelWidth";
@@ -27,10 +28,10 @@ const DEFAULT = 280;
 
 export type PanelName = "chats" | "knowledge" | "files";
 
-const PANELS: Array<{ name: PanelName; label: string; icon: string }> = [
-  { name: "chats", label: "Chats", icon: "💬" },
-  { name: "knowledge", label: "Knowledge", icon: "📚" },
-  { name: "files", label: "Files", icon: "🗂️" },
+const PANELS: Array<{ name: PanelName; label: string; icon: "chats" | "knowledge" | "files" }> = [
+  { name: "chats", label: "Chats", icon: "chats" },
+  { name: "knowledge", label: "Knowledge", icon: "knowledge" },
+  { name: "files", label: "Files", icon: "files" },
 ];
 
 export default function Rail({ panels }: { panels: Record<PanelName, React.ReactNode> }) {
@@ -99,12 +100,12 @@ export default function Rail({ panels }: { panels: Record<PanelName, React.React
             data-ui={`rail-${panel.name}`}
             onClick={() => choose(panel.name)}
           >
-            <span aria-hidden="true">{panel.icon}</span>
+            <Icon name={panel.icon} />
             <span className={styles.srOnly}>{panel.label}</span>
           </button>
         ))}
         <Link href="/chat?graph=1" className={styles.railButton} title="Graph" data-ui="rail-graph">
-          <span aria-hidden="true">◉</span><span className={styles.srOnly}>Graph</span>
+          <Icon name="graph" /><span className={styles.srOnly}>Graph</span>
         </Link>
       </nav>
 

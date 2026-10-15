@@ -25,12 +25,11 @@ type Search = { searchParams: Promise<Record<string, string | string[] | undefin
 
 export default async function Page({ searchParams }: Search) {
   const asked = (await searchParams).date;
-  const settings = await readSettings();
+  const [settings, tasks] = await Promise.all([readSettings(), listTasks()]);
   const today = todayIn(settings.timezone);
   const date = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : today;
 
   const now = new Date();
-  const tasks = await listTasks();
   const errors = [...listTasks.errors];
   const ranked = rankDay(tasks, date, settings, now);
 

@@ -13,6 +13,8 @@
 
 "use client";
 
+import Icon from "@/components/ui/Icon";
+
 import { useEffect, useState } from "react";
 import styles from "./Composer.module.css";
 
@@ -76,7 +78,7 @@ export default function VoiceButton({ onText }: { onText: (text: string) => void
         }
       }}
     >
-      🎤
+      <Icon name="mic" size={18} />
     </button>
   );
 }

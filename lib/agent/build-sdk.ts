@@ -1,5 +1,6 @@
 // Owns: the Agent SDK adapter for Build (§13.4); all model contact stays in lib/agent.
 // Failure behavior: propagate SDK failures; the Build session keeps partial edits for review.
+import { modelEntry } from "./models.ts";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import path from "node:path";
 import { readSettings } from "../store/settings.ts";
@@ -14,6 +15,7 @@ export interface BuildQuery { prompt: string; plan: boolean; dirty: Set<string>;
 export async function* queryBuild(input: BuildQuery): AsyncGenerator<string> {
   if (isScripted()) { yield* scriptedBuild(input); return; }
   const settings = await readSettings();
+  if (modelEntry(settings.models.build.model)?.provider === "openai") throw new Error("Build uses the Claude Agent SDK. Choose a Claude model in Settings.");
   const controller = new AbortController();
   const abort = (): void => controller.abort();
   input.signal.addEventListener("abort", abort, { once: true });

@@ -39,6 +39,15 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 11 — Publish | implementation complete; technical checks accepted locally, manual/provider acceptance pending; no remote publication | tooling `12eb62c`, sanitized export `0363496`, patches `16046d9`, `d22bb7b`, `73c7570` |
 
 
+**Direct acceptance continuation — owner instruction, 2026-10-14.** “Continue from
+docs/progress.md directly as Codex. Review docs/CHECKLIST.md and complete the remaining acceptance
+checks you can actually exercise. Use existing tooling; no Claude supervisor or additional workers
+needed.” Exercise pointer/keyboard/layout and deterministic UI behavior with the existing isolated
+Playwright tooling; retain screenshots and actual failures. Correct stale stub descriptions to
+current behavior. No supervisor, extra workers, personal-data writes, remote publication or budget
+reset. Real provider, audio/microphone and terminal-specific rows require actual evidence and remain
+pending if the environment cannot supply it. Repair observed app defects within existing scope.
+
 **Live supervisor verification — 2026-10-14, after explicit owner approval.** The two-task
 foreground Claude → Codex transport probe passed. Strict no-edit results, independent plain-Node
 library checks (87 modules), zero actual changes/violations and accepted reviews are retained for

@@ -382,6 +382,24 @@ batch, so Undo restores the previous path and exact file bytes. Malformed-log an
 remain unchanged. An isolated first-turn crash, dev startup wrapper recovery, Retry UI,
 clean restart and exact Undo were exercised; no owner data or model inference was involved.
 
+122. **Owner-directed visual refresh, 2026-10-15.** Keep the top bar visible while scrolling;
+use coordinated cool-neutral light/dark palettes with one restrained accent, shared typography,
+radii and control states. Replace emoji UI with monochrome SVGs, retaining a cloud-shaped weather
+icon. The floating Add uses the same tokens and excludes its toggle from outside dismissal.
+Hide Next's development indicator. Keep existing data, themes, history and feature semantics.
+Improve loading through route feedback, parallel independent reads and measured production serving,
+not timers or speculative caches. The owner authorized these changes directly, without workers.
+
+123. **OpenAI Responses is an additional provider.** GPT-6.1 Sol (`gpt-6.1-sol`) is the default
+for new chat and extraction settings; Claude Opus 5.5 (`claude-opus-5-5`) is the current Claude
+option and Build's Agent SDK default. Build remains a Claude SDK operation, so its selector only
+offers compatible models. Preserve explicit existing model choices; migrate the former factory
+Opus default at read time without rewriting private settings. The OpenAI key uses the existing
+masked settings editor. Responses streams text and function calls, carries encrypted reasoning
+between tool rounds, validates structured output with Zod, and refuses incomplete responses.
+No new runtime dependency is needed. Live provider success requires a configured key and is
+reported separately from mocked transport verification.
+
 ## 1. Hard rules
 
 These override anything else in this document.

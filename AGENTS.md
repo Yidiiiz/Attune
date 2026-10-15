@@ -39,6 +39,18 @@ Build phases are `PROJECT.md` §17, one chat per phase. This block is how a fres
 | 11 — Publish | implementation complete; technical checks accepted locally, manual/provider acceptance pending; no remote publication | tooling `12eb62c`, sanitized export `0363496`, patches `16046d9`, `d22bb7b`, `73c7570` |
 
 
+**Live supervisor verification — 2026-10-14, after explicit owner approval.** The two-task
+foreground Claude → Codex transport probe passed. Strict no-edit results, independent plain-Node
+library checks (87 modules), zero actual changes/violations and accepted reviews are retained for
+VERIFY1 `67959ba718e8488aa81e9e9526410602` and VERIFY2 `6ebc5a6fa70c45b2a8c002f5b93f4db6`.
+The launcher initially omitted Edit permission and stopped after the first review. The same
+supervisor conversation resumed with only the second task file's Edit permission; no workaround
+or budget reset. Both supervisor processes exited 0. Budget **2/6 used, four remaining**; no active
+workers. Earlier paragraphs recording the automatic approval rejection remain as history; the
+owner's later explicit approval resolved that transmission blocker. This verifies transport,
+strict reporting, chaining and review, not live product SDK edits or provider acceptance.
+See docs/progress.md for session identity and private local evidence paths.
+
 **Phase 8b close — 2026-10-14.** The owner authorized continued implementation through the remaining
 project with local review and verification. Amendment `z` landed first (`89a1611`, `72a5682`): small
 text remains inline; binary and large text use ignored SHA-256 blobs, persisted only after secret

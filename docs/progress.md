@@ -10,12 +10,25 @@ Automation is implemented: strict task/result schemas, atomic six-launch budget,
 foreground process ownership, independent checks, explicit report review, and
 baseline/scope protection. All 20 adversarial Windows runner tests pass.
 Startup instructions and the supervisor prompt are in docs/SUPERVISOR.md.
-Both installed clients report saved sign-in. The budget is untouched (0 of 6 used).
+Both installed clients report saved sign-in. The live probe used 2 of 6 launches; four remain. No budget reset occurred.
 
-The live Claude → Codex two-task probe remains unrun. Automatic approval review
-rejected launching the signed clients because repository content could be sent
-to external model services. Explicit approval of that transmission is still
-required; offline loop coverage is not a claim of live transport verification.
+The owner explicitly approved repository-context transmission on 2026-10-14.
+The live two-task Claude → Codex foreground probe then passed with saved client
+sign-ins: no API fallback, no worker tools, no source edits and no product-acceptance
+claim. Both strict reports had independent library checks exit 0 (87 modules), zero
+changed files/violations, and accepted supervisor reviews. Actual run IDs:
+- VERIFY1: 67959ba718e8488aa81e9e9526410602 (worker 8.58 s; check 2.99 s).
+- VERIFY2: 6ebc5a6fa70c45b2a8c002f5b93f4db6 (worker 9.69 s; check 0.52 s).
+
+The initial launcher omitted Edit permission, so the supervisor stopped after
+VERIFY1 when it could not link the second task. The same conversation was resumed
+with Edit allowed only for .agent/tasks/verify-2.json; no shell-write workaround.
+Both reviews belong to session a914fdc6-a215-4879-ab38-64788ee420a2. Supervisor
+processes exited 0; no foreground worker or background continuation remains.
+Evidence: .agent/supervisor-smoke.log, .agent/supervisor-resume.log,
+.agent/runs/<run-id>/report.json and worker/check logs; reviews in runner SQLite.
+Keep raw logs private. The earlier automatic-review rejection is historical,
+resolved by the owner's explicit approval; do not treat it as a current blocker.
 
 Phase 8b is complete: content-addressed history blobs, integrity preflight before
 undo, measured browser timing and the canvas graph. Full browser verification:
@@ -73,13 +86,12 @@ No push occurred. A pre-Git sandbox-root guard now refuses this mistake and its
 negative regression test passes. See Decision 115 and AGENTS.md for the evidence.
 
 Next steps are acceptance work, not another implementation phase: inspect the local
-export, complete pending manual/provider rows in docs/CHECKLIST.md, and obtain explicit
-approval for repository transmission before attempting the two-task live supervisor
-probe. No live model worker or background continuation is running. Supervisor startup:
+export, complete pending manual/provider rows in docs/CHECKLIST.md, and perform real application provider acceptance separately from the completed
+live supervisor transport probe. No live model worker or background continuation is running. Supervisor startup:
 run `python tools/agent_runner.py doctor`, `python tools/agent_runner.py status`, then
 start `claude` and paste the prompt from docs/SUPERVISOR.md. Do not reset the budget.
 
 Existing deferred amendments i/k/u/v remain deferred. Application provider checks
 need an application API key; CLI sign-in does not settle those checks. The signed
-supervisor probe remains blocked by automatic approval review pending explicit
-approval of repository transmission. Budget 0/6 used, no workers launched.
+supervisor transport probe passed with explicit transmission approval. Budget 2/6
+used, four launches remain; no active workers. Real Agent SDK edits remain unverified.

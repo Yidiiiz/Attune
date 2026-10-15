@@ -100,3 +100,14 @@ dispatch for diagnosis, even after a budget reset.
 Foreground execution delivers the report directly to the supervisor tool call.
 Background delivery and unattended resumption after closing Claude are unverified
 and are not enabled. The signed-in loop's local evidence is in `docs/progress.md`.
+
+## Verified live transport
+
+On 2026-10-14, after explicit owner approval of repository-context transmission, two
+no-edit workers completed with independent checks and accepted reviews in the same
+resumed Claude conversation. Budget is 2/6 used, four remaining; do not reset it.
+See docs/progress.md for actual run IDs and evidence. The probe's launcher needed
+narrow Edit permission for its second task JSON; a denial must stop dispatch until
+that permission is resolved. Do not substitute a shell write. The doctor's static
+signed_supervisor_loop reminder is not an evidence detector; use the recorded
+reports/reviews. Product provider behavior and background continuation remain separate.

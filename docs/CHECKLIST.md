@@ -800,5 +800,12 @@ Stop passed separately. Whole-tree dependency audit reports zero findings. No re
 
 Earlier pending manual/provider rows retain their status. Real model behavior, generated palette
 quality and signed Agent SDK inference are not established by scripted fixtures. The live
-supervisor probe requires explicit repository-transmission approval following automatic review
-rejection. A local prepared export does not authorize remote publication or satisfy these rows.
+supervisor transport probe passed after explicit approval (see 11.3). A local prepared export does not authorize remote publication or satisfy these rows.
+
+### 11.3 Signed supervisor transport — **verified, 2026-10-14**
+
+Two no-edit Codex workers dispatched through the runner, linked by accepted predecessor,
+returned strict results and passed independent library checks. Claude reviewed both in one
+resumed conversation. Budget 2/6 used; no resets, worker tools, source edits or active processes.
+The initial launcher permission omission and same-session recovery are recorded in progress.
+This does not establish real application SDK plan/edit behavior or model prompt adherence.

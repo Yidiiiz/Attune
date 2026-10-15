@@ -440,6 +440,15 @@ editable 30-minute planning estimate; explicit estimates remain intact. The requ
 security appointment date/time, priority and original test-task estimates are logged
 updates only, with any ambiguous date clarified independently of implementation.
 
+127. **Live terminal acceptance: knowledge proposal paths, 2026-10-15.** A real
+model searched before proposing a note but chose `knowledge/projects/thesis.md`,
+which the existing write layer correctly refused. Describe the canonical note/map/
+profile/session locations in the model prompt and constrain knowledge-write paths
+in its tool schema. Return invalid proposals as tool errors so the existing loop
+can correct them; never display an unusable proposal or silently relocate it.
+Keep the store/history guards as the final write authority. Verify with a
+no-write regression and the same synthetic live-provider scenario.
+
 ## 1. Hard rules
 
 These override anything else in this document.

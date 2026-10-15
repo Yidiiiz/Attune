@@ -410,6 +410,16 @@ remains the verified new-conversation default; existing conversation choices sta
 also explicitly authorized eight dated test tasks in personal data, created through one ordinary
 undoable API batch. Their content stays private and out of source, seed and documentation.
 
+125. **Owner refinement: compact surfaces and untimed deadlines, 2026-10-15.** Use
+smaller neutral shadows, slimmer selected navigation, aligned empty states and a compact composer
+without a duplicate close button. Its floating toggle, Escape and outside-click behavior remain.
+The conversation model belongs beside the bottom input. Center Calendar periods independently of
+neighboring controls; mute adjacent-month dates, not earlier dates in the current month; round the
+current-day highlight. A new Deadlines setting supplies the local cutoff for date-only due values,
+defaulting to 00:00 at the end of the due date. Explicit times override it. Preserve date-only storage
+and Calendar placement; do not invent appointment times. Correct only the owner's previously added
+test items through ordinary undoable history actions, retaining their original date wording.
+
 ## 1. Hard rules
 
 These override anything else in this document.

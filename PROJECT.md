@@ -41,7 +41,7 @@ Every call the brief left open, or where this spec deviates from it. One line of
 **Assistant**
 
 23. **Default model `gpt-6.1-sol`, effort `high`; extraction uses the same model at `medium`.** The owner updated the default in Decision 123. Claude Opus 5.5 is also available; Build uses `claude-opus-5-5` through its existing Agent SDK. Existing conversation model choices remain intact.
-24. **One conversation loop, three tool sets.** Tasks, Ask, and knowledge proposals all run through `runChatTurn()`; modes differ only in system prompt and which tools are offered. Proposals (`propose_tasks`, `propose_knowledge_write`, `propose_collection_append`) are collected, never executed, and shown in the preview panel.
+24. **One conversation loop, three tool sets.** Tasks, Ask, and knowledge proposals all run through `runChatTurn()`; modes differ only in system prompt and which tools are offered. Proposals (`propose_task_update`, `propose_tasks`, `propose_knowledge_write`, `propose_collection_append`) are collected, never executed, and shown in the preview panel.
 25. **Knowledge retrieval is a tool the model calls** (`read_knowledge(path)`, `search_knowledge(query)`), not a retriever we build. `index.md` and `profile/` are always in the system prompt; everything else the model asks for by path.
 26. **Refusal fallbacks are not wired in v1.** A to-do app is unlikely to trip a safety classifier; if it does, the message fails visibly and can be retried on another model.
 27. **Structured output through the SDK's `output_config.format` + `zod`** for anything that must be a fixed shape, sent over `messages.stream` and read off `finalMessage().parsed_output`. Zod also validates settings and frontmatter, which is why it earns a dependency slot. **It is not `messages.parse`, and the reason has to stay written down here.** `parse` is non-streaming, and the installed client refuses a non-streaming request *client-side, before any network call*, once `max_tokens` exceeds `128000 / 6 ≈ 21333` — see `calculateNonstreamingTimeout` in `@anthropic-ai/sdk`. §13.2 sets `max_tokens: 64000`, so `parse` throws on every call at that ceiling, with a valid key or without one. `stream` carries the identical `output_config.format` and returns the identical `parsed_output` with no ceiling, so nothing is given up. Anyone reading this Decision, seeing `messages.stream` in `lib/agent/anthropic.ts`, and taking it for a slip would reintroduce a total outage. **And it would not be caught:** every offline test passed while `runExtract` was broken this way, because a scripted fake provider never reaches the client that does the refusing. It surfaced only from a live call made with a deliberately invalid key (Phase 5 Stage A review, item 6).
@@ -450,7 +450,6 @@ Keep the store/history guards as the final write authority. Verify with a
 no-write regression and the same synthetic live-provider scenario.
 
 128. **Live acceptance: unsaved theme preview is visual, 2026-10-15.** The
-
 existing generation check asserted the editor and unsaved state, but only checked
 colors after Save. A strengthened computed-style check reproduced that generated
 and edited tokens never reached the preview before saving. Apply validated draft
@@ -459,7 +458,7 @@ not throw or change persistence. Discard restores the selected saved theme; only
 Save writes it. Pin colors and base before Save and the Discard restoration in the
 existing browser check, then inspect a real generated palette in the sandbox.
 
-129. **Ask can propose edits to existing tasks.** The owner reported that changing an appointment from Critical to Normal was refused because only creation tools existed. Add a typed `propose_task_update` tool, with explicit field-level before/after review and Apply through the existing history queue. The model cannot write files directly. Resolve an existing task by ID, validate only permitted fields, preserve all unmentioned values, and refuse a stale reviewed field inside the queued action. Undo uses ordinary task history. Priority is 1 Critical, 2 High, 3 Normal, 4 Low. No permission switch or shell access is necessary.
+129. **Ask can propose edits to existing tasks.** The owner reported that changing an appointment from Critical to Normal was refused because only creation tools existed. Add a typed `propose_task_update` tool, with explicit field-level before/after review and Apply through the existing history queue. The model cannot write files directly. Resolve an existing task by ID, validate only permitted fields, preserve all unmentioned values, and refuse a stale reviewed field inside the queued action. Undo uses ordinary task history. Priority is 1 Critical, 2 High, 3 Normal, 4 Someday. No permission switch or shell access is necessary.
 
 ## 1. Hard rules
 
@@ -1341,11 +1340,12 @@ Implementation: build `messages` from `activePath()` (user/assistant text, attac
 
 ### 13.3 Tools
 
-Read-only: `read_knowledge({ path })`, `search_knowledge({ query })`, `read_file({ path })` (any `data/` path), `list_tasks({ from, to })`. Proposal collectors: `propose_tasks({ items: TaskDraft[] })`, `propose_knowledge_write({ writes: KnowledgeWrite[] })`, `propose_collection_append({ collection, items })`. All defined with `strict: true` JSON schemas. Tasks mode offers all seven; Ask mode offers all seven with a prompt that says to prefer answering; Build mode uses none (Agent SDK).
+Read-only: `read_knowledge({ path })`, `search_knowledge({ query })`, `read_file({ path })` (any `data/` path), `list_tasks({ from, to })`. Proposal collectors: `propose_task_update({ id, changes: [{ field, value }], reason })` (Decision 129), `propose_tasks({ items: TaskDraft[] })`, `propose_knowledge_write({ writes: KnowledgeWrite[] })`, `propose_collection_append({ collection, items })`. All defined with `strict: true` JSON schemas. Tasks mode offers all eight; Ask mode offers all eight with a prompt that says to prefer answering; Build mode uses none (Agent SDK).
 
 ```ts
 type KnowledgeWrite = { path: string; op: "create" | "append" | "replace"; content: string; reason: string; mapLink?: string }
-type Proposal = { kind: "tasks"; items: TaskDraft[] } | { kind: "knowledge"; writes: KnowledgeWrite[] } | { kind: "collection"; collection: string; items: string[] }
+type TaskUpdate = { kind: "task_update"; id: string; title: string; changes: { field: keyof TaskDraft; before: string | number | string[] | null; value: string | number | string[] | null }[]; reason: string }
+type Proposal = TaskUpdate | { kind: "tasks"; items: TaskDraft[] } | { kind: "knowledge"; writes: KnowledgeWrite[] } | { kind: "collection"; collection: string; items: string[] }
 ```
 
 ### 13.4 Build mode

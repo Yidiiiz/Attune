@@ -451,8 +451,6 @@ no-write regression and the same synthetic live-provider scenario.
 
 128. **Live acceptance: unsaved theme preview is visual, 2026-10-15.** The
 
-129. **Ask can propose edits to existing tasks.** The owner reported that changing an appointment from Critical to Normal was refused because only creation tools existed. Add a typed `propose_task_update` tool, with explicit field-level before/after review and Apply through the existing history queue. The model cannot write files directly. Resolve an existing task by ID, validate only permitted fields, preserve all unmentioned values, and refuse a stale reviewed field inside the queued action. Undo uses ordinary task history. Priority is 1 Low, 2 Normal, 3 High, 4 Critical. No permission switch or shell access is necessary.
-
 existing generation check asserted the editor and unsaved state, but only checked
 colors after Save. A strengthened computed-style check reproduced that generated
 and edited tokens never reached the preview before saving. Apply validated draft
@@ -460,6 +458,8 @@ themes whenever the draft changes, including its base. Invalid partial drafts mu
 not throw or change persistence. Discard restores the selected saved theme; only
 Save writes it. Pin colors and base before Save and the Discard restoration in the
 existing browser check, then inspect a real generated palette in the sandbox.
+
+129. **Ask can propose edits to existing tasks.** The owner reported that changing an appointment from Critical to Normal was refused because only creation tools existed. Add a typed `propose_task_update` tool, with explicit field-level before/after review and Apply through the existing history queue. The model cannot write files directly. Resolve an existing task by ID, validate only permitted fields, preserve all unmentioned values, and refuse a stale reviewed field inside the queued action. Undo uses ordinary task history. Priority is 1 Critical, 2 High, 3 Normal, 4 Low. No permission switch or shell access is necessary.
 
 ## 1. Hard rules
 

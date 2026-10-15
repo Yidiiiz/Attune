@@ -39,8 +39,8 @@
 .arrow {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: var(--control-height);
+  height: var(--control-height);
   border-radius: var(--radius-md);
   color: var(--fg-muted);
   text-decoration: none;
@@ -79,20 +79,21 @@
 }
 
 .toggle {
-  padding: 4px 10px;
-  border: 1px solid var(--border-strong);
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: var(--bg);
+  background: transparent;
   color: var(--fg-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--control-font-size);
   cursor: pointer;
 }
 
 .toggleOn {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  border-color: transparent;
+  background: var(--bg-sunken);
+  color: var(--fg);
 }
 
 /* The weather element. Absent entirely when there is no location or no forecast (Decision 51). */
@@ -126,7 +127,7 @@
 /* At phone widths the controls need a second row; intrinsic side widths must not move the date. */
 @media (max-width: 480px) {
   .header {
-    grid-template-columns: 30px minmax(0, 1fr) 30px;
+    grid-template-columns: var(--control-height) minmax(0, 1fr) var(--control-height);
     gap: 8px;
     padding: 16px 12px 10px;
   }
@@ -139,3 +140,5 @@
   .weather { grid-column: 1 / 3; grid-row: 2; justify-self: start; }
   .toggle { grid-column: 2 / 4; grid-row: 2; justify-self: end; }
 }
+
+.toggle:hover { background: var(--bg-sunken); color: var(--fg); }

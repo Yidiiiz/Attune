@@ -47,7 +47,7 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
 
   if (bounds.end <= bounds.start) {
     return (
-      <section className={styles.timeline}>
+      <section className={styles.timeline} aria-label="Day schedule">
         <p className={styles.empty}>
           The day is over — it ended at {clockLabel(settings.day.endMin)}. Tomorrow&rsquo;s timeline is one arrow away.
         </p>
@@ -56,6 +56,8 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
   }
 
   const height = (bounds.end - bounds.start) * SCALE;
+  const hours: number[] = [];
+  for (let minute = Math.ceil(bounds.start / 60) * 60; minute <= bounds.end; minute += 60) hours.push(minute);
 
   const startDrag = (event: React.PointerEvent, taskId: string) => {
     if (event.button !== 0) return;
@@ -97,9 +99,10 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
   };
 
   return (
-    <section className={styles.timeline}>
+    <section className={styles.timeline} aria-label="Day schedule">
       <div className={styles.column} style={{ height }}>
-        {blocks.map((block) => {
+        {hours.map(minute => <div key={minute} className={`${styles.timeTick} ${minute === bounds.start ? styles.firstTick : ""} ${minute === bounds.end ? styles.lastTick : ""}`} style={{ top: (minute - bounds.start) * SCALE }} data-ui="timeline-hour"><span>{clockLabel(minute)}</span></div>)}
+        {blocks.filter(block => block.kind !== "gap").map((block) => {
           const task = block.taskId ? byId.get(block.taskId) : undefined;
           const offset = dragging && dragging.id === block.taskId ? dragging.offset : 0;
           const top = (block.startMin - bounds.start + offset) * SCALE;
@@ -156,7 +159,7 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
       ) : null}
 
       <p className={styles.hint}>
-        Drag a block, or set its time, to schedule it. Refine with AI arrives with the composer.
+        Drag a block, or set its time, to schedule it. Use the task menu to ask about a plan.
       </p>
     </section>
   );

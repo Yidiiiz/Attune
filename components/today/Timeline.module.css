@@ -11,14 +11,14 @@
   position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--bg-sunken);
+  background: var(--bg);
   overflow: hidden;
 }
 
 .block {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 56px;
+  right: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -154,3 +154,9 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Independent hourly labels remain visible even when there are no tasks to pack. */
+.timeTick { position: absolute; left: 56px; right: 8px; height: 1px; border-top: 1px solid var(--border); pointer-events: none; }
+.timeTick span { position: absolute; right: calc(100% + 8px); top: -9px; font-size: 11px; line-height: 16px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.firstTick span { top: 4px; }
+.lastTick span { top: -20px; }

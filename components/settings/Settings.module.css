@@ -1,19 +1,19 @@
 /* Owns: Settings forms and theme editor. Failure behavior: narrow screens wrap controls. */
-.form { max-width: 900px; display: grid; gap: 24px; padding-bottom: 60px; }
-.section { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); padding: 20px; display: grid; gap: 12px; }
-.section h2 { margin: 0; font-size: 18px; }
+.form { max-width: 900px; display: grid; gap: var(--space-4); padding-bottom: 60px; }
+.section { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elevated); padding: var(--space-4); display: grid; gap: var(--space-3); }
+.section h2 { margin: 0; font-size: 15px; }
 .section h3 { margin: 4px 0; }
-.section label { display: grid; gap: 5px; font-size: 13px; color: var(--fg-muted); }
-.section input, .section select { background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px; min-width: 0; max-width: 100%; }
-.section input[type="checkbox"] { width: auto; }
-.section input[type="color"] { width: 44px; padding: 2px; }
-.section button { background: var(--bg); color: var(--fg); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer; }
+.section label { display: grid; gap: var(--space-1); font-size: 13px; color: var(--fg-muted); }
+.section input, .section select { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius-sm); height: var(--control-height); padding: 0 var(--space-2); font-size: var(--control-font-size); min-width: 0; max-width: 100%; }
+.section input[type="checkbox"] { width: auto; height: auto; }
+.section input[type="color"] { width: var(--control-height); padding: 2px; }
+.section button { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius-sm); height: var(--control-height); padding: 0 var(--space-3); font-size: var(--control-font-size); cursor: pointer; }
 .section button:disabled { opacity: .5; cursor: default; }
-.row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
+.row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--space-2); }
 .row label { flex: 1; min-width: 120px; }
 .note { color: var(--fg-muted); font-size: 13px; margin: 0; }
 .error { color: var(--danger); margin: 0; }
-.editor { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
-.tokens { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.editor { display: grid; gap: var(--space-3); padding-top: 14px; border-top: 1px solid var(--border); }
+.tokens { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .status { min-height: 22px; color: var(--fg-muted); }

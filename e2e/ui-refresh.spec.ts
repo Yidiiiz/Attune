@@ -9,12 +9,13 @@ test("top bar stays visible, themes coordinate controls, and empty composer togg
  await toggle.click(); await expect(toggle).toHaveAttribute("aria-expanded","false");
  await toggle.click(); await expect(toggle).toHaveAttribute("aria-expanded","true");
  await page.keyboard.press("Escape");
+ await expect(page.locator('[data-composer="sheet"]')).not.toBeVisible();
  await page.mouse.move(10,60);
  for (const theme of ["light","dark"]) {
   await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.themeBase=theme;},theme);
-  const colors=await toggle.evaluate(el=>({actual:getComputedStyle(el).backgroundColor, expected:getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()}));
+  const colors=await toggle.evaluate(el=>({actual:getComputedStyle(el).backgroundColor, expected:getComputedStyle(document.documentElement).getPropertyValue("--bg-elevated").trim()}));
   expect(colors.actual).not.toBe("rgba(0, 0, 0, 0)");
- expect(await toggle.evaluate(el=>{const probe=document.createElement("span");probe.style.color="var(--accent)";el.append(probe);const expected=getComputedStyle(probe).color;probe.remove();return getComputedStyle(el).backgroundColor===expected;})).toBe(true);
+ expect(await toggle.evaluate(el=>{const probe=document.createElement("span");probe.style.color="var(--bg-elevated)";el.append(probe);const expected=getComputedStyle(probe).color;probe.remove();return getComputedStyle(el).backgroundColor===expected;})).toBe(true);
   await page.screenshot({path:info.outputPath(`today-${theme}.png`)});
  }
  await page.evaluate(()=>{const spacer=document.createElement("div");spacer.style.height="2000px";document.body.append(spacer);window.scrollTo(0,900);});

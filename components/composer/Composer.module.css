@@ -18,10 +18,10 @@
   width: 56px;
   height: 56px;
   padding: 0;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--bg-elevated);
+  color: var(--fg);
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
@@ -30,7 +30,7 @@
 }
 
 .button:hover {
-  background: color-mix(in srgb, var(--accent) 88%, var(--fg));
+  background: var(--bg-sunken);
 }
 
 .button:focus-visible {
@@ -63,11 +63,13 @@
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: var(--bg-elevated);
   box-shadow: var(--shadow);
+  visibility: hidden;
   transform: translateY(100%);
   transition: transform 180ms ease;
 }
 
 .sheetOpen {
+  visibility: visible;
   transform: translateY(0);
 }
 
@@ -82,7 +84,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
   width: 100%;
   max-width: 780px;
   min-height: 0;
@@ -93,7 +95,7 @@
 .top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .spacer {
@@ -101,7 +103,11 @@
 }
 
 .close {
-  padding: 2px 6px;
+  width: var(--control-height);
+  height: var(--control-height);
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--fg-muted);
@@ -119,13 +125,14 @@
 .modes {
   display: inline-flex;
   padding: 2px;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-md);
   background: var(--bg-sunken);
 }
 
 .mode {
-  padding: 4px 12px;
+  height: calc(var(--control-height) - 4px);
+  padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -142,7 +149,7 @@
   background: var(--bg-elevated);
   color: var(--fg);
   font-weight: 600;
-  box-shadow: var(--shadow);
+  box-shadow: none;
 }
 
 .mode:disabled {
@@ -153,6 +160,7 @@
 /* ---------- input (§9.2) ---------- */
 
 .inputRow {
+  --control-height: var(--composer-control-height);
   display: flex;
   align-items: flex-end;
   gap: 8px;
@@ -160,7 +168,7 @@
 
 .textarea {
   flex: 1;
-  min-height: 38px;
+  min-height: var(--composer-control-height);
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -168,7 +176,7 @@
   color: var(--fg);
   font: inherit;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 20px;
   resize: none;
 }
 
@@ -184,8 +192,8 @@
 
 .iconButton {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: var(--control-height);
+  height: var(--control-height);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -209,7 +217,7 @@
 
 .send {
   flex: none;
-  height: 34px;
+  height: var(--control-height);
   padding: 0 14px;
   border: 1px solid var(--accent);
   border-radius: var(--radius-md);
@@ -323,7 +331,7 @@
   background: var(--danger-soft);
   color: var(--fg);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 20px;
 }
 
 /* ---------- preview panel (§9.5) ---------- */
@@ -332,7 +340,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
   min-height: 0;
   overflow-y: auto;
 }
@@ -473,7 +481,7 @@
 .body {
   width: 100%;
   margin-top: 6px;
-  line-height: 1.45;
+  line-height: 20px;
   resize: vertical;
 }
 
@@ -569,7 +577,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2);
   margin-bottom: 6px;
 }
 
@@ -612,3 +620,5 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+.iconButton { display: grid; place-items: center; }

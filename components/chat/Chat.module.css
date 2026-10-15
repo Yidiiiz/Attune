@@ -26,6 +26,8 @@
 .railButton {
   width: 36px;
   height: 36px;
+  padding: 0;
+  line-height: 1;
   margin: 0 4px;
   display: grid;
   place-items: center;
@@ -93,15 +95,17 @@
 
 .panelHead {
   display: flex;
-  gap: 6px;
-  padding: 8px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 
 .search {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 5px 8px;
+  height: var(--control-height);
+  padding: 0 var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
@@ -112,7 +116,8 @@
 
 .newButton {
   flex: 0 0 auto;
-  padding: 5px 10px;
+  height: var(--control-height);
+  padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
@@ -274,9 +279,10 @@
 
 .viewHeader {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 10px 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--border);
 }
 
@@ -307,7 +313,7 @@
   position: relative;
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 18px 20px 8px;
+  padding: var(--space-4) var(--space-6) var(--space-2);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -544,7 +550,7 @@
   z-index: 30;
   border-top: 1px solid var(--border);
   background: var(--bg);
-  padding: 10px 20px 14px;
+  padding: var(--space-3) var(--space-6) var(--space-4);
 }
 
 .composerError {
@@ -562,6 +568,7 @@
 }
 
 .composerRow {
+  --control-height: var(--composer-control-height);
   display: flex;
   gap: 8px;
   align-items: flex-end;
@@ -571,7 +578,7 @@
 
 .textarea {
   flex: 1 1 auto;
-  min-height: 38px;
+  min-height: var(--composer-control-height);
   resize: none;
   padding: 9px 11px;
   border: 1px solid var(--border-strong);
@@ -592,7 +599,8 @@
 .sendButton,
 .stopButton {
   flex: 0 0 auto;
-  padding: 9px 16px;
+  height: var(--composer-control-height);
+  padding: 0 var(--space-4);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-strong);
   font: inherit;
@@ -678,7 +686,7 @@
 .contextPanel {
   border-bottom: 1px solid var(--border);
   background: var(--bg-sunken);
-  padding: 10px 20px 12px;
+  padding: var(--space-3) var(--space-6);
   max-height: 40vh;
   overflow-y: auto;
 }
@@ -940,3 +948,7 @@
   color: var(--fg);
   border-color: var(--border-strong);
 }
+
+/* Conversation header controls share one baseline and quiet neutral states. */
+.modelSelect, .contextToggle, .headerCount { height: var(--control-height); padding: 0 var(--space-2); font: inherit; font-size: var(--control-font-size); }
+.railButton svg { display: block; }

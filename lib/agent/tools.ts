@@ -1,7 +1,7 @@
 // Owns: the eight tools a turn may call (PROJECT.md §13.3) — what each one is called, what shape it
 // takes, and what running it does. Four read; four collect a proposal and write nothing at all.
 // The split is the point: nothing a model can invoke here reaches `runBatch`, so a turn cannot
-// change a file. Every write in this app still starts with a person pressing a button (§9.5).
+// change a file. Attune's approval policy applies proposals through guarded history (§9.5).
 //
 // Failure behavior: a tool that fails returns its message as the tool's *result* rather than
 // throwing, because a thrown error ends the turn and a returned one lets the model try a different
@@ -78,7 +78,7 @@ function schemaFor(shape: z.ZodType): Record<string, unknown> {
 export const TOOLS: ToolDefinition[] = [
   {
     name: "propose_task_update",
-    description: "Propose changes to an existing task by its exact id. Send only fields the user wants changed, as field/value pairs. Priority: 1 Critical, 2 High, 3 Normal, 4 Someday. Writes nothing until the user presses Apply; unmentioned fields stay unchanged.",
+    description: "Propose changes to an existing task by its exact id. Send only fields the user wants changed, as field/value pairs. Priority: 1 Critical, 2 High, 3 Normal, 4 Someday. This tool writes nothing; the app uses its approval setting to apply the proposal. Unmentioned fields stay unchanged.",
     schema: schemaFor(TaskUpdateInput),
   },
   {
@@ -191,7 +191,7 @@ async function search(query: string): Promise<string> {
 async function run(name: string, input: unknown): Promise<ToolOutcome> {
   switch (name) {
     case "propose_task_update":
-      return { result: "Recorded for review, not applied. The user can press Apply on the edit card.", proposal: await proposeTaskUpdate(input) };
+      return { result: "Proposed, not saved by this tool. Attune applies it automatically when Approve for me is on; otherwise the user presses Apply.", proposal: await proposeTaskUpdate(input) };
     case "read_knowledge": {
       const { path } = ReadKnowledge.parse(input);
       if (!path.startsWith(KNOWLEDGE_DIR)) {

@@ -13,7 +13,7 @@ test("composer is compact, has no duplicate close control and retains keyboard a
   await page.screenshot({ path: info.outputPath("compact-composer.png") });
   await toggle.click(); await expect(sheet).not.toBeVisible();
   const selected = page.getByRole("link", { name: "Today", exact: true });
-  expect((await selected.boundingBox())!.height).toBe(24);
+  expect((await selected.boundingBox())!.height).toBe(28);
   await page.setViewportSize({ width: 360, height: 800 }); await toggle.click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const send = sheet.locator('[data-composer="send"]');
@@ -49,7 +49,7 @@ test("untimed cutoff saves on blur and a task keeps its explicit due time when r
   const original=(await (await request.get("/api/settings")).json()).settings.deadlines;
   try {
     await page.goto("/settings"); const time=page.getByLabel("Untimed due time",{exact:true});
-    await expect(time).toHaveValue("00:00"); await time.fill("17:00"); await time.blur();
+    await expect(time).toHaveValue("23:59"); await time.fill("17:00"); await time.blur();
     await expect.poll(async()=>(await (await request.get("/api/settings")).json()).settings.deadlines.defaultTime).toBe("17:00");
     await page.reload(); await expect(time).toHaveValue("17:00");
     await (await request.post("/api/tasks",{data:{items:[{title:"Deadline edit check",due:"2030-06-12T18:30:00-04:00"}]}})).json();

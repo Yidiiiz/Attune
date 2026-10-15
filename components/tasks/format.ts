@@ -10,7 +10,8 @@
 // Failure behavior: a malformed date is returned as its own text rather than throwing. One bad
 // `due` shows a strange chip; it never costs the row, and it never costs the list.
 
-import { daysBetween } from "@/lib/schedule/dates";
+import { daysBetween, todayIn, minutesFromMidnight } from "@/lib/schedule/dates";
+import { deadlineTime } from "@/lib/schedule/deadlines";
 
 /** A date-only string as the instant every formatter here reads: noon UTC, formatted in UTC. */
 function noon(date: string): Date {
@@ -47,12 +48,19 @@ export function describeDate(date: string, todayDate: string): DayLabel {
  * A due date as the row says it: "today", "in 3 days", "5 days ago". Past a fortnight the count
  * stops being something anyone can picture, so it becomes a plain date instead.
  */
-export function relativeDue(viewDate: string, due: string | null): string | null {
+export function relativeDue(viewDate: string, due: string | null, clock?: { now: Date; timezone: string; defaultTime: string }): string | null {
   if (due === null) return null;
   if (!valid(due) || !valid(viewDate)) return due;
 
   const days = daysBetween(viewDate, due);
-  if (days === 0) return "today";
+  if (days === 0) {
+    if (!clock || todayIn(clock.timezone, clock.now) !== viewDate) return "today";
+    const [hour, minute] = deadlineTime(due, clock.defaultTime).split(":").map(Number);
+    const remaining = hour * 60 + minute - minutesFromMidnight(clock.now, clock.timezone);
+    if (remaining === 0) return "due now";
+    const amount = durationLabel(Math.abs(remaining));
+    return remaining > 0 ? `in ${amount}` : `${amount} overdue`;
+  }
   if (days === 1) return "tomorrow";
   if (days === -1) return "yesterday";
   if (days > 1 && days < 14) return `in ${days} days`;

@@ -47,7 +47,7 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
     </div>)}
     {section("deadlines", "Deadlines", <>
       <label>Untimed due time<input type="time" value={value.deadlines.defaultTime} onChange={event => form.change("deadlines", { ...value.deadlines, defaultTime: event.target.value })} onBlur={() => void form.save("deadlines")} /></label>
-      <p className={styles.note}>Midnight ends the due date. Specific task times take precedence.</p>
+      <p className={styles.note}>Untimed tasks default to 11:59 p.m. Specific task times take precedence.</p>
     </>)}
     {section("categories", "Categories", <>
       <div className={styles.chips}>{value.categories.map((item, index) => <div key={index} className={styles.row}>

@@ -248,11 +248,28 @@ describe("rankDay", () => {
 });
 
 describe("deadline cutoffs", () => {
-  it("keeps an untimed due date open through its day and expires at the following local midnight across DST", () => {
+  it("puts all today's deadlines ahead of later high-priority work, earliest first, even beyond focus size", () => {
+    const items = [
+      task({ id: "later", title: "Later critical", due: "2026-09-09", priority: 1 }),
+      task({ id: "untimed", title: "Untimed", due: VIEW_DATE, priority: 1 }),
+      task({ id: "late", title: "Evening", due: `${VIEW_DATE}T20:00`, priority: 2 }),
+      task({ id: "soon", title: "Soon", due: `${VIEW_DATE}T15:00`, priority: 4, scheduled: "2026-09-10" }),
+    ];
+    const result = rankDay(items, VIEW_DATE, settings({ focusSize: 1 }), NOW);
+    expect(result.focus.map(item => item.id)).toEqual(["soon", "late", "untimed"]);
+    expect(result.alsoPossible.map(item => item.id)).toEqual(["later"]);
+  });
+  it("keeps explicit midnight while changing the former untimed midnight default to 23:59", () => {
+    const config = { ...settings(), deadlines: { defaultTime: "00:00" } };
+    const item = task({ id: "legacy", title: "Legacy", due: VIEW_DATE });
+    expect(isOverdue(item, VIEW_DATE, config, NOW)).toBe(false);
+    expect(isOverdue({ ...item, due: `${VIEW_DATE}T00:00` }, VIEW_DATE, config, NOW)).toBe(true);
+  });
+  it("expires an untimed deadline at 23:59 local across DST", () => {
     const item = task({ id: "midnight", title: "Deadline", due: "2026-03-08" });
     const config = settings();
-    expect(isOverdue(item, "2026-03-08", config, new Date("2026-03-09T03:59:59Z"))).toBe(false);
-    expect(isOverdue(item, "2026-03-09", config, new Date("2026-03-09T04:00:00Z"))).toBe(true);
+    expect(isOverdue(item, "2026-03-08", config, new Date("2026-03-09T03:58:59Z"))).toBe(false);
+    expect(isOverdue(item, "2026-03-08", config, new Date("2026-03-09T03:59:00Z"))).toBe(true);
     expect(rankDay([item], "2026-03-09", config, new Date("2026-03-09T04:00:00Z")).overdue).toEqual([item]);
   });
   it("uses the configured cutoff on the due date while explicit times take precedence", () => {

@@ -25,6 +25,7 @@ import { uuidv7 } from "@/lib/chat/uuid";
 import { reportFailure, send as post } from "@/components/tasks/writes";
 import type { TurnListeners } from "@/components/chat/useConversation";
 import type { AutoApplied } from "@/lib/chat/types";
+import type { Proposal } from "@/lib/agent/tools";
 
 /** taskId → conversation, for this page's lifetime only. */
 const started = new Map<string, string>();
@@ -97,6 +98,8 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
       const controller = new AbortController();
       abort.current = controller;
       let failure: { message: string; code: string } | null = null;
+      const proposals: Proposal[] = [];
+      let complete = false;
       let delivered = "";
 
       try {
@@ -132,7 +135,9 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
                 delivered += event.text;
                 setReply(delivered);
               } else if (event.type === "proposal") {
-                listen.current.onProposal?.(event.proposal);
+                proposals.push(event.proposal);
+              } else if (event.type === "done") {
+                complete = true;
               } else if (event.type === "applied") {
                 setApplied((all) => [...all, event.applied]);
                 listen.current.onApplied?.(event.applied);
@@ -149,7 +154,10 @@ export function useAskTurn(listeners: TurnListeners = {}): AskTurn {
         setStreaming(false);
       }
 
-      if (failure === null) return null;
+      if (failure === null) {
+        if (complete && !controller.signal.aborted) proposals.forEach(proposal => listen.current.onProposal?.(proposal));
+        return null;
+      }
       if (failure.code === "auth" || failure.code === "provider") {
         reportFailure("The question was not sent", failure.message);
         return null;

@@ -170,6 +170,8 @@ export function useConversation(initial: ConversationState, listeners: TurnListe
       const controller = new AbortController();
       abort.current = controller;
       let failure: { message: string; code: string } | null = null;
+      const proposals: Proposal[] = [];
+      let complete = false;
       let delivered = "";
       let applied: AutoApplied | null = null;
 
@@ -218,7 +220,9 @@ export function useConversation(initial: ConversationState, listeners: TurnListe
               } else if (event.type === "error") {
                 failure = { message: event.message, code: event.code };
               } else if (event.type === "proposal") {
-                listen.current.onProposal?.(event.proposal);
+                proposals.push(event.proposal);
+              } else if (event.type === "done") {
+                complete = true;
               } else if (event.type === "applied") {
                 applied = event.applied;
                 listen.current.onApplied?.(event.applied);
@@ -251,7 +255,10 @@ export function useConversation(initial: ConversationState, listeners: TurnListe
       // list still says "New conversation" until the next navigation.
       router.refresh();
 
-      if (failure === null) return null;
+      if (failure === null) {
+        if (complete && !controller.signal.aborted) proposals.forEach(proposal => listen.current.onProposal?.(proposal));
+        return null;
+      }
 
       // §16.3: nothing was said, so the rows go and the caller puts the text back in the box.
       if (delivered.length === 0) {

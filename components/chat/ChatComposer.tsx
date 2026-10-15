@@ -26,6 +26,7 @@ import type { ReactNode } from "react";
 import Attachments, { AttachButton } from "@/components/composer/Attachments";
 import type { Attachment } from "@/components/composer/Attachments";
 import styles from "./Chat.module.css";
+import ApprovalToggle from "@/components/composer/ApprovalToggle";
 
 /** Just enough of a `ModelEntry` to draw an option — server-provided labels keep provider code out of client bundles. */
 export interface ModelChoice {
@@ -192,6 +193,7 @@ export default function ChatComposer({
             </option>
           ))}
         </select>
+        <ApprovalToggle disabled={streaming || busy} />
       </div>}
     </div>
   );

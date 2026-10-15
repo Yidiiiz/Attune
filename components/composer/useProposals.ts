@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { reportNotice, send } from "@/components/tasks/writes";
 import type { ModelTaskDraft, Proposal } from "@/lib/agent/tools";
 import type { ProposedWrite } from "@/lib/agent/memory";
@@ -75,6 +75,8 @@ function landed(item: TrayItem): string {
 }
 
 export interface TrayOptions {
+  autoApprove?: boolean;
+  paused?: boolean;
   /** §4.2's `source` for what lands — `chat:<id>` — or null before the conversation exists. */
   source: string | null;
   /** After a card lands, for a surface that shows what it wrote (the sheet refreshes Today). */
@@ -90,6 +92,7 @@ export function useProposals(opts: TrayOptions): Tray {
   current.current = items;
   const options = useRef(opts);
   options.current = opts;
+  const applying = useRef(new Set<string>());
 
   const key = (): string => {
     seq.current += 1;
@@ -114,7 +117,8 @@ export function useProposals(opts: TrayOptions): Tray {
 
   const add = useCallback(async (at: string) => {
     const item = current.current.find((one) => one.key === at);
-    if (item === undefined || item.busy) return;
+    if (item === undefined || item.busy || applying.current.has(at)) return;
+    applying.current.add(at);
     patch(at, { busy: true, error: null });
     const answer = await send("/api/agent/apply", {
       method: "POST",
@@ -125,13 +129,21 @@ export function useProposals(opts: TrayOptions): Tray {
       }),
     });
     if (answer.error !== null) {
+      applying.current.delete(at);
       patch(at, { busy: false, error: answer.error });
       return;
     }
     setItems((all) => all.filter((one) => one.key !== at));
+    applying.current.delete(at);
     reportNotice(landed(item));
     options.current.onAdded?.();
   }, []);
+
+  useEffect(() => {
+    if (!opts.autoApprove || opts.paused || applying.current.size > 0 || items.some(item => item.busy)) return;
+    const next = items.find(item => !item.error && !applying.current.has(item.key));
+    if (next) void add(next.key);
+  }, [opts.autoApprove, opts.paused, items, add]);
 
   const discard = useCallback((at: string) => {
     const item = current.current.find((one) => one.key === at);

@@ -8,7 +8,7 @@ import { send } from "@/components/tasks/writes";
 import type { useBuild } from "./useBuild";
 import styles from "./Build.module.css";
 
-export default function BuildPanel({ turn, approval, onApproval }: { turn: ReturnType<typeof useBuild>; approval: "plan" | "auto"; onApproval: (next: "plan" | "auto") => void }) {
+export default function BuildPanel({ turn, approval }: { turn: ReturnType<typeof useBuild>; approval: "plan" | "auto" }) {
   const [undone, setUndone] = useState(false);
   const [undoError, setUndoError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -28,11 +28,7 @@ export default function BuildPanel({ turn, approval, onApproval }: { turn: Retur
     else { setUndone(true); setUndoError(null); setConflict(false); }
   };
   return <section className={styles.panel} data-ui="build-panel" aria-label="Build project">
-    <div className={styles.controls} role="group" aria-label="Build approval">
-      <button aria-pressed={approval === "plan"} disabled={turn.busy || !!pending} onClick={() => onApproval("plan")}>Plan first</button>
-      <button aria-pressed={approval === "auto"} disabled={turn.busy || !!pending} onClick={() => onApproval("auto")}>Auto</button>
-      {turn.canStop ? <button onClick={turn.stop}>Stop build</button> : null}
-    </div>
+    {turn.canStop ? <button onClick={turn.stop}>Stop build</button> : null}
     <p className={styles.note}>{approval === "plan" ? "Review the plan, then review the diff before committing." : "Project edits are committed automatically. Undo remains available."}</p>
     {turn.canStop && turn.text ? <pre className={styles.live}>{turn.text}</pre> : null}
     {state?.phase === "plan" ? <>

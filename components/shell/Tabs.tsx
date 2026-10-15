@@ -7,7 +7,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { openComposer } from "@/components/composer/ComposerButton";
 import Search from "./Search";
 import SyncStatus from "./SyncStatus";
 import styles from "./Tabs.module.css";
@@ -20,6 +22,26 @@ const TABS = [
 
 export default function Tabs() {
   const pathname = usePathname();
+  const router = useRouter();
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (!TABS.some(tab => tab.href === pathname)) return;
+      if (document.querySelector('[role="dialog"][aria-label="Composer"]:not([inert])')) return;
+      const target = event.target as HTMLElement;
+      if (target.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"], [role="menu"]')) return;
+      if (event.key === "/" || (event.key === "Enter" && !event.shiftKey)) {
+        event.preventDefault();
+        openComposer();
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        const current = TABS.findIndex(tab => tab.href === pathname);
+        router.push(TABS[(current + (event.shiftKey ? 2 : 1)) % TABS.length].href, { scroll: false });
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [pathname, router]);
 
   return (
     <nav className={styles.bar} aria-label="Main">

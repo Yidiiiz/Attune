@@ -11,6 +11,8 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Markdown from "@/components/markdown/Markdown";
 import styles from "./Composer.module.css";
 
@@ -26,6 +28,11 @@ export interface AskPanelProps {
 }
 
 export default function AskPanel({ reply, streaming, conversationId, about, applied, onStop }: AskPanelProps) {
+  const router = useRouter();
+  const [opening, navigate] = useTransition();
+  useEffect(() => {
+    if (conversationId && !streaming) router.prefetch(`/chat?c=${conversationId}`);
+  }, [conversationId, streaming, router]);
   if (reply.length === 0 && !streaming) return null;
 
   return (
@@ -37,8 +44,12 @@ export default function AskPanel({ reply, streaming, conversationId, about, appl
             Stop
           </button>
         ) : conversationId === null ? null : (
-          <Link className={styles.linkButton} href={`/chat?c=${conversationId}`} data-ui="open-in-chat">
-            Open in Chat
+          <Link className={styles.openChat} href={`/chat?c=${conversationId}`} scroll={false} aria-busy={opening} data-ui="open-in-chat" onClick={event => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            navigate(() => router.push(`/chat?c=${conversationId}`, { scroll: false }));
+          }}>
+            {opening ? "Opening chat…" : "Open in Chat"}
           </Link>
         )}
       </header>
@@ -50,7 +61,7 @@ export default function AskPanel({ reply, streaming, conversationId, about, appl
         </div>
       ) : (
         <>
-          <Markdown text={reply} />
+          <div className={styles.askAnswer}><Markdown text={reply} /></div>
           {applied}
         </>
       )}

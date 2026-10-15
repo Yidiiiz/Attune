@@ -11,9 +11,10 @@
 // whole list, so it is caught per task and treated as undated — one unreadable field costs that
 // task its urgency, never the day its ranking.
 
-import { advanceDate, datePart, daysUntil, minutesFromMidnight, splitLocalIso, todayIn } from "./dates.ts";
+import { datePart, daysUntil, minutesFromMidnight, splitLocalIso, todayIn } from "./dates.ts";
 import type { Task } from "../store/tasks.ts";
 import type { Settings } from "../store/settings.ts";
+import { deadlineTime, deadlineKey } from "./deadlines.ts";
 
 /** §10.1's weights. A critical undated task (11) outranks a someday task due tomorrow (9). */
 const PRIORITY_WEIGHT: Record<number, number> = { 1: 11, 2: 6, 3: 2, 4: 0 };
@@ -49,12 +50,12 @@ function dueInDays(task: Task, viewDate: string): number | null {
   }
 }
 
-/** Date-only deadlines use the configured local cutoff; midnight ends the listed date. */
+/** Date-only deadlines use the configured local cutoff, defaulting to 23:59. */
 export function isOverdue(task: Task, viewDate: string, settings: Settings, now: Date): boolean {
   if (task.due === null || dueInDays(task, viewDate) === null) return false;
-  const { date, time } = splitLocalIso(task.due);
-  const cutoff = time || settings.deadlines?.defaultTime || "00:00";
-  const cutoffDate = !time && cutoff === "00:00" ? advanceDate(date, "daily") : date;
+  const { date } = splitLocalIso(task.due);
+  const cutoff = deadlineTime(task.due, settings.deadlines?.defaultTime);
+  const cutoffDate = date;
   if (cutoffDate !== viewDate) return cutoffDate < viewDate;
   const [hour, minute] = cutoff.split(":").map(Number);
   const viewedMinute = viewDate === todayIn(settings.timezone, now) ? minutesFromMidnight(now, settings.timezone) : 0;
@@ -144,7 +145,7 @@ export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now
     }
     // A task scheduled for a later day is not offered on an earlier one; that is what scheduling it
     // meant. `scheduled` in the past keeps it eligible — a missed plan is still work to do.
-    if (task.scheduled !== null && datePart(task.scheduled) > viewDate) continue;
+    if (task.scheduled !== null && datePart(task.scheduled) > viewDate && datePart(task.due ?? "") !== viewDate) continue;
 
     eligible.push({
       task,
@@ -153,14 +154,20 @@ export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now
     });
   }
 
-  overdue.sort((a, b) => tieBreak(a, b));
+  overdue.sort((a, b) => deadlineKey(a.due!, settings.deadlines?.defaultTime).localeCompare(deadlineKey(b.due!, settings.deadlines?.defaultTime)) || tieBreak(a, b));
   doneToday.sort((a, b) => (a.completedAt ?? "") < (b.completedAt ?? "") ? 1 : -1);
-  eligible.sort((a, b) => b.total - a.total || tieBreak(a.task, b.task));
+  const dueToday = (task: Task) => task.due !== null && datePart(task.due) === viewDate;
+  eligible.sort((a, b) => {
+    const aToday = dueToday(a.task), bToday = dueToday(b.task);
+    if (aToday !== bToday) return aToday ? -1 : 1;
+    if (aToday && bToday) return deadlineKey(a.task.due!, settings.deadlines?.defaultTime).localeCompare(deadlineKey(b.task.due!, settings.deadlines?.defaultTime)) || tieBreak(a.task, b.task);
+    return b.total - a.total || tieBreak(a.task, b.task);
+  });
 
   const focus: Task[] = [];
   const alsoPossible: Task[] = [];
   for (const entry of eligible) {
-    if (entry.focusable && focus.length < settings.list.focusSize) focus.push(entry.task);
+    if (dueToday(entry.task) || (entry.focusable && focus.length < settings.list.focusSize)) focus.push(entry.task);
     else alsoPossible.push(entry.task);
   }
 

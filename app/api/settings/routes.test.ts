@@ -51,13 +51,13 @@ describe("section transactions", () => {
 
 it("saves an untimed cutoff as an undoable section without changing other settings", async () => {
   const before = await readSettings();
-  expect(before.deadlines.defaultTime).toBe("00:00");
+  expect(before.deadlines.defaultTime).toBe("23:59");
   const response = await settings.PUT(request({ section: "deadlines", value: { defaultTime: "17:00" } }));
   const answer = await response.json(); expect(response.status).toBe(200);
   expect((await readSettings()).deadlines.defaultTime).toBe("17:00");
   expect((await readSettings()).day).toEqual(before.day);
   expect(await undoBatch(answer.batch)).toMatchObject({ ok: true });
-  expect((await readSettings()).deadlines.defaultTime).toBe("00:00");
+  expect((await readSettings()).deadlines.defaultTime).toBe("23:59");
 });
 
 describe("custom themes", () => {

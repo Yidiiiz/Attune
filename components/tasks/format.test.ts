@@ -38,6 +38,14 @@ describe("describeDate", () => {
 });
 
 describe("relativeDue", () => {
+  it("counts down today's local deadline, including untimed 23:59, and marks elapsed hours", () => {
+    const clock = { now: new Date("2026-09-08T18:00:00Z"), timezone: "America/New_York", defaultTime: "23:59" };
+    expect(relativeDue("2026-09-08", "2026-09-08T16:30", clock)).toBe("in 2h 30m");
+    expect(relativeDue("2026-09-08", "2026-09-08", clock)).toBe("in 9h 59m");
+    expect(relativeDue("2026-09-08", "2026-09-08T12:00", clock)).toBe("2h overdue");
+    expect(relativeDue("2026-09-08", "2026-09-08T14:00", clock)).toBe("due now");
+    expect(relativeDue("2026-09-09", "2026-09-09T14:00", clock)).toBe("today");
+  });
   const view = "2026-09-08";
 
   it("uses words for the three days a word exists for", () => {

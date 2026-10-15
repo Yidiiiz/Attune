@@ -519,6 +519,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
 }
 
 .knowledgeHead {
@@ -543,11 +546,11 @@
 /* ---- Ask mode (§9.6): the reply streams here, in the sheet, before it is opened in Chat. ---- */
 
 .askPanel {
-  margin: 0 0 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
+  margin: 4px 0;
+  padding: 12px 0;
+  border: 0;
   border-radius: var(--radius-md);
-  background: var(--bg-sunken);
+  background: transparent;
   max-height: 34vh;
   overflow-y: auto;
   font-size: 13.5px;
@@ -555,19 +558,31 @@
 
 .askHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: 6px;
+  margin-bottom: 12px;
 }
 
 .askLabel {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--fg-faint);
 }
+
+.askAnswer { line-height: 1.65; overflow-wrap: anywhere; }
+.askAnswer > :first-child { margin-top: 0; }
+.askAnswer > :last-child { margin-bottom: 0; }
+.openChat { flex: 0 0 auto; min-width: 100px; padding: 4px 8px; border-radius: var(--radius-sm); color: var(--fg-muted); text-align: center; text-decoration: none; font-size: 12px; }
+.openChat:hover { color: var(--fg); background: var(--bg-sunken); }
+.approval { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; color: var(--fg-muted); font-size: 12px; white-space: nowrap; cursor: pointer; }
+.approval input { appearance: none; width: 24px; height: 14px; margin: 0; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--bg-sunken); position: relative; cursor: pointer; }
+.approval input::after { content: ""; position: absolute; width: 8px; height: 8px; top: 2px; left: 2px; border-radius: 50%; background: var(--fg-faint); transition: transform 120ms ease; }
+.approval input:checked { background: var(--accent); border-color: var(--accent); }
+.approval input:checked::after { background: var(--accent-fg); transform: translateX(10px); }
+.approval input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.approval input:disabled { opacity: .5; cursor: default; }
 
 .askPlain {
   white-space: pre-wrap;

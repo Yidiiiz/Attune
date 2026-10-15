@@ -48,8 +48,8 @@ export const SettingsSchema = z.looseObject({
     showCompleted: z.boolean().default(true),
   }).default({ focusSize: 5, lookaheadDays: 14, showCompleted: true }),
   deadlines: z.looseObject({
-    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("00:00"),
-  }).default({ defaultTime: "00:00" }),
+    defaultTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("23:59"),
+  }).default({ defaultTime: "23:59" }),
   categories: z.array(z.string()).default(["school", "personal"]),
   firstDayOfWeek: z.enum(["monday", "sunday"]).default("monday"),
   models: z.looseObject({
@@ -92,7 +92,10 @@ export async function readSettingsResult(): Promise<ReadSettingsResult> {
   }
 
   try {
-    return { settings: upgradeFactoryModels(SettingsSchema.parse(JSON.parse(text))) };
+    const settings = upgradeFactoryModels(SettingsSchema.parse(JSON.parse(text)));
+    // The former factory midnight cutoff now means 23:59 on the listed day.
+    if (settings.deadlines.defaultTime === "00:00") settings.deadlines = { ...settings.deadlines, defaultTime: "23:59" };
+    return { settings };
   } catch {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const brokenRel = `${SETTINGS_PATH}.broken-${stamp}`;

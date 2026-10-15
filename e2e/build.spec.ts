@@ -54,10 +54,9 @@ test("a pending Build diff resumes after reload and Revert keeps HEAD", async ({
   expect(existsSync(file)).toBe(false); expect(head()).toBe(before);
 });
 
-test("Auto confirms, commits and offers ordinary Undo", async ({ page }) => {
+test("Approve for me commits Build and offers ordinary Undo", async ({ page }) => {
   await open(page);
-  page.once("dialog", dialog => void dialog.accept());
-  await page.getByRole("button", { name: "Auto", exact: true }).click();
+  await page.getByRole("switch", { name: "Approve for me" }).check();
   await submit(page);
   await expect(page.getByRole("heading", { name: "Committed", exact: true })).toBeVisible();
   expect(existsSync(file)).toBe(true);
@@ -67,8 +66,7 @@ test("Auto confirms, commits and offers ordinary Undo", async ({ page }) => {
 
 test("a denied Build write keeps the prompt and creates no code commit or personal file", async ({ page }) => {
   await open(page); const before = head();
-  page.once("dialog", dialog => void dialog.accept());
-  await page.getByRole("button", { name: "Auto", exact: true }).click();
+  await page.getByRole("switch", { name: "Approve for me" }).check();
   await submit(page, "[[build-denied]] try a personal path");
   await expect(page.getByTestId("build-panel").getByRole("alert").last()).toContainText(/forbidden|protected|personal|data/i);
   await expect(page.locator("[data-composer='input']")).toHaveValue("[[build-denied]] try a personal path");

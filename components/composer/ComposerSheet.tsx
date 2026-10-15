@@ -31,6 +31,7 @@ import BuildPanel from "./BuildPanel";
 import { useBuild } from "./useBuild";
 import { MODELS } from "@/lib/agent/models";
 import type { Settings } from "@/lib/store/settings";
+import ApprovalToggle, { useApproval } from "./ApprovalToggle";
 import styles from "./Composer.module.css";
 
 export interface ComposerSheetProps {
@@ -63,17 +64,8 @@ export default function ComposerSheet(props: ComposerSheetProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<Attachment[]>([]);
   const build = useBuild();
-  const [approval, setApproval] = useState<"plan" | "auto">("plan");
+  const auto = useApproval();
   const pendingBuild = build.state && ["planning", "plan", "applying", "diff", "committing", "reverting"].includes(build.state.phase);
-  const chooseApproval = (next: "plan" | "auto"): void => {
-    if (next === "auto") {
-      let confirmed = false;
-      try { confirmed = window.localStorage.getItem("build.autoConfirmed") === "1"; } catch { /* ask again */ }
-      if (!confirmed && !window.confirm("Auto lets the assistant edit project files and commit changes without plan approval. Continue?")) return;
-      try { window.localStorage.setItem("build.autoConfirmed", "1"); } catch { /* this session still has consent */ }
-    }
-    setApproval(next);
-  };
 
   const onAdded = useCallback(() => {
     setFiles([]);
@@ -89,6 +81,8 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     onApplied: announceApplied,
   });
   const tray = useProposals({
+    autoApprove: auto.enabled,
+    paused: askTurn.streaming,
     source: askTurn.conversationId === null ? null : `chat:${askTurn.conversationId}`,
     onAdded: () => router.refresh(),
   });
@@ -101,6 +95,13 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     onAdded,
     onAddRefused: (original) => setPrompt((current) => current || original),
   });
+  const autoResult = useRef<unknown>(null);
+  useEffect(() => {
+    if (!auto.enabled || mode !== "tasks" || !turn.result || turn.busy !== "idle" || turn.error || autoResult.current === turn.result) return;
+    autoResult.current = turn.result;
+    if (turn.result.kind === "tasks") void turn.add();
+    else if (turn.result.kind === "collection") void turn.addCollection();
+  }, [auto.enabled, mode, turn]);
 
   // §9.1: a draft survives the sheet closing, per device (Decision 19). Read after mount so the
   // server render and the first client render agree.
@@ -130,6 +131,13 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     if (!open) return;
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === "Escape") onClose();
+      if (event.key === "Tab" && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === box.current || event.target === document.body)) {
+        event.preventDefault();
+        if (turn.busy !== "idle" || askTurn.streaming || build.busy) return;
+        const modes: Mode[] = ["tasks", "ask", "build"];
+        onMode(modes[(modes.indexOf(mode) + (event.shiftKey ? 2 : 1)) % modes.length]);
+        box.current?.focus();
+      }
     };
     const onDown = (event: MouseEvent): void => {
       if (prompt.trim() !== "" || toggleRef?.current?.contains(event.target as Node)) return;
@@ -141,7 +149,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onDown);
     };
-  }, [open, prompt, onClose, toggleRef]);
+  }, [open, prompt, onClose, toggleRef, mode, onMode, turn.busy, askTurn.streaming, build.busy]);
 
   const dictated = useCallback((said: string) => {
     setPrompt((current) => (current === "" ? said : `${current} ${said}`));
@@ -155,7 +163,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
     const text = prompt.trim();
     if (text === "") return;
     if (mode === "build") {
-      if (!pendingBuild && await build.start(text, approval)) setPrompt("");
+      if (!pendingBuild && await build.start(text, auto.enabled ? "auto" : "plan")) setPrompt("");
       return;
     }
 
@@ -192,10 +200,11 @@ export default function ComposerSheet(props: ComposerSheetProps) {
 
       <div className={styles.inner}>
         <div className={styles.top}>
-          <ModeSelector mode={mode} onChange={onMode} disabled={busy || build.busy} />
+          <ModeSelector mode={mode} onChange={onMode} disabled={busy || askTurn.streaming || build.busy} />
           <select className={styles.modelSelect} aria-label="Composer model" value={chosenModel} disabled={busy || askTurn.streaming || build.busy || mode === "build"} onChange={event => setChosenModel(event.target.value)}>
             {MODELS.filter(model => mode !== "build" || model.provider === "anthropic").map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
           </select>
+          <ApprovalToggle disabled={busy || askTurn.streaming || build.busy || !!pendingBuild} />
           {askingAbout === undefined ? null : (
             <span className={styles.note} data-composer="context">
               about &lsquo;{askingAbout.title}&rsquo;
@@ -203,7 +212,7 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           )}
         </div>
 
-        {mode === "build" ? <BuildPanel turn={build} approval={approval} onApproval={chooseApproval} /> : null}
+        {mode === "build" ? <BuildPanel turn={build} approval={auto.enabled ? "auto" : "plan"} /> : null}
         {mode === "ask" ? <AskPanel
           reply={askTurn.reply}
           streaming={askTurn.streaming}

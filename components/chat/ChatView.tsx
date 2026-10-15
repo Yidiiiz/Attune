@@ -37,6 +37,7 @@ import { reportFailure, send as post } from "@/components/tasks/writes";
 import { announceApplied } from "@/components/composer/autoApplied";
 import ProposalPanel from "@/components/composer/ProposalPanel";
 import { useProposals } from "@/components/composer/useProposals";
+import { useApproval } from "@/components/composer/ApprovalToggle";
 import AppliedMarker from "./AppliedMarker";
 import MessageRow from "./MessageRow";
 import ChatComposer from "./ChatComposer";
@@ -77,12 +78,13 @@ export default function ChatView({ initial, models, scripted, categories, distil
   const id = initial.conversation.id;
   // §9.5's tray and §6.3's toast: where a turn's proposals and its auto-applied write go. The toast's
   // Undo re-reads, and the marker leaves with the batch because the log says it is undone.
-  const tray = useProposals({ source: `chat:${id}` });
+  const approval = useApproval();
   const { state, streamingId, error, setError, send, stop, reload, switchTo, setModel } =
     useConversation(initial, {
-      onProposal: tray.receive,
+      onProposal: proposal => tray.receive(proposal),
       onApplied: announceApplied,
     });
+  const tray = useProposals({ source: `chat:${id}`, autoApprove: approval.enabled, paused: streamingId !== null, onAdded: () => router.refresh() });
   const distilling = useDistill(id, distill, tray);
   // A message typed under a document arrives here to be sent. Nothing about it may be lost: a
   // refusal puts the text back in the box, and an empty handover says so above it (§10.2).

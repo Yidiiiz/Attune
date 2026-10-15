@@ -954,5 +954,5 @@
 .railButton svg { display: block; }
 
 .panelEmpty { margin: 0; padding: 12px 16px; color: var(--fg-muted); font-size: 13px; }
-.composerMeta { max-width: 46rem; margin: 4px auto 0; padding-left: 48px; }
+.composerMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; max-width: 46rem; margin: 6px auto 0; padding-left: 48px; }
 .composerMeta .modelSelect { height: 24px; max-width: 100%; padding: 0 8px; border: 0; background: transparent; }

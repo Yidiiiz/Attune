@@ -29,13 +29,14 @@ export interface TaskRowProps {
   /** "Also possible" and "Done today" are grayed; the section decides, not the row. */
   muted?: boolean;
   overdue?: boolean;
+  clock?: { now: Date; timezone: string; defaultTime: string };
 }
 
-export default function TaskRow({ task, viewDate, actions, muted, overdue }: TaskRowProps) {
+export default function TaskRow({ task, viewDate, actions, muted, overdue, clock }: TaskRowProps) {
   const busy = actions.busyId === task.id;
   const done = task.status === "done";
   const progress = subtaskProgress(task.body);
-  const due = relativeDue(viewDate, task.due);
+  const due = relativeDue(viewDate, task.due, clock);
   const estimate = durationLabel(task.estimateMin ?? 30);
 
   if (actions.editingId === task.id) {

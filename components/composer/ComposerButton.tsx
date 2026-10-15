@@ -9,10 +9,8 @@
 // either — nothing below needs to re-render when the sheet opens, and the state has exactly one
 // reader. When a third bus appears, that is the moment to extract one.
 //
-// Failure behavior: a call to `openComposer` before this mounts is dropped rather than queued. The
-// only caller is a click on a row that is on the same page as the button, so "not mounted yet"
-// means the page is not interactive yet, and a sheet that opens by itself a second later is worse
-// than one that did not open.
+// Failure behavior: user requests made during a route mount gap are delivered once to
+// the arriving host. Nothing opens without a user request.
 
 "use client";
 
@@ -33,20 +31,24 @@ export interface OpenRequest {
 type Listener = (request: OpenRequest) => void;
 
 const listeners = new Set<Listener>();
+let pending: OpenRequest | null = null;
 
 /** Open the composer from anywhere on the client. Safe to call before the host mounts. */
 export function openComposer(request: OpenRequest = {}): void {
+  // A keyboard request during a route's mount gap belongs to the arriving page.
+  if (listeners.size === 0) { pending = request; return; }
   for (const listener of listeners) listener(request);
 }
 
 export interface ComposerButtonProps {
+  hiddenButton?: boolean;
   categories: string[];
   models: Settings["models"];
   /** The day this page is showing, so the context carries the right view block (§13.1). */
   viewDate?: string;
 }
 
-export default function ComposerButton({ categories, viewDate, models }: ComposerButtonProps) {
+export default function ComposerButton({ categories, viewDate, models, hiddenButton = false }: ComposerButtonProps) {
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>("tasks");
@@ -70,6 +72,7 @@ export default function ComposerButton({ categories, viewDate, models }: Compose
       setOpen(true);
     };
     listeners.add(listener);
+    if (pending) { const request = pending; pending = null; listener(request); }
     return () => {
       listeners.delete(listener);
     };
@@ -104,7 +107,7 @@ export default function ComposerButton({ categories, viewDate, models }: Compose
         {...(askingAbout === undefined ? {} : { askingAbout })}
       />
 
-      <button
+      {hiddenButton && !open ? null : <button
         type="button"
         className={`${styles.button} ${open ? styles.buttonOpen : ""}`}
         ref={toggle}
@@ -116,7 +119,7 @@ export default function ComposerButton({ categories, viewDate, models }: Compose
         <span className={styles.glyph} aria-hidden="true">
           <Icon name="plus" size={24} />
         </span>
-      </button>
+      </button>}
     </>
   );
 }

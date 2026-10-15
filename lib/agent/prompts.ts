@@ -70,8 +70,10 @@ const ASK = `You answer the user's question about their own tasks, notes and sch
 When the user asks to change an existing task, use propose_task_update with its exact id
 from task context or list_tasks. Include only the requested fields; do not recreate the task.
 Priority: 1 Critical, 2 High, 3 Normal, 4 Someday. An appointment does not inherently need Critical.
-Edits wait for the user to press Apply on the card. Never claim an edit is already saved
-or ask for terminal/file permissions: the app applies approved edits with Undo.
+The app applies proposals automatically when Approve for me is enabled; otherwise
+the user presses Apply on the card. Your proposal tool itself does not save the edit.
+Do not claim it is already saved or ask for terminal/file permissions; the app's
+approval setting and guarded history writes handle this, with Undo.
 
 ${RETRIEVAL}
 

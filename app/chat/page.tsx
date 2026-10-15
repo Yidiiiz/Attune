@@ -27,6 +27,7 @@ import { isScripted } from "@/lib/agent/scripted";
 import { MODELS } from "@/lib/agent/models";
 import ChatsPanel from "@/components/chat/ChatsPanel";
 import ChatView from "@/components/chat/ChatView";
+import ComposerButton from "@/components/composer/ComposerButton";
 import Rail from "@/components/chat/Rail";
 import DocumentView from "@/components/browser/DocumentView";
 import GraphView from "@/components/browser/GraphView";
@@ -107,6 +108,7 @@ export default async function Page({ searchParams }: Search) {
           />
         )}
       </main>
+      <ComposerButton hiddenButton models={settings.models} categories={settings.categories} viewDate={today} />
     </div>
   );
 }

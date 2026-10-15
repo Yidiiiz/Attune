@@ -108,6 +108,7 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
       ) : null}
 
       <TaskList
+        clock={{ now: new Date(nowMs), timezone: settings.timezone, defaultTime: settings.deadlines.defaultTime }}
         ranked={ranked}
         viewDate={date}
         showCompleted={settings.list.showCompleted}

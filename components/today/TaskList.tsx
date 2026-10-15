@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Task } from "@/lib/store/tasks";
 import type { RankedDay } from "@/lib/schedule/rank";
 import TaskRow from "./TaskRow";
@@ -19,6 +19,7 @@ export interface TaskListProps {
   viewDate: string;
   showCompleted: boolean;
   actions: RowActions;
+  clock?: { now: Date; timezone: string; defaultTime: string };
 }
 
 function Rows({
@@ -27,12 +28,14 @@ function Rows({
   actions,
   muted,
   overdue,
+  clock,
 }: {
   tasks: Task[];
   viewDate: string;
   actions: RowActions;
   muted?: boolean;
   overdue?: boolean;
+  clock?: { now: Date; timezone: string; defaultTime: string };
 }) {
   return (
     <ul className={styles.rows}>
@@ -44,13 +47,24 @@ function Rows({
           actions={actions}
           muted={muted}
           overdue={overdue}
+          clock={clock}
         />
       ))}
     </ul>
   );
 }
 
-export default function TaskList({ ranked, viewDate, showCompleted, actions }: TaskListProps) {
+export default function TaskList({ ranked, viewDate, showCompleted, actions, clock }: TaskListProps) {
+  const [now, setNow] = useState(clock?.now);
+  useEffect(() => {
+    if (!clock) return;
+    const refresh = () => setNow(new Date());
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [clock?.timezone]);
+  const currentClock = clock && now ? { ...clock, now } : undefined;
   const [alsoOpen, setAlsoOpen] = useState(false);
   const { overdue, focus, alsoPossible, doneToday } = ranked;
   const total = overdue.length + focus.length + alsoPossible.length + doneToday.length;
@@ -64,14 +78,14 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions }: T
       {overdue.length > 0 ? (
         <section className={styles.section}>
           <h2 className={`${styles.heading} ${styles.overdueHeading}`}>Overdue</h2>
-          <Rows tasks={overdue} viewDate={viewDate} actions={actions} overdue />
+          <Rows tasks={overdue} viewDate={viewDate} actions={actions} overdue clock={currentClock} />
         </section>
       ) : null}
 
       {focus.length > 0 ? (
         <section className={styles.section}>
           <h2 className={styles.heading}>Today&rsquo;s focus</h2>
-          <Rows tasks={focus} viewDate={viewDate} actions={actions} />
+          <Rows tasks={focus} viewDate={viewDate} actions={actions} clock={currentClock} />
         </section>
       ) : null}
 
@@ -89,7 +103,7 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions }: T
             Also possible
             <span className={styles.count}>{alsoPossible.length}</span>
           </button>
-          {alsoOpen ? <Rows tasks={alsoPossible} viewDate={viewDate} actions={actions} muted /> : null}
+          {alsoOpen ? <Rows tasks={alsoPossible} viewDate={viewDate} actions={actions} muted clock={currentClock} /> : null}
         </section>
       ) : null}
 

@@ -720,3 +720,64 @@ No unfinished implementation checks remain for this refinement. Owner visual/use
 review and previously explicit physical/audio/live Build SDK/API residuals remain;
 scripted Build approval checks do not claim real SDK inference. No publication,
 source push, extra worker, supervisor or budget reset. HANDOFF.md remains untouched.
+
+
+## Quick approval acceptance follow-up — 2026-10-15
+
+Owner continued after the implementation close. Reviewed the saved status and
+exercised additional interactions affected by shared proposal/style changes using
+existing isolated Playwright tooling. No new provider, supervisor or worker.
+Added two behavioral checks: bottom Ask automatic priority Apply exactly once with
+preserved appointment time and ordinary Undo; and disabling approval during one
+held automatic Apply leaves the next queued proposal for manual review.
+
+First expanded group: 30/33 in 3.6 minutes (.agent/quick-actions-followup-ui.log).
+Existing resize/editor keyboard, annotation draft, reading above a stream, bounded
+proposal tray in both themes, rich Markdown, composer selection/follow-up/attachments,
+Ask reuse, settings theme generation/preview/history/geolocation controls passed.
+Physical geolocation/audio/provider inference is not inferred from controlled checks.
+Failures retained: (1) the 200-message editor check observed a 7239px reading-position
+jump; (2) auto-extracted undated task was correctly under collapsed Also possible,
+not visible in the populated focus list; (3) queued test wrongly assumed knowledge
+arrived before collection. Knowledge proposals deliberately wait for finalization,
+so actual first write was collection and the remaining note correctly stayed pending.
+No application repair is claimed for either fixture assumption.
+
+The Tasks test now deliberately seeds six critical focus items, opens Also possible
+and checks the new task there. The queue test identifies the first applied proposal
+from its request and checks that the other remains reviewable. Initial targeted run
+was 3/4 in 33.8s (.agent/quick-actions-followup-targeted.log): the unchanged 200-message
+editor check passed, Tasks creation and bottom Ask passed; the queue fixture had
+loaded a misplaced local variable before its source correction, causing ReferenceError.
+The scope is corrected and TypeScript passes. This partial run is not called clean.
+Final stable targeted results and rebuild/restart follow. No app-source change was
+needed for the observed nonreproducing editor jump; its original failure stays explicit.
+
+All writes are synthetic in .e2e-sandbox, no owner/private content changed. HANDOFF.md
+is untouched/untracked. Existing 818 deterministic checks and 92 library loads remain
+accepted for unchanged application source c5bb22d. No broad rerun of those checks is
+claimed for this test-only continuation; TypeScript and production rebuild are checked.
+No push, publication, supervisor, extra worker or budget reset; budget remains 2/6.
+
+
+Final stable targeted group passed 4/4 in 39.0 seconds, native exit 0
+(.agent/quick-actions-followup-targeted-final.log): unchanged 200-message editor,
+populated-focus Tasks auto-add, bottom Ask Apply/Undo and approval opt-out queue.
+The original editor failure did not repeat in either targeted run; no speculative
+source repair or weakened threshold. Its initial failure remains above. All 33
+distinct checks in the expanded affected group passed across these selective runs;
+the initial 30/33 and intermediate 3/4 groups are not clean runs. Final long-middle
+screenshot inspected and retained under .agent/quick-actions-followup-screenshots/.
+TypeScript passed, test additions committed as ab1737b (hook: one file clean).
+No application source behavior changed beyond c5bb22d. Production rebuild/restart
+results follow; no full deterministic rerun was necessary for these browser tests.
+
+
+Production rebuild passed with native exit 0
+(.agent/quick-actions-followup-build.log). App intentionally runs at
+http://localhost:3000, PID 44696 (saved .agent/app-server.pid), logs
+.agent/app-quick-actions-followup-production.log and
+.agent/app-quick-actions-followup-production-error.log. Four complete main-page
+responses returned 200. No unfinished implementation work remains for this acceptance
+continuation. Owner visual/use review and existing physical/manual/provider checks
+remain; no owner-data changes, workers, publication or budget reset.

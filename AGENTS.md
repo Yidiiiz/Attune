@@ -2,6 +2,17 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Quick approval follow-up acceptance — 2026-10-15.** Test source ab1737b adds
+bottom Ask automatic Apply/Undo and disabling approval during a queued action.
+Expanded affected group was 30/33; final targeted 4/4 passed (39.0s), all 33 distinct
+cases passed across selective groups. Original 200-message editor scroll jump did
+not reproduce in either targeted run; both fixture assumptions and intermediate
+scope error remain recorded in docs/progress.md. No app behavior change or weakened
+check. TypeScript and production rebuild passed; prior unchanged app's 818 tests
+and 92 library loads remain its evidence. App runs localhost:3000 PID 44696. No
+owner-data write, inference, supervisor, worker, push, publication or budget reset;
+budget 2/6. Existing physical/manual/provider residuals remain explicit.
+
 **Quick approval/keyboard/deadline close — 2026-10-15.** Source c5bb22d implements
 Decision 130: off-by-default Approve for me beside model selection, successful-turn
 only queued apply/Undo without automatic retries, shared existing Build Auto path,

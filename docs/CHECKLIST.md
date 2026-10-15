@@ -1010,3 +1010,13 @@ No live provider inference or owner-data write occurred for this refinement.
 corrected UI cases passed 2/2 separately. Production is running at localhost:3000,
 PID 46212; four complete page responses returned 200. See docs/progress.md for
 exact logs and the unchanged manual/provider residuals.
+
+
+11.11 follow-up acceptance (ab1737b): bottom Ask automatic priority Apply exactly
+once/Undo and opting out during a held write are now covered. Existing affected
+chat/editor/annotation/bounded-tray, composer and Settings cases exercised: 30/33
+initially, all four targeted cases passed in the final 4/4 group. All 33 distinct
+cases passed across groups. Initial editor scroll jump and two incorrect fixture
+assumptions remain documented; no speculative application fix or threshold change.
+TypeScript passed. See docs/progress.md for the intermediate fixture error and
+production restart; existing physical/manual/provider residuals remain unchanged.

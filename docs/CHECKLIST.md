@@ -965,3 +965,15 @@ actual HTTP streaming turns and persisted complete replies. No owner-data write,
 supervisor, extra worker, push, publication or budget reset occurred; budget stays 2/6.
 Native OS pointer/Shift, actual audio/microphone, mintty Ctrl+C, live Build SDK and
 API-provider-specific inference remain explicit residuals. See docs/progress.md.
+
+
+### 11.10 Ask edits existing tasks — **verified locally and with terminal models, 2026-10-15**
+
+Decision 129/source ec0dbc9 adds exact-ID, field-level task update proposals with
+before/after review and Apply through existing history. Both actual terminal models
+proposed a synthetic appointment priority change; Apply preserved time, estimate
+and notes, and Undo restored original state. Claude's initial mismatched fixture
+caused a correct clarification; corrected fixture passed. Browser group 12/12 and
+final edit case 1/1 cover Apply, Undo, stale conflict/error retention and Discard.
+No owner appointment edit or native model filesystem permission is implied.
+See docs/progress.md for retained failures, final suite and app restart evidence.

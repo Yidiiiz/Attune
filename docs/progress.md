@@ -559,3 +559,63 @@ owner review/use of the running app and explicit residual checklist items: nativ
 OS drag/Shift, physical audio/microphone, Git Bash mintty Ctrl+C, live Build SDK,
 and API-provider-specific inference (including API PDF). No additional acceptance
 work or supervisor launch is needed to close this continuation.
+
+
+## Existing-task edits from Ask — 2026-10-15
+
+Owner reported that Ask could discuss the security appointment but could not change
+Critical to Normal. This was a missing application tool, not a terminal permission
+problem. Decision 129 adds propose_task_update with exact task ID, requested fields
+only, typed validation, a before/after card and explicit Apply. Source ec0dbc9.
+Apply uses ordinary task.update/runBatch and Undo; stale reviewed fields refuse
+inside the serialized action. Unrelated later edits survive. Task context now
+includes ID. Shared priority labels remain 1 Critical, 2 High, 3 Normal, 4 Someday.
+No native shell/file permissions were granted to either model.
+
+New isolated tests prove proposal writes nothing, only requested fields change,
+appointment time/estimate/notes survive, Undo restores the task, stale fields refuse,
+unrelated edits survive, and missing targets/invalid/protected/duplicate fields refuse.
+Initial deterministic run: 815/815 in 75 files, 75.83s; TypeScript and 91 plain-Node
+library modules passed. After tracking the new test, convention check found its
+missing serial checkout-runner registration (5/6 passed). Registration corrected;
+final deterministic/build results follow. No threshold or quarantine changed.
+
+Affected knowledge/terminal/edit browser group: 12/12 in 53.2s, retained at
+.agent/task-edits-ui.log. Final edit-only screenshot/check: 1/1 in 14.7s at
+.agent/task-edits-ui-final.log. Compact Critical -> Normal Apply/Discard card
+screenshot .agent/task-edit-proposal.png inspected. Browser checks Apply, unchanged
+schedule, Undo, stale refusal/error retention and Discard. A transient Next dev
+static-path JSON warning appeared during the passing 12-case run; no failed check.
+
+Actual terminal GPT-6.1 Sol proposed the edit, ordinary Apply changed only priority,
+and Undo restored original synthetic task (10.020s). Initial Claude case correctly
+asked for clarification because fixture title did not match the requested security
+prescreen; this mixed run is retained, not called clean, in
+.agent/task-edits-provider-result-first.json. Corrected matching synthetic title
+passed Claude Opus 5.5 in 7.301s (.agent/task-edits-provider-result.json).
+Both isolated production servers stopped and source HEAD preservation passed.
+Early local harness-construction marker errors launched no provider; PowerShell
+stderr reporting on the successful Claude probe is not its acceptance result.
+All prompts/tasks were synthetic; owner's appointment was not changed by these
+checks. No private writes, supervisor/extra worker, push or publication; budget 2/6.
+
+Automatic approval review briefly blocked a final terminal step due to its usage
+limit, explicitly not an unsafe-action determination. Owner continued; review then
+allowed ordinary close operations. No bypass was used. The first owner-app restart
+failed because the last browser check had replaced .next production output; rebuild
+and verified restart follow. All existing changes and HANDOFF.md are preserved.
+
+
+Final deterministic rerun after serial registration: 815/815 in 75 files,
+67.21 seconds, native exit 0 (.agent/task-edits-unit-final.log). The corrected
+registration is ca4bcc3; the preceding convention failure remains recorded above.
+
+Final production rebuild passed with native exit 0 at
+.agent/task-edits-build-final.log. Production is intentionally running at
+http://localhost:3000, PID 46168 (saved .agent/app-server.pid), logs
+.agent/app-task-edits-production.log and .agent/app-task-edits-production-error.log.
+All four main pages returned 200 with full response bodies consumed. Refresh the
+app, then repeat the priority request and press Apply on the review card. Existing
+owner task priority/time remain unchanged by this implementation continuation.
+No unfinished implementation checks remain for this fix; earlier manual/provider
+residuals are unchanged.

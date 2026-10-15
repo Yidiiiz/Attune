@@ -2,6 +2,17 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Existing-task Ask edits close — 2026-10-15.** Source ec0dbc9 and runner
+registration ca4bcc3 implement Decision 129: exact-ID task edit proposals with
+field-level before/after review and Apply through ordinary history/Undo. Requested
+fields only; stale reviewed values refuse inside the queue, unrelated edits survive.
+Both real terminal models passed synthetic appointment priority Apply/Undo; Claude's
+initial mismatched-title clarification is retained separately. No owner task edit.
+Final 815/815 in 75 files (67.21s), 91 library loads, TypeScript and production build
+passed; browser group 12/12 and final screenshot case 1/1. App runs localhost:3000,
+PID 46168. No supervisor, extra worker, push or publication; budget remains 2/6.
+See docs/progress.md for exact evidence and remaining manual/provider residuals.
+
 **Live terminal acceptance close — 2026-10-15.** Source 7a255e8 validates
 canonical knowledge proposal paths and previews validated unsaved theme edits
 (Decisions 127–128). Real synthetic terminal task/follow-up/collection, both chat

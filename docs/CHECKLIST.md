@@ -977,3 +977,36 @@ caused a correct clarification; corrected fixture passed. Browser group 12/12 an
 final edit case 1/1 cover Apply, Undo, stale conflict/error retention and Discard.
 No owner appointment edit or native model filesystem permission is implied.
 See docs/progress.md for retained failures, final suite and app restart evidence.
+
+
+### 11.11 Quick approval, keyboard, Ask and deadline refinement — **verified locally, 2026-10-15**
+
+Decision 130 adds the off-by-default per-device Approve for me switch next to model
+selection in both surfaces. Successful proposals/Tasks results use ordinary guarded
+apply/history/Undo once; failed/interrupted turns and refused writes do not retry
+automatically. Build uses its existing Auto path through the same switch. Slash or
+Enter outside controls opens the bottom prompt; Tab/Shift+Tab from its input cycles
+modes, and outside controls with it closed cycles main pages. Chat's floating button
+remains absent when closed. Native control/dialog navigation remains available.
+
+Ask spacing, Apply-card separation, prefetched/scroll-preserving Chat navigation,
+file glyph, theme-aware favicon and equal selected-tab outer insets were checked.
+Today puts due-today items first, earliest deadline first, including beyond focus
+size; live countdowns and effective untimed 23:59 were exercised with a controlled
+clock. Explicit due timestamps and custom cutoffs remain supported. Legacy factory
+midnight resolves in memory; owner task files were not rewritten.
+
+Stable affected group 18/18, shared streaming/knowledge 16/17, its rejected-key
+case separately passed in a 2/2 targeted group; Stop passed separately. All 35
+distinct affected gating cases passed across groups; the 16/17 and earlier 11/13,
+17/18 groups retain failures in docs/progress.md and are not called clean.
+Screenshots inspected at desktop/phone widths and both themes. Final deterministic,
+TypeScript/library/build and running-app details are recorded in docs/progress.md.
+No live provider inference or owner-data write occurred for this refinement.
+
+
+11.11 final source c5bb22d: 818/818 deterministic checks in 75 files, TypeScript,
+92 plain-Node library loads and production build passed. The final two convention-
+corrected UI cases passed 2/2 separately. Production is running at localhost:3000,
+PID 46212; four complete page responses returned 200. See docs/progress.md for
+exact logs and the unchanged manual/provider residuals.

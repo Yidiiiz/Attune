@@ -619,3 +619,104 @@ app, then repeat the priority request and press Apply on the review card. Existi
 owner task priority/time remain unchanged by this implementation continuation.
 No unfinished implementation checks remain for this fix; earlier manual/provider
 residuals are unchanged.
+
+
+## Quick approval, keyboard and Today deadline refinement — 2026-10-15
+
+Owner requested Approve for me beside model selection, slash/Enter prompt opening,
+Tab/Shift+Tab mode/page cycling, a theme-aware indicator, Ask/edit-card spacing,
+file glyph redesign, predictable Open in Chat and deadline-first Today ordering.
+The follow-up specifically requests equal selected navigation insets. Decision 130
+records the contract (4bd8fe8). Existing private files and instructions are retained.
+
+Implementation uses an off-by-default per-device switch shared by Chat and the
+bottom composer. Completed successful proposals use the existing guarded apply
+route/history/Undo, serialized one at a time. Refusals remain visible without auto
+retry. Client streams hold proposals until success; failed, aborted and truncated
+turns cannot trigger automatic writes. Tasks extraction auto-adds once per result;
+clarification still waits for an answer. Build uses its existing Auto workflow from
+the same toggle; duplicate Plan/Auto buttons were removed. No native tools enabled.
+
+Slash/Enter outside interactive controls opens the prompt; Chat has a shortcut host
+without its closed floating button. Tab/Shift+Tab from the bottom input cycles modes;
+with it closed, those keys outside controls cycle Today/Chat/Calendar. Ordinary
+control/dialog keyboard behavior remains available. A user request during a route
+mount gap is delivered once to the arriving composer host. No automatic opening.
+Ask has a quiet answer column and stable prefetched Chat link with scroll disabled
+and pending feedback. Edit cards have explicit padding and action separation. The
+Files glyph is a page outline. Favicon colors follow actual current CSS tokens,
+including palette previews. Selected navigation has equal 3px outer insets, a 28px
+minimum height and matched text padding across desktop/phone sizes.
+
+Untimed deadlines now effectively end at 23:59. Settings/seed defaults are 23:59;
+legacy factory 00:00 is resolved in memory without rewriting private files. Date-only
+storage and explicit timestamps are retained; custom non-midnight cutoffs still
+work. All due-today items remain visible ahead of future work, ordered by effective
+deadline rather than priority, including beyond focus size. Countdown chips use
+local time and refresh on mount, each minute and window focus. Semantic rank/format
+regressions cover ordering, preserved explicit midnight, custom cutoff and DST.
+
+First affected browser group: 11/13 passed, retained in
+.agent/quick-actions-ui-first.log. Failures were a new Chat shortcut's route readiness
+and the old 24px selected-tab expectation; route gap handling/readiness and current
+28px geometry corrected. A second group passed 17/18 (.agent/quick-actions-ui-final.log),
+its automatic Apply response observer timing out while source changes overlapped the run, even
+though the server applied and the final card disappeared. Do not call it clean.
+The unchanged stable-source group passed 18/18 in 1.1 minutes, native exit 0:
+.agent/quick-actions-ui-stable.log. All seven new quick-action cases passed, including
+automatic Apply/Undo/off persistence, failed-turn suppression, no automatic retry,
+controlled Tasks extraction, keyboard forward/reverse, both theme icon changes,
+selected insets and controlled-clock live countdown ordering. Four Build cases pass,
+including manual gates, new auto switch/Undo and denied personal writes.
+Screenshots copied to .agent/quick-actions-screenshots/ and inspected: Ask desktop
+and phone, dark selected tabs and Today countdowns. No horizontal phone overflow.
+
+Additional existing chat/knowledge regressions and final deterministic/type/library/
+production verification follow. No provider inference was needed or called in this
+refinement; all browser writes used the existing isolated .e2e-sandbox. No owner
+task timestamp/priority edits, supervisor, extra worker, push, publication or budget
+reset. Workflow budget remains 2/6. HANDOFF.md is untouched and untracked.
+
+
+Additional shared chat/knowledge group: 16/17 gating passed in 1.6 minutes;
+Stop passed separately 1/1 in 14.6 seconds (.agent/quick-actions-streaming-ui.log).
+The rejected-key case encountered Next dev's SyntaxError: Unexpected end of JSON
+input while opening /chat, which returned 500 before its send. Other cases passed;
+no competing app server was present. That run is not clean. The rejected-key case
+then passed alone with strengthened selected-tab geometry in a 2/2 group (18.6s),
+.agent/quick-actions-ui-targeted.log. Each Today/Chat/Calendar geometry assertion now
+waits for that route's actual aria-current state. Stable affected group remains
+18/18; all 35 distinct affected gating cases passed across these selective groups.
+Stop is separate. No threshold, retry setting or quarantine was changed. Earlier
+manual/provider checklist residuals remain separate from these scripted checks.
+
+
+The first final deterministic run passed 817/818 in 75 files (68.85s). Its one
+failure was the standing data-hook convention: new navigation queried a composer
+test hook and favicon code queried/assigned a data marker. No allowance was widened.
+Navigation now uses actual dialog semantics and the favicon has an actual element
+ID. The convention passes 4/4; the two affected keyboard/icon cases pass 2/2 in
+15.2 seconds (.agent/quick-actions-ui-conventions.log). Initial 817/818 log remains
+.agent/quick-actions-unit-final.log. Assistant instructions/tool results now explain
+that the app may apply proposals automatically under this opt-in; the tool itself
+still cannot claim an edit was saved. Final verification results follow.
+
+
+Source c5bb22d passed the final deterministic rerun: 818/818 in 75 files,
+74.76 seconds (.agent/quick-actions-unit-clean.log). TypeScript and 92 plain-Node
+library loads passed (.agent/quick-actions-types-clean.log,
+.agent/quick-actions-lib-clean.log). Final assistant word/schema/context/loop/edit
+group also passed (.agent/quick-actions-agent-final.log), after its wording update.
+Production build native exit 0 is .agent/quick-actions-build-clean.log; source
+commit hook scanned all 34 files clean. Existing failed logs are retained above.
+
+Production runs at http://localhost:3000, PID 46212 (saved .agent/app-server.pid),
+logs .agent/app-quick-actions-production.log and
+.agent/app-quick-actions-production-error.log. All four main pages returned HTTP
+200 with complete response bodies consumed. Settings readback confirms effective
+untimed cutoff 23:59, without changing the owner's private settings/task bytes.
+Refresh for the new assets. Approve for me starts off until the owner enables it.
+No unfinished implementation checks remain for this refinement. Owner visual/use
+review and previously explicit physical/audio/live Build SDK/API residuals remain;
+scripted Build approval checks do not claim real SDK inference. No publication,
+source push, extra worker, supervisor or budget reset. HANDOFF.md remains untouched.

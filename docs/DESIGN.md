@@ -68,7 +68,7 @@ including empty periods. Empty gap blocks do not repeat a single start label ove
 the entire day. Task packing, clock-time edits, five-minute dragging and Undo keep
 the same semantics. Grid lines and selected controls use quiet neutral surfaces.
 
-Compact refinement: selected shell tabs are 24 px inside a 32 px group and retain
+Compact refinement: selected shell tabs are 28 px with equal 3 px insets in their group and retain
 that fill on hover. Use one small shared shadow (light: 2/8 px at 5%; dark: 2/10 px
 at 14%), including search results. Keep ordinary secondary controls borderless
 where their grouping already makes them clear. The empty conversation list uses
@@ -82,15 +82,15 @@ separated. Calendar uses equal side columns to center its period independently
 of neighboring controls; adjacent-month dates are muted, past dates use a separate subtle neutral surface, and the current date keeps a thin rounded inset highlight.
 
 Settings → Deadlines supplies the local cutoff for untimed due dates. The default
-00:00 ends the due date; explicitly timed tasks retain their own time. Date-only
+23:59 (11:59 p.m.) ends the due date; explicitly timed tasks retain their own time. Date-only
 storage keeps deadlines on the correct Calendar day. Task editing can set or clear
 an optional due time and preserves an unchanged explicit timestamp exactly.
 
 
 The composer mode row now includes model selection. The open 32 px toggle aligns
 with the input row; its closed state is 40 px. Top-bar Search and Sync have at least
-8 px separation. A 24 px selected tab uses an 8 px radius inside a 32 px track with
-12 px radius; phone tabs retain zero vertical padding to keep that geometry.
+8 px separation. Selected tabs use equal outer padding on both axes, a 28 px minimum height and
+consistent 4 px vertical text padding at desktop and phone widths.
 
 Rolling uses four complete Sunday–Saturday weeks starting with the anchor's week,
 with weekday headings and the same cell treatment as Month. Past-day fill differs
@@ -109,3 +109,20 @@ Attune's proposals/Undo behavior. API remains an explicit alternative. Synthetic
 structured answers and app-tool rounds were exercised with both installed clients.
 Official Codex references: [CLI commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)
 and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).
+
+
+Quick actions: model selection and the off-by-default Approve for me switch share
+one aligned row. Opt-in applies successful proposals through ordinary History/Undo;
+failed, interrupted or refused actions do not automatically retry. Build uses the
+same switch instead of duplicate Plan/Auto buttons. Slash/Enter outside controls
+opens the bottom prompt; Tab/Shift+Tab from its input cycle modes, or cycle main
+pages when the prompt is closed and focus is outside controls. Chat keeps its
+floating button hidden until the bottom prompt is opened with a shortcut.
+
+Ask uses a quiet borderless answer column, a stable prefetched Open in Chat link,
+and padded proposal cards with separated action rows. The app favicon derives its
+foreground/background from current theme tokens, including unsaved palette previews.
+The Files rail uses a simple page glyph. Today's due items sort earliest first,
+remain visible beyond the focus limit, and precede future work. Countdown chips
+refresh each minute and on window focus; untimed deadlines stay date-only on disk
+with an effective 11:59 p.m. cutoff. Existing explicit timestamps retain their bytes.

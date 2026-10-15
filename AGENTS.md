@@ -2,6 +2,21 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Quick approval/keyboard/deadline close — 2026-10-15.** Source c5bb22d implements
+Decision 130: off-by-default Approve for me beside model selection, successful-turn
+only queued apply/Undo without automatic retries, shared existing Build Auto path,
+slash/Enter opening and Tab/Shift+Tab mode/page cycling outside ordinary controls.
+Ask/edit-card spacing, prefetched scroll-preserving Chat navigation, file glyph,
+theme-aware favicon and equal selected navigation insets are verified. Today shows
+all today's due items first in deadline order, live countdowns and effective 23:59
+for untimed deadlines; explicit timestamps/private bytes are preserved. Final
+818/818 in 75 files (74.76s), TypeScript, 92 library loads and production build pass.
+Stable affected browser 18/18; 35 distinct gating cases passed across selective
+groups, Stop apart passed. Earlier 11/13, 17/18, 16/17 and 817/818 failures are
+retained in docs/progress.md; none called clean. Screenshots inspected. App runs
+localhost:3000 PID 46212. No inference, owner-data write, supervisor, worker, push,
+publication or budget reset; budget 2/6. Earlier manual/provider residuals remain.
+
 **Existing-task Ask edits close — 2026-10-15.** Source ec0dbc9 and runner
 registration ca4bcc3 implement Decision 129: exact-ID task edit proposals with
 field-level before/after review and Apply through ordinary history/Undo. Requested

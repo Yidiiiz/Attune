@@ -1,4 +1,4 @@
-# Continuation progress — local implementation complete, 2026-10-14
+# Continuation progress — direct acceptance review, 2026-10-15
 
 Owner resumed with “Continue from docs/progress.md.” Preserve the saved pause
 record and evidence; continue Phase 10 corrections before release tooling.
@@ -85,7 +85,7 @@ all working files preserved, owner HANDOFF.md unstaged, and inherited identity r
 No push occurred. A pre-Git sandbox-root guard now refuses this mistake and its
 negative regression test passes. See Decision 115 and AGENTS.md for the evidence.
 
-Next steps are acceptance work, not another implementation phase: inspect the local
+Previous continuation handoff (superseded by the direct acceptance review below): inspect the local
 export, complete pending manual/provider rows in docs/CHECKLIST.md, and perform real application provider acceptance separately from the completed
 live supervisor transport probe. No live model worker or background continuation is running. Supervisor startup:
 run `python tools/agent_runner.py doctor`, `python tools/agent_runner.py status`, then
@@ -95,3 +95,65 @@ Existing deferred amendments i/k/u/v remain deferred. Application provider check
 need an application API key; CLI sign-in does not settle those checks. The signed
 supervisor transport probe passed with explicit transmission approval. Budget 2/6
 used, four launches remain; no active workers. Real Agent SDK edits remain unverified.
+
+
+## Direct acceptance review — 2026-10-15
+
+The owner requested direct Codex work against docs/CHECKLIST.md, using existing tooling
+without a Claude supervisor or additional workers. No model calls, worker launches,
+budget resets, remote publication or personal-data writes occurred. Budget remains
+2/6 used; the untracked owner HANDOFF.md is preserved.
+
+Added 27 isolated Chromium acceptance cases covering Today, Calendar, Composer,
+Chat, annotations, documents, Files menus, Search and key settings. Controlled
+provider responses establish UI behavior only. Light/dark and narrow screenshots
+were inspected; 42 retained images are under .agent/acceptance-current-screenshots/,
+with a reviewed board at .agent/acceptance-visual-final.png.
+
+The checks reproduced and corrected eight application problems: phone weather
+shifted the centered date; follow-up disabled preview edits; refused Add lost its
+prompt; entering document Edit clamped scroll; Files menus escaped the viewport;
+streaming pulled readers away from their position; annotation drafts moved when
+saved; and recovered partial messages were hidden behind a null conversation leaf.
+Decisions 120–121 record the remedies. No dependency or timeout was added.
+
+Actual crash recovery was exercised in an isolated checkout by terminating the
+owned server process with a persisted, unlogged partial pair, restarting through
+the development wrapper, observing Retry, restarting cleanly without a recovery
+announcement, and undoing to exact message and metadata bytes. Evidence:
+.agent/acceptance-crash-result.json and .agent/acceptance-crash-3-*.log.
+The new saved-leaf assertion failed before the fix; all 11 sweep checks passed after.
+
+Negative browser evidence is retained. An initial full attempt exposed incorrect
+menu anchoring and was stopped; positioning each menu relative to its own row fixed
+creation/rename and strengthened geometry checks. The subsequent full run passed
+120/121 in 6.7 minutes; the remaining policy test clicked beneath an open overlay.
+It now explicitly closes each menu before targeting another row. Stop passed apart
+in 14.2 seconds. Do not describe that full run as clean. The Files/browser subset passed 26/27 in 2.0 minutes while the initial Escape-based
+test correction was still running (Files uses its toggle to close). The final toggle
+correction passed 1/1 in 12.3 seconds, .agent/ui-policy-toggle.log. All 27 new
+acceptance cases passed in the full run; .agent/ui-acceptance-verified.log retains
+the full result, and .agent/ui-acceptance-menu-final.log retains the subset. The expanded suite crosses Decision 67's five-minute threshold.
+Reuse file selection with one worker and the existing shared sandbox, rather than
+introducing parallel workers or changing the threshold:
+
+- Acceptance group: `node scripts/check-ui.mjs e2e/acceptance-.*.spec.ts`
+- Files follow-up: `node scripts/check-ui.mjs e2e/browser-write.spec.ts e2e/acceptance-browser.spec.ts`
+- Full regression when warranted: `node scripts/check-ui.mjs`
+
+Remaining limits: real provider extraction, knowledge behavior, attached-image
+understanding, theme aesthetics and signed application SDK plan/edit behavior;
+audible speech, microphone/OS clipboard integration, mintty Ctrl+C, and native
+Calendar pointer/Shift dragging. Actual mouse timeline dragging passed. Calendar
+HTML5 event logic and writes/Undo passed, but two native drag attempts stalled;
+those manual residuals remain partial. Deferred amendments i/k/u/v stay deferred.
+Use each pending checklist procedure when the needed device/provider is available.
+No supervisor is needed to resume these checks.
+
+
+Source fixes and acceptance checks are committed locally as 4577695. Full
+deterministic verification passed 789/789 across 70 files in 87.86 seconds;
+TypeScript and library boundary checks passed (native exit 0). Logs:
+.agent/unit-acceptance-full.log, .agent/tsc-acceptance-final.log and
+.agent/lib-acceptance-final.log. The commit hook scanned all 19 staged source files
+clean. The owner handoff remains untracked and excluded from the commit.

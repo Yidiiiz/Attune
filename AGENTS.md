@@ -2,6 +2,21 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Direct acceptance close — 2026-10-15.** Under the owner's direct Codex instruction,
+source 4577695 adds 27 browser acceptance cases and fixes the observed layout,
+preview, scroll, menu, annotation and crash-recovery defects (Decisions 120–121).
+789/789 deterministic checks across 70 files passed in 87.86 seconds; TypeScript
+and library boundaries are clean. The expanded browser run passed 120/121 in
+6.7 minutes; all 27 new checks passed. The remaining menu-policy test was corrected
+to close its overlay before clicking underneath it and passed 1/1 separately.
+Stop passed apart in 14.2 seconds. Neither full run is described as clean.
+Decision 67 now justifies existing file-selective runs; no timeout or threshold
+changed. Actual process termination/recovery, visible Retry, clean restart and
+exact-byte Undo passed in an isolated checkout. Screenshots were inspected.
+Manual/provider residuals remain explicit in docs/CHECKLIST.md. No Claude,
+additional worker, model call, remote publication or personal-data write occurred.
+Budget remains 2/6 used. See docs/progress.md for exact evidence and next steps.
+
 ## Phase status
 
 ### Continuation authorization — 2026-10-14

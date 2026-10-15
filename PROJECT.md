@@ -365,7 +365,8 @@ follow-up, a refused Add losing its prompt, document Edit clamping scroll, a Fil
 viewport, streaming deltas overriding a reader's scroll, and annotation draft/card displacement.
 Narrow controls use a second row; cards freeze only during Add; refused Add restores the original
 prompt without replacing a newer draft. Edit preserves the preview body's height; menu placement
-flips upward when necessary. §16.0's tail following has its own small hook; ordered focus reads
+uses the row as its positioning context, flips when necessary and caps its height to available
+space. Tests close an open overlay before targeting a covered row. §16.0's tail following has its own small hook; ordered focus reads
 live with the conversation lifecycle. Annotation drafts use the card's existing first-line range
 geometry after gutter reflow. Browser checks use isolated seed data and controlled extraction for
 UI-only preview tests; no real model adherence, audible speech, microphone or mintty observation

@@ -11,7 +11,14 @@ when. *Settled by construction* means the property follows from code that was re
 check that ran, with the visual confirmation still outstanding — it is not a pass. *Pending* means
 nobody has done it yet.
 
-Run everything against a throwaway checkout, never `data/`:
+**Direct acceptance review, 2026-10-15.** Dated verification notes and status headings below
+supersede phase-era “not verifiable” or “still needs eyes” prose retained as historical context.
+The checks use the existing isolated Playwright checkout. Controlled extraction and scripted turns
+prove UI and file behavior, not real model understanding. Provider, audio, microphone, native OS
+drag and terminal residuals are kept explicit. Screenshot evidence is retained locally under
+`.agent/acceptance-current-screenshots/`; the crash probe is `.agent/acceptance-crash-result.json`.
+
+Run everything against a throwaway checkout, never the owner's `data/`:
 
 ```
 git init /tmp/attune-manual && cp -r seed /tmp/attune-manual/data
@@ -22,7 +29,9 @@ ATTUNE_REPO_DIR=/tmp/attune-manual npm run dev
 
 ## Phase 3 — Today
 
-### 3.1 The weather element arrives without moving the date — **settled by construction, 2026-09-05**
+### 3.1 The weather element arrives without moving the date — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Controlled late weather arrival at 1280 and 360 px, then Settings Clear: date center stays within one pixel. The 47 px phone shift was reproduced and fixed with a second control row. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §17: *"clearing the weather location removes the element with no layout shift."*
 
@@ -49,23 +58,15 @@ What still needs eyes, and the one case that can genuinely break it:
    shift. If it does, the fix is a `min-width: 0` on the side columns and letting the weather wrap
    or truncate — not a different grid.
 
-### 3.2 "Ask about this" opens the composer stub in Ask mode — **pending**
+### 3.2 Ask about this opens the real composer in Ask mode — **verified in Chromium, 2026-10-15**
 
-§17: *"a toast or small inline panel reading `Ask mode · <task title>`, no provider call and nothing
-written."*
+The Phase 3 stub was replaced in Phases 5/6a. Today and Calendar open the real sheet in Ask
+mode carrying the selected task. Today sends, streams and opens the same conversation in Chat;
+a second question within the navigation session reuses it. See 6a.3 and the composer/planning specs.
 
-Steps: open Today, click `⋯` on any row, choose **Ask about this**.
+### 3.3 Dragging a timeline block writes `scheduled` — **verified in Chromium, 2026-10-15**
 
-Expected: an inline panel appears above the list reading `Ask mode · <that task's title>`, with
-"The composer arrives in Phase 5; nothing was sent." and a × that closes it. No network request
-leaves the page, and `git log` in the checkout gains no commit.
-
-Not verifiable from here: nothing about it reaches a server, so there is no HTTP observation to
-make. What *was* confirmed is that both strings are present in the shipped client chunk
-(`.next/static/chunks/app/page.js`) after `npm run build`, which says the code is in the bundle and
-nothing more.
-
-### 3.3 Dragging a timeline block writes `scheduled` — **pending**
+**Current evidence:** Actual pointer drag follows the five-minute grid, writes one task.update on release, and Undo restores bytes. The accessible time input writes the new time too. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.1: *"Dragging a block's body changes the task's `scheduled` to a date-time and is logged as
 `task.update`."*
@@ -104,7 +105,9 @@ None of that touches the drag itself.
 Per the headless-browser paragraph in `AGENTS.md`, Phase 4 did not open that question; these rows
 are the backlog Phase 6 weighs it against.
 
-### 4.1 Dragging an item to another day writes `scheduled` — **pending**
+### 4.1 Dragging an item to another day writes `scheduled` — **partially verified, 2026-10-15 — residual pending**
+
+**Current evidence and limit:** HTML5 dragstart/dragover/drop events write scheduled, preserve due and Undo exactly; same-day drop issues no PATCH. Native mouse/dragTo attempts stalled inside Chromium input and timed out. A real OS pointer drag remains pending.
 
 §17: *"dragging to another day writes `scheduled` and one commit"*.
 
@@ -121,7 +124,9 @@ written and no commit appears — the same-day case is skipped before the `PATCH
 Not verifiable from here: the write on release is the same `PATCH /api/tasks/[id]` the automated
 checks exercise, and they do. The `dragstart` → `dragover` → `drop` sequence itself has not been run.
 
-### 4.2 Shift-drag writes `due`, and says so while the key is held — **pending**
+### 4.2 Shift-drag writes `due`, and says so while the key is held — **partially verified, 2026-10-15 — residual pending**
+
+**Current evidence and limit:** Browser HTML5 events show schedule/set due changing in both directions and the final due write preserving scheduled. Actual OS drag with the physical Shift modifier remains pending with 4.1.
 
 §10.3: *"dropping an item on another day sets `scheduled` (or `due` when `Shift` is held, and the
 drop hint says so)"*.
@@ -134,7 +139,9 @@ held**, and back if it is released before the drop. The write follows whatever t
 This is the row worth doing carefully: `shiftKey` is read on every `dragover` and again on the
 drop, which is what makes the hint honest, and it is exactly the part no HTTP check can see.
 
-### 4.3 A cell folds past five items and expands in place — **pending**
+### 4.3 A cell folds past five items and expands in place — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Eight items fold to five and expand in place; sixteen items demonstrate actual internal scrolling within the 220 px bound. Show less restores the fold. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.3: *"A cell scrolls internally past five items with a '+N more' line that expands it."*
 
@@ -146,7 +153,9 @@ and scrolls internally rather than running down the page. `Show less` folds it b
 Confirmed structurally: the served HTML for such a day has exactly five items and a `+3 more`
 line. That the expanded cell scrolls rather than overflowing is a layout property and needs eyes.
 
-### 4.4 The keys and the arrows move the view — **pending**
+### 4.4 The keys and the arrows move the view — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Rolling up/down keys, Month and Week arrows, Today reset, and up-arrow inside the Reschedule input were exercised against URL/state transitions. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.3: *"scrolling by a week with ↑/↓ … Arrows move by the current unit; a Today button returns."*
 
@@ -161,7 +170,9 @@ the view does **not** move.
 Confirmed structurally: the arrows and the Today button are `<Link>`s, so their targets are in the
 served HTML and were checked there; the keys are a `keydown` listener and were not.
 
-### 4.5 Clicking an item selects it and the toolbar acts on it — **pending**
+### 4.5 Clicking an item selects it and the toolbar acts on it — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Toolbar Duplicate, Reschedule, Ask, Complete, Delete and Edit were exercised. A real credential-shaped save refusal stays inline without echoing the match or losing text. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.3: *"Clicking an item selects it and shows the Today `⋯` menu actions in a small toolbar."*
 
@@ -184,7 +195,9 @@ one batch and one undo, the named refusals from `/api/agent/apply`, the key rout
 guard, uploads and their undo, and both halves of the key check — no key set, and a key the provider
 rejected. What is left needs a pointer, a microphone, or a browser that can actually slide a sheet.
 
-### 5.1 The + button, and where it is not — **settled by construction, 2026-09-06**
+### 5.1 The + button, and where it is not — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Measured 56 px layout circle, 24 px offsets and z-index 30; open/close state and screenshot inspected. Existing chat checks cover its absence on Chat/settings. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §15 and §17: *"The + button is absent on Chat, present on Today and Calendar."*
 
@@ -196,7 +209,9 @@ so there is no runtime condition that could go wrong differently in a browser.
 What still needs eyes: that it sits bottom-right at 24px, is a 56px circle, and floats above the
 list rather than under it (z-tier 30). Then click it and watch it rotate 45° as the sheet opens.
 
-### 5.2 The sheet opens, closes, and keeps a draft — **pending**
+### 5.2 The sheet opens, closes, and keeps a draft — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Esc, close button, empty/non-empty outside click, draft reload and remembered mode all exercised. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §9.1: *"Closes on `Esc`, on button click, and on outside click **only if the textarea is empty**. A
 sheet with typed text stays open and its draft persists in `localStorage` under `composer.draft`."*
@@ -211,40 +226,20 @@ Steps, in this order, because the third is the one that is easy to get backwards
 
 Not verifiable from here: all four are pointer and key events against a rendered sheet.
 
-### 5.3 The mode control, with Build off — **settled by construction, 2026-09-06**
+### 5.3 The mode control and remembered selection — **verified in Chromium, 2026-10-15**
 
-§9.3 and the Phase 5 approval: all three segments render, Build is disabled with a tooltip naming
-Phase 9, and Ask stays selectable.
+Tasks, Ask and Build are now enabled. Tasks previews and Ask conversation reuse are exercised
+in the acceptance specs; the existing Build checks exercise its two gates and Auto confirmation.
+Selecting Ask survives reload. The old Phase 9 placeholder/tooltip is superseded.
 
-Confirmed in the served HTML: `data-mode="tasks"` carries `aria-pressed="true"`, `data-mode="ask"`
-is selectable, and `data-mode="build"` is `disabled` with `title="Build mode arrives in Phase 9."`.
+### 5.4 Ask mode refusal stub — **superseded by verified 6a.3**
 
-What needs eyes: that the tooltip actually appears on hover, and that the selected segment is
-legible in both themes. Also check the memory: pick Ask, reload, and the sheet reopens in Ask
-(`composer.mode`).
+The temporary Phase 6 refusal was replaced by real streaming Ask. Task context and the current
+sheet behavior were exercised from Today and Calendar on 2026-10-15; see 6a.3.
 
-### 5.4 Ask mode refuses inline, and carries the task — **superseded by 6a.3**
+### 5.5 A prompt becomes a preview, and a follow-up revises it — **partially verified, 2026-10-15 — residual pending**
 
-Phase 6a built §9.6, so the refusal this row describes is gone: a send in Ask mode now streams a
-real reply. What remains true and still needs eyes — that the sheet opens in Ask mode naming the
-task — is folded into 6a.3. Kept rather than deleted, because the reasoning below about *where* the
-message lands is still the clearest statement of the §13.5 rule.
-
-The original row:
-
-§9.6 and the Phase 5 approval: *"Ask stays selectable because 'Ask about this' is a real caller that
-needs it to open and show the context it would carry; a send there refuses inline."*
-
-Steps: on Today, open the row menu on any task and choose **Ask about this**. Then press Send.
-
-Expected: the sheet opens in Ask mode reading `about '<that task's title>'` beside the mode control.
-A send puts a message *inline in the sheet*, naming Phase 6 and that task, and no network request
-leaves the page. Repeat from the calendar's selection toolbar, which is the same call.
-
-This is the row that pins the §13.5 rule down: the refusal is inline because the text that caused it
-is on screen. Compare with 5.7, where the same sheet raises a toast instead.
-
-### 5.5 A prompt becomes a preview, and a follow-up revises it — **pending**
+**Current evidence and limit:** Controlled extraction verifies editable/inferred cards, in-flight merge, clarification UI and collection shape. Real sentence-to-six-drafts and model follow-up behavior remain blocked on an application API key.
 
 §17: *"six tasks from one prompt → one batch → one undo removes all six; a follow-up revises the
 preview in place; 'add these three movies to my watchlist' proposes a collection write; 'read Dune'
@@ -271,7 +266,9 @@ a card's title *while the spinner is still showing*. When the answer lands, that
 the model did not touch the title, so the merge keeps what is on screen. This is unit-tested in
 `components/composer/draft.test.ts`, but only the browser exercises the timing that makes it real.
 
-### 5.6 Attachments, drop, paste, and dictation — **pending**
+### 5.6 Attachments, drop, paste, and dictation — **partially verified, 2026-10-15 — residual pending**
+
+**Current evidence and limit:** Picker upload, controlled window Files drop and clipboard-image events attach real files; text paste is not intercepted, and chip removal preserves disk bytes/history. Actual microphone dictation and OS clipboard/drop gestures remain pending.
 
 §9.2. Four ways in, one of which is absent on most browsers.
 
@@ -291,7 +288,9 @@ Confirmed over HTTP already: the upload itself stores by content hash, regenerat
 undoes cleanly, and the `added` column now records the date in the settings timezone rather than in
 UTC — checked at 02:26 UTC, which is the previous day in New York, and recorded as that previous day.
 
-### 5.7 A key error toasts; everything else stays inline — **settled by construction, 2026-09-06**
+### 5.7 A key error toasts; everything else stays inline — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** A controlled auth response appears as a toast and keeps the prompt; the real Add secret rejection appears inline. This is UI routing evidence, not a real key rejection by a provider. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §13.5, as the Phase 5 approval settled it: *"the principle is not 'which surface' but 'where the
 remedy is'."*
@@ -305,7 +304,9 @@ What needs eyes: that those two land as a **toast** in the corner and not inline
 5.4's Ask refusal and 5.8's credential refusal land **inline**. Same sheet, same session, different
 destinations — that is the whole rule, and it is the one thing about it a browser has to show.
 
-### 5.8 A credential in the prompt is refused, and the text survives — **settled by construction, 2026-09-06**
+### 5.8 A credential in the prompt is refused, and the text survives — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Controlled preview followed by real runBatch secret rejection: no log write, cards stay, match is not echoed, and the submitted prompt returns without replacing a newer draft. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Amendment `j`, on its third surface. Phase 3 covered the inline task edit; Phase 8 covers the
 document view; this is the composer, and it arrives by a different route than either — the prompt is
@@ -322,7 +323,9 @@ Expected: the message appears **inline in the sheet**, naming the file and the p
 matched text. Every card is still there, still holding its edits, and **the prompt still holds every
 character that was typed**. Nothing is cleared on the user's behalf (Decision 50).
 
-### 5.9 Add, and Discard — **pending**
+### 5.9 Add, and Discard — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Controlled three-card extraction, selection label changes, one real batch for Add, and Discard dismissed/accepted with no write were exercised. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §9.5 step 5. With a preview of several cards up: untick two, and the button reads **Add selected**
 rather than **Add all**; tick them again and it changes back. Press it, and the sheet closes with the
@@ -332,7 +335,9 @@ Then make another preview and press **Discard**: a confirmation appears, and on 
 preview is dropped. `npm run history -- list` gains **nothing** — nothing reached disk, so there is
 nothing to undo, and §9.5 records that as a deliberate deviation from the brief.
 
-### 5.10 The API keys section — **pending**
+### 5.10 The API keys section — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Dummy Set/Change/Remove values stay masked and clear from the field; unrelated .env.local lines survive. Name-only history excludes values, and both HTTP and the History UI refuse Undo with the reason. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §11.5. Settings, then API keys.
 
@@ -365,7 +370,9 @@ rename, pin and delete from the panel.
 
 Rows below are what those cannot answer.
 
-### 6a.1 The rail and its panel — **pending**
+### 6a.1 The rail and its panel — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Pointer resize clamps to 240/420; width and collapsed state survive reload. The current rail includes Chats, Knowledge, Files and Graph. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.2: *"a 44 px icon rail on the far left, a resizable panel (240–420 px, collapsible, width in
 `localStorage`)"*.
@@ -374,11 +381,11 @@ Steps: drag the panel's right edge wider and narrower; release. Reload. Click th
 Reload again.
 
 Expected: the drag stops at 240 and at 420 rather than going past either. The width survives the
-reload. The icon collapses the panel and the collapsed state survives too. Only the Chats icon is
-present — Knowledge, Files and Graph arrive in Phase 8, and an empty rail slot would be worse than
-a short rail.
+reload. The icon collapses the panel and the collapsed state survives too. Chats, Knowledge, Files and Graph are present now; the Phase 6 single-icon placeholder is superseded.
 
-### 6a.2 The composer grows, and the keys do what §16.7 says — **pending**
+### 6a.2 The composer grows, and the keys do what §16.7 says — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Measured one/ten/twenty-line growth and internal scroll cap; Shift+Enter inserts a newline without sending, Enter sends. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §9.2 and §16.7: an auto-growing textarea of 1–10 rows, `Enter` sends, `Shift+Enter` newlines.
 
@@ -390,7 +397,9 @@ that. `Shift+Enter` makes a newline and does not send. `Enter` sends. This is me
 is why it is here and not in the browser checks: they can press the keys but not tell you the box
 looks right at ten rows.
 
-### 6a.3 Ask mode from the composer sheet — **pending**
+### 6a.3 Ask mode from the composer sheet — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Today Ask carries the task, streams a scripted response in the sheet, opens the real conversation, and a second question after client navigation reuses it. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §9.6, and the row Phase 5 left as 5.4 saying "a send there refuses inline, naming Phase 6". It does
 not refuse any more.
@@ -405,7 +414,9 @@ any other conversation (Decision 37). The second question about the same task co
 conversation rather than starting a second one — within this browser session, which is what §9.6
 means by "the same task within the session".
 
-### 6a.4 A conversation reads well in both themes — **pending**
+### 6a.4 A conversation reads well in both themes — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Heading, list, wide code, table and KaTeX were rendered, measured for pane containment and inspected in both themes. Responses are scripted. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Steps: with a reply on screen containing a heading, a list, a code block, a table, inline math and a
 display equation, switch between the light and dark themes.
@@ -415,7 +426,9 @@ rather than widening the column, and a display equation too wide for the pane sc
 stretching it. KaTeX ships its own stylesheet, which is the part most likely to disagree with a
 theme, so this is worth doing deliberately.
 
-### 6a.5 A long conversation scrolls sensibly — **pending**
+### 6a.5 A long conversation scrolls sensibly — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Eight live scripted turns plus a slow reply show that scrolling upward is respected across later deltas. A separately logged 200-message fixture is navigable; long mid-conversation editor focus preserves a nonzero scroll position. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Steps: send eight or ten messages, then scroll up and send another.
 
@@ -423,13 +436,15 @@ Expected: the newest message is brought into view as it streams, and the scrolle
 person who has scrolled up to read something. §16.0 rule 6 says no virtualization in v1, so this is
 also the check that a few hundred messages stay comfortable.
 
-### 6a.6 What a crash leaves behind, and the sweep that repairs it — **pending**
+### 6a.6 What a crash leaves behind, and the sweep that repairs it — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Real abrupt owned-server termination left two unlogged streaming files. scripts/dev.mjs repaired two messages plus the saved leaf in one batch; failed/Retry UI is visible. Clean restart announces nothing; Undo restores all message and metadata bytes. This is not a mintty Ctrl+C observation. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Decision 63's invariant — a message on disk that is not in the log is always `status: streaming` —
 is what lets `lib/history/streaming.ts` recognise an abandoned turn at startup, and Decision 64 is
 the sweep that repairs one.
 
-Steps: start a slow reply and kill the dev server with `Ctrl+C` while it is streaming. **Before
+Steps: start a slow reply and abruptly stop its owned dev-server process tree while it is streaming. **Before
 restarting**, look at `data/chats/<id>/messages/` and at `npm run history -- list`. Then
 `npm run dev` again and open the conversation.
 
@@ -444,7 +459,7 @@ Expected, in that order:
    a Retry** — the state §16.3 would have left had the process survived long enough to finalize.
 4. `npm run history -- list` gains one `chat.update` batch whose summary names the repair, and
    `git status --porcelain -- data` is clean: the sweep went through `runBatch`, so the repair is
-   recorded and committed like any other change, and `npm run history -- undo <batch>` puts the
+   recorded and undoable while personal data stays ignored by git, and `npm run history -- undo <batch>` puts the
    files back to `streaming` if you want to see the before state again.
 
 Also worth doing once: start the dev server with no interrupted messages anywhere and confirm it
@@ -476,7 +491,9 @@ toast with the message still on screen.
 
 Rows below are what those cannot answer.
 
-### 6b.1 The `⋯` menu appears when it should, and reaches where it must — **pending**
+### 6b.1 The `⋯` menu appears when it should, and reaches where it must — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Hover reveal and native Shift+Tab/Tab/Enter reach; prompt/reply menus at 240 and 420 panel widths stay in the viewport in both themes. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.2's per-message actions, and the hover reveal added with them.
 
@@ -490,7 +507,9 @@ screen in every one of those four positions. This is the one the browser checks 
 a right-anchored menu on a left-aligned reply opened across the panel, which reads as a z-index
 problem and is actually a menu opening the wrong way.
 
-### 6b.2 The editor is a box you can leave — **pending**
+### 6b.2 The editor is a box you can leave — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Long mid-conversation focus keeps scroll and places caret at end; Shift+Enter, Esc and unchanged resend producing a sibling were exercised. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §16.2's edit-and-resend and branch-from-here, which share `MessageEditor`.
 
@@ -502,7 +521,9 @@ Expected: focus arrives without the scroller jumping (`preventScroll`), with the
 is allowed and makes a genuine sibling — there is no "nothing changed" refusal, because two
 identical prompts with different replies is a thing people do on purpose.
 
-### 6b.3 A branch bar on a busy conversation still reads — **pending**
+### 6b.3 A branch bar on a busy conversation still reads — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Four reply alternatives and two root prompt alternatives; keyboard arrows, disabled ends and constant count width were exercised. Existing branch checks cover newest-leaf navigation. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §16.2's `‹ k/n ›`, which the checks assert the text of but not the look of.
 
@@ -513,7 +534,9 @@ Expected: the arrows disable at the ends rather than wrapping. The count is tabu
 jitter between `1/4` and `4/4`. Switching is one click, and the conversation under it re-renders to
 the newest leaf of that branch rather than to the branch point.
 
-### 6b.4 Branching, the gutter and the sidebar in both themes — **pending**
+### 6b.4 Branching, the gutter and the sidebar in both themes — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Both themes inspected with branch/menu/sidebar controls, focused editors, gutter notes and the explicit moved-anchor flag. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Steps: with a branched, annotated conversation open, switch the theme.
 
@@ -535,7 +558,9 @@ Expected: it speaks the reply's words. Stop is immediate, not at the end of the 
 second cancels the first rather than overlapping it. Navigating away stops it — the utterance
 belongs to the message, and the message is gone.
 
-### 6b.6 The annotation composer where the pointer is — **pending**
+### 6b.6 The annotation composer where the pointer is — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Measured first-line selection placement, focus without scrolling, retained two-line draft on outside click, empty/Esc dismissal, and saved card at the draft position. The initial 25 px displacement was reproduced and fixed. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §16.4's last bullet, which is about placement in a way no assertion captures.
 
@@ -628,7 +653,9 @@ Steps: distill a real conversation of a dozen turns that settled something.
 Expected: under 200 words, what was decided first and what is open second, names and numbers exact,
 no greetings. Add it, then distill again: the second card says Rewrite and replaces the first.
 
-### 7.5 The toast, its Undo, and the marker in both themes — **pending**
+### 7.5 The toast, its Undo, and the marker in both themes — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Buttonless toast leaves even with pointer resting over it. Chat and Ask markers plus visible Undo controls were inspected in light and dark themes. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Whether a click on Send reaches Send while a toast is up is no longer on this row:
 `e2e/toast.spec.ts` checks it at four window sizes (Decision 84). What is left is what it looks like.
@@ -641,7 +668,9 @@ seconds even under the pointer. The marker reads as a quiet note under the reply
 Chat and under the sheet's Ask answer, and its Undo is visibly a control. The toast still covers Send
 visually while it is up; a click there sends (Decision 84).
 
-### 7.6 A tray full of cards does not bury the conversation — **pending**
+### 7.6 A tray full of cards does not bury the conversation — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Two multi-proposal turns produce a scrollable tray bounded at 40vh; Send stays at its previous y position. Adding one card removes only that card. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Steps: send `[[propose-habit]] [[propose-note]] [[propose-collection]] [[propose-tasks]]` twice without
 adding anything.
@@ -649,7 +678,9 @@ adding anything.
 Expected: the tray scrolls inside its own 40vh rather than pushing the message list off screen, the
 composer stays where it was, and each card's Add acts on that card alone.
 
-### 7.7 The preview panel's collection Add, in Tasks mode — **blocked on an API key**
+### 7.7 The preview panel's collection Add, in Tasks mode — **partially verified, 2026-10-15 — residual pending**
+
+**Current evidence and limit:** Controlled Tasks extraction now exercises this exact collection Add surface: one real knowledge batch writes unchecked items, preview clears, all four Today sections are unchanged. Real model extraction remains blocked on an application API key.
 
 A known gap, listed so it is not mistaken for coverage (the Phase 7 close). The Add is wired through
 the same `CollectionCard` the tray uses, and the tray's use of it is checked. The preview panel's use
@@ -670,7 +701,9 @@ file by SHA-256, a LaTeX sheet through the editor unchanged, a checkbox click sa
 backlinks listing the linking files, and the open document appearing in the next turn's context.
 What is left here needs an eye, a pointer, or a real browser dialog.
 
-### 8.1 The tab-close warning as a person meets it — **pending**
+### 8.1 The tab-close warning as a person meets it — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Chromium raised actual beforeunload events on reload and close; dismissing retained the complete draft. This checks browser behavior, not a human observation of another browser or its native wording. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 §10.2, as the Phase 8 close amended it: navigation warns when dirty, and the toggle does not, because
 Preview now shows the draft (Decision 102). The in-app warning is checked — "← Back to chat", with the
@@ -683,7 +716,9 @@ reload).
 
 Expected: the browser asks whether to leave. Cancelling keeps every character in the editor.
 
-### 8.2 The document view in both themes — **pending**
+### 8.2 The document view in both themes — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Note, collection and task previews/editors, fields, unsaved state, save controls and inline refusal inspected in both themes. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 The editor, the frontmatter inputs, the strip's Edit/Save buttons, the "unsaved" mark, the
 collection items list, and a refused save's message, in light and dark. The inputs are borderless
@@ -694,7 +729,9 @@ Steps: open a note, a collection and a task with `data-theme` light and dark.
 
 Expected: every control is legible and reads as a control; nothing relies on colour alone.
 
-### 8.3 The editor takes focus without jumping the page — **pending**
+### 8.3 The editor takes focus without jumping the page — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Edit of a long note keeps the parent scroll position within one pixel and focuses its textarea. Preserving preview body height fixes the reproduced 277 px clamp. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 `DocumentEditor` focuses with `preventScroll`, the same care §16.4's annotation composer needed. A
 headless check sees focus land but not whether the page moved under it.
@@ -703,7 +740,9 @@ Steps: open a long document, scroll to the middle, press Edit.
 
 Expected: the caret is in the textarea and the document has not scrolled to the top.
 
-### 8.4 The search panel over each page — **pending**
+### 8.4 The search panel over each page — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** Search results for all four kinds sit below the input at z-index 30 over Today, Calendar and Chat; a coordinate click outside still reaches Settings. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 `Ctrl/Cmd+K` reaching the box and a hit opening a document are checked. What is not: where the panel
 lands over Today's list, the calendar grid and a conversation, and whether it covers anything a
@@ -714,7 +753,9 @@ Steps: search for something with results from all four kinds on each of the thre
 Expected: the panel is above the page (z 30), does not cover the box it hangs from, and takes no
 click meant for the page behind it.
 
-### 8.5 A PDF and an SVG in a real browser — **settled by construction, 2026-09-27**
+### 8.5 A PDF and an SVG in a real browser — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** PDF and SVG raw download links triggered actual Chromium download events; saved files have expected names and no download failure. Ordinary internal text links still open the document view; no inline-PDF-viewer claim for other browsers. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 Decision 88 serves both as `application/octet-stream` attachments with `nosniff` and
 `Content-Security-Policy: sandbox`, and the browser checks assert the SVG is a download link with no
@@ -727,7 +768,9 @@ Steps: upload a PDF and an SVG, then open each from a document's link.
 Expected: both download. If a browser shows the PDF inline anyway, that is the observation
 Decision 93 says would reopen the question.
 
-### 8.6 The Files panel's menu at the panel's narrowest — **pending**
+### 8.6 The Files panel's menu at the panel's narrowest — **verified in Chromium, 2026-10-15**
+
+**Current evidence:** At panel width 240, note and folder menus and wrapped policy reasons remain fully within the viewport in both themes. File creation/rename regression checks pin the row positioning context and reachability. See `e2e/acceptance-*.spec.ts` and `docs/progress.md`.
 
 The rail's panel is resizable from 240 to 420 px, and the row menu opens to the right of a `⋯` that
 sits at the row's end. At 240 px with a deeply nested path the menu may reach past the panel. Since the
@@ -761,12 +804,13 @@ could only reach by the other event.
 
 ## Phase 9 — Build
 
-### 9.1 Live Agent SDK behavior ? **unverified**
+### 9.1 Live Agent SDK behavior — **unverified**
 
 The scripted browser loop and mocked SDK tests pass (2026-10-14). A real signed SDK
 plan/edit turn, including its mandatory hook refusals, has not been exercised.
-The external-client transmission probe was rejected by automatic approval review;
-no live verification is inferred from installed client sign-in or scripted checks.
+The separate signed supervisor transport probe passed after explicit approval. It does not
+verify application SDK planning/editing. This direct acceptance pass launches no Claude or additional
+workers, as requested; the real application SDK row remains unverified.
 
 
 ## Phase 10 — Settings
@@ -809,3 +853,25 @@ returned strict results and passed independent library checks. Claude reviewed b
 resumed conversation. Budget 2/6 used; no resets, worker tools, source edits or active processes.
 The initial launcher permission omission and same-session recovery are recorded in progress.
 This does not establish real application SDK plan/edit behavior or model prompt adherence.
+
+
+### 11.4 Direct acceptance follow-up — **exercised locally, 2026-10-15**
+
+Twenty-seven new isolated Chromium checks passed in the expanded regression run.
+They cover responsive layout, keyboard and pointer interactions, preview merging and
+refusals, attachments UI, branch bars, long conversations, scroll preservation,
+annotation placement, document navigation, downloads, menu bounds and masked keys.
+Light/dark and narrow screenshots were inspected. An actual isolated process crash,
+restart recovery with visible Retry, clean restart and exact-byte Undo also passed.
+
+The full browser run was 120/121 in 6.7 minutes, with Stop passing separately.
+The remaining policy-menu test clicked a covered row beneath an open overlay; after
+explicit toggle dismissal it passed 1/1 in 12.3 seconds. A preceding Files/browser
+subset passed 26/27 while that correction was still being made. These are separate
+results, not a clean full regression claim. See docs/progress.md for retained logs,
+selective-run commands and final deterministic/build verification. Pending provider,
+device, mintty and native Calendar drag residuals above remain pending.
+
+
+Source 4577695: 789/789 deterministic checks in 70 files, TypeScript and library
+boundaries passed. The source commit hook scanned all 19 staged files clean.

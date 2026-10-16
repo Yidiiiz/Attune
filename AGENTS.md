@@ -2,6 +2,18 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Compact controls/Done close — 2026-10-16.** Source d2e2854 implements Decision
+131: collapsible Done with count and initial preference, identical 40px/24px composer
+toggle geometry in both states, quieter renamed AutoApprove preserving opt-in,
+accessible arrow Send/Resend, standard Files glyph and centered theme-aware moon.
+Reported appointment is already complete and only in Done; no private record edited.
+Affected browser 28/29 with stale unscoped Attach selector, corrected final 5/5;
+all 29 distinct affected cases passed across groups, icon capture final 1/1.
+Screenshots inspected. Full 818/818 in 75 files (99.85s), TypeScript, 92 library
+loads and production build passed. App runs localhost:3000 PID 46548. No inference,
+owner-data write, worker, supervisor, push, publication or budget reset; budget 2/6.
+Existing manual/provider residuals remain. Exact evidence: docs/progress.md.
+
 **Quick approval follow-up acceptance — 2026-10-15.** Test source ab1737b adds
 bottom Ask automatic Apply/Undo and disabling approval during a queued action.
 Expanded affected group was 30/33; final targeted 4/4 passed (39.0s), all 33 distinct

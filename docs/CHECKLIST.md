@@ -1020,3 +1020,29 @@ cases passed across groups. Initial editor scroll jump and two incorrect fixture
 assumptions remain documented; no speculative application fix or threshold change.
 TypeScript passed. See docs/progress.md for the intermediate fixture error and
 production restart; existing physical/manual/provider residuals remain unchanged.
+
+
+### 11.12 Stationary controls and collapsible Done — **verified locally, 2026-10-16**
+
+Decision 131: Done has mouse/keyboard expand/collapse, initializes from the existing
+completed preference and keeps the count. A completed synthetic task appears only
+in Done and not in open ranked sections. Read-only inspection of the owner's
+reported appointment confirmed it was already complete; no record was changed.
+
+The bottom toggle has identical position/40px dimensions open/closed at desktop,
+tablet and phone widths, with only glyph rotation and reachable input/send controls.
+AutoApprove retains its saved opt-in, uses a quiet off state and clear focused/on
+state. Icon sends retain accessible Send/Resend names. File bounds center at 12,12;
+moon logo at 16,16. Screenshots inspected at 1280/780/400px and desktop Chat.
+
+Affected browser group 28/29, its old attachment selector corrected to scope Chat;
+final visual group 5/5 in 35.5s, final icon check 1/1 in 20.4s. All 29 distinct
+affected cases passed across selective groups. The initial group remains recorded
+as failed, no threshold/retry/quarantine changed. See docs/progress.md for final
+TypeScript/library/deterministic/build/startup evidence and unchanged residuals.
+
+
+11.12 final source d2e2854: 818/818 in 75 files (99.85s), TypeScript, 92 library
+loads and production build passed; final icon check 1/1. App runs localhost:3000,
+PID 46548, four main pages returned complete HTTP 200 responses. The reported
+appointment remains completed, only in Done; no personal data was changed.

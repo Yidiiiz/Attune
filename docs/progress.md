@@ -781,3 +781,61 @@ http://localhost:3000, PID 44696 (saved .agent/app-server.pid), logs
 responses returned 200. No unfinished implementation work remains for this acceptance
 continuation. Owner visual/use review and existing physical/manual/provider checks
 remain; no owner-data changes, workers, publication or budget reset.
+
+
+## Compact controls and collapsible Done — 2026-10-16
+
+Owner requested Done collapse, a stationary bottom-right composer toggle, quieter
+AutoApprove name, standard file glyph, icon Send controls and centered logo, plus
+checking an apparently completed appointment. Read PROJECT first. Decision 131
+(a2f0481) specifies this refinement. Read-only HTTP inspection confirmed the reported
+appointment is already done and appears only in the completion day's Done section.
+No personal-data change was necessary or made; private timestamps stay out of source.
+
+Done now uses the Also possible disclosure pattern, initialized from showCompleted.
+Its count remains present when hidden. The composer toggle keeps identical 40px
+size/24px screen offsets, rotates its glyph only, and input space is reserved at
+narrow widths. AutoApprove preserves existing opt-in storage, is muted while off
+and fully legible while focused/hovered/enabled. Main send and message-resend controls
+share a centered arrow SVG with Send/Sending or Resend accessible names. A standard
+folded-page Files glyph and mathematically centered moon logo use existing SVG
+infrastructure; no dependency or raster assets. Browser evidence and final checks
+follow. HANDOFF.md remains untouched; no provider, supervisor, worker, publication,
+source push or budget reset; budget stays 2/6.
+
+
+Affected browser group was 28/29 in 1.9 minutes
+(.agent/compact-controls-ui-first.log). All three new cases passed: Done mouse/
+keyboard collapse and hidden initial preference, completed tasks absent from open
+sections, fixed toggle dimensions/position at 1280/780/400px, icon Send hit targets,
+muted/enabled AutoApprove, file bounds and centered moon. Existing Tasks/Ask/Build,
+Undo/failed-turn/queue opt-out and deadline behavior passed. The one failure was an
+old unscoped Attach a file selector matching both visible Chat and its hidden bottom
+composer. Scoping to the Chat composer preserves the intended geometry assertion;
+final affected visual group passed 5/5 in 35.5s (.agent/compact-controls-ui-final.log).
+No timeout, threshold, retry or quarantine changed; initial group is not called clean.
+All 29 distinct affected cases passed across selective groups. Screenshot files are
+retained in .agent/compact-controls-screenshots/. Desktop/tablet/phone composer
+captures were inspected; a Chat icon screenshot is recaptured at desktop width
+because the existing expanded browser panel occupies most of a phone viewport.
+No unrequested sidebar behavior change is claimed. Final icon screenshot/check,
+TypeScript, boundaries, deterministic suite and production results follow.
+The initial new browser-test implicit-any TypeScript error was corrected with its
+actual ID shape before any browser run; no application typing guard was weakened.
+
+
+Source d2e2854 passed final 818/818 deterministic tests in 75 files (99.85s),
+TypeScript, 92 plain-Node library loads and production build (all native exit 0).
+Logs: .agent/compact-controls-unit-final.log, .agent/compact-controls-types-final.log,
+.agent/compact-controls-lib-final.log, .agent/compact-controls-build-final.log.
+Final icon screenshot check passed 1/1 in 20.4s
+(.agent/compact-controls-ui-icons-final.log), desktop Chat screenshot inspected and
+copied to .agent/compact-controls-screenshots/. Source hook scanned 16 files clean.
+
+Production intentionally runs at http://localhost:3000, PID 46548 (saved in
+.agent/app-server.pid), logs .agent/app-compact-controls-production.log and
+.agent/app-compact-controls-production-error.log. All four main-page complete bodies
+returned HTTP 200. Readback again confirms the reported appointment is done and
+only in Done, without changing its private record. Refresh for new assets. No
+unfinished implementation checks for this refinement; existing physical/manual/
+provider residuals remain unchanged. No owner-data writes or external publication.

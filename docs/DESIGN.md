@@ -87,8 +87,8 @@ storage keeps deadlines on the correct Calendar day. Task editing can set or cle
 an optional due time and preserves an unchanged explicit timestamp exactly.
 
 
-The composer mode row now includes model selection. The open 32 px toggle aligns
-with the input row; its closed state is 40 px. Top-bar Search and Sync have at least
+The composer mode row now includes model selection. The 40 px toggle retains its fixed bottom-right position
+in both states; only its glyph rotates. Top-bar Search and Sync have at least
 8 px separation. Selected tabs use equal outer padding on both axes, a 28 px minimum height and
 consistent 4 px vertical text padding at desktop and phone widths.
 
@@ -111,7 +111,7 @@ Official Codex references: [CLI commands](https://learn.chatgpt.com/docs/develop
 and [configuration](https://learn.chatgpt.com/docs/config-file/config-reference).
 
 
-Quick actions: model selection and the off-by-default Approve for me switch share
+Quick actions: model selection and the off-by-default AutoApprove switch share
 one aligned row. Opt-in applies successful proposals through ordinary History/Undo;
 failed, interrupted or refused actions do not automatically retry. Build uses the
 same switch instead of duplicate Plan/Auto buttons. Slash/Enter outside controls
@@ -126,3 +126,13 @@ The Files rail uses a simple page glyph. Today's due items sort earliest first,
 remain visible beyond the focus limit, and precede future work. Countdown chips
 refresh each minute and on window focus; untimed deadlines stay date-only on disk
 with an effective 11:59 p.m. cutoff. Existing explicit timestamps retain their bytes.
+
+
+Compact controls (Decision 131): Done has the same local collapse control as Also
+possible, initially following the completed-visibility preference with count always
+visible. The bottom-right composer toggle stays 40px square at 24px from both edges
+in open/closed states; only the plus glyph rotates. Input controls reserve its area.
+AutoApprove keeps its existing opt-in storage and uses muted opacity when off,
+full opacity on hover/focus or when enabled. Main send/resend controls are square,
+centered arrow icons with accessible labels. Files uses a standard folded page;
+the theme-aware moon mark has bounds centered at 16,16 inside its 32px view box.

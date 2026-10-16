@@ -66,6 +66,7 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions, clo
   }, [clock?.timezone]);
   const currentClock = clock && now ? { ...clock, now } : undefined;
   const [alsoOpen, setAlsoOpen] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(showCompleted);
   const { overdue, focus, alsoPossible, doneToday } = ranked;
   const total = overdue.length + focus.length + alsoPossible.length + doneToday.length;
 
@@ -109,13 +110,13 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions, clo
 
       {doneToday.length > 0 ? (
         <section className={styles.section}>
-          <h2 className={styles.heading}>
+          <button type="button" className={`${styles.heading} ${styles.toggleHeading}`} onClick={() => setDoneOpen(open => !open)} aria-expanded={doneOpen}>
+            <span className={styles.caret} aria-hidden="true">{doneOpen ? "▾" : "▸"}</span>
             Done
             <span className={styles.count}>{doneToday.length}</span>
-          </h2>
-          {/* `showCompleted` hides the rows, never the fact that they exist: the count above is the
-              honest minimum, and hiding that too would make a finished day look like an empty one. */}
-          {showCompleted ? (
+          </button>
+          {/* Settings chooses initial visibility; the local toggle never hides the count. */}
+          {doneOpen ? (
             <Rows tasks={doneToday} viewDate={viewDate} actions={actions} muted />
           ) : null}
         </section>

@@ -191,7 +191,7 @@ async function search(query: string): Promise<string> {
 async function run(name: string, input: unknown): Promise<ToolOutcome> {
   switch (name) {
     case "propose_task_update":
-      return { result: "Proposed, not saved by this tool. Attune applies it automatically when Approve for me is on; otherwise the user presses Apply.", proposal: await proposeTaskUpdate(input) };
+      return { result: "Proposed, not saved by this tool. Attune applies it automatically when AutoApprove is on; otherwise the user presses Apply.", proposal: await proposeTaskUpdate(input) };
     case "read_knowledge": {
       const { path } = ReadKnowledge.parse(input);
       if (!path.startsWith(KNOWLEDGE_DIR)) {

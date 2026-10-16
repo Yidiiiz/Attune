@@ -609,6 +609,10 @@
 }
 
 .sendButton {
+  display: grid;
+  place-items: center;
+  width: var(--composer-control-height);
+  padding: 0;
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-fg);

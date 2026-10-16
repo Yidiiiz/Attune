@@ -25,6 +25,6 @@ export default function ApprovalToggle({ disabled = false }: { disabled?: boolea
   const { enabled, setEnabled } = useApproval();
   return <label className={styles.approval} title="Automatically apply supported actions, including Build edits and commits. History and Undo remain available.">
     <input type="checkbox" role="switch" checked={enabled} disabled={disabled} onChange={event => setEnabled(event.target.checked)} />
-    <span>Approve for me</span>
+    <span>AutoApprove</span>
   </label>;
 }

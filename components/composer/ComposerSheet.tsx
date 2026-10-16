@@ -32,6 +32,7 @@ import { useBuild } from "./useBuild";
 import { MODELS } from "@/lib/agent/models";
 import type { Settings } from "@/lib/store/settings";
 import ApprovalToggle, { useApproval } from "./ApprovalToggle";
+import Icon from "@/components/ui/Icon";
 import styles from "./Composer.module.css";
 
 export interface ComposerSheetProps {
@@ -292,11 +293,13 @@ export default function ComposerSheet(props: ComposerSheetProps) {
           <button
             type="button"
             className={styles.send}
+            aria-label={turn.busy === "sending" ? "Sending" : "Send"}
+            title="Send"
             onClick={() => void submit()}
             disabled={busy || askTurn.streaming || build.busy || (mode === "build" && !!pendingBuild) || prompt.trim() === ""}
             data-composer="send"
           >
-            {turn.busy === "sending" ? <span className={styles.spinner} aria-label="Sending" /> : "Send"}
+            {turn.busy === "sending" ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="send" size={18} />}
           </button>
         </div>
 

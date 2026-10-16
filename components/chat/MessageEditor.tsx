@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./Chat.module.css";
+import Icon from "@/components/ui/Icon";
 
 export interface MessageEditorProps {
   /** Prefilled for an edit, empty for a branch. */
@@ -89,11 +90,13 @@ export default function MessageEditor({ initial, submitLabel, onSubmit, onCancel
         <button
           type="button"
           className={styles.sendButton}
+          aria-label={busy ? "Sending" : submitLabel}
+          title={submitLabel}
           data-ui="editor-send"
           disabled={busy || text.trim().length === 0}
           onClick={() => void submit()}
         >
-          {busy ? "Sending…" : submitLabel}
+          <Icon name="send" size={18} />
         </button>
         <button type="button" className={styles.linkButton} onClick={onCancel} data-ui="editor-cancel">
           Cancel

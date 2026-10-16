@@ -38,10 +38,10 @@ test("slash/enter open the prompt; Tab cycles modes or primary pages without con
   await search.fill("/"); await search.press("Enter"); await expect(sheet(page)).not.toBeVisible();
 });
 
-test("Approve for me automatically applies one reviewed task edit and keeps Undo", async ({ page, request }) => {
+test("AutoApprove automatically applies one reviewed task edit and keeps Undo", async ({ page, request }) => {
   const id = await appointment(request, "Auto approval appointment");
   await newConversation(page);
-  const toggle = page.getByRole("switch", { name: "Approve for me" });
+  const toggle = page.getByRole("switch", { name: "AutoApprove" });
   await expect(toggle).not.toBeChecked(); await toggle.check();
   let applies = 0; page.on("request", req => { if (req.url().endsWith("/api/agent/apply")) applies++; });
   const applied = page.waitForResponse(response => response.url().endsWith("/api/agent/apply"));
@@ -61,7 +61,7 @@ test("Approve for me automatically applies one reviewed task edit and keeps Undo
 
 test("failed turns cannot auto-apply earlier proposals; refused automatic Apply stays reviewable without retry", async ({ page, request }) => {
   const id = await appointment(request, "Refused approval appointment");
-  await newConversation(page); await page.getByRole("switch", { name: "Approve for me" }).check();
+  await newConversation(page); await page.getByRole("switch", { name: "AutoApprove" }).check();
   await page.locator('[data-ui="chat-input"]').fill(`[[update-task:${id}]] [[fail-late]]`);
   await page.getByTestId("send").click();
   await expect(page.locator('[data-role="assistant"]').last()).toHaveAttribute("data-status", "failed");
@@ -82,7 +82,7 @@ test("Tasks extraction auto-adds once while enabled and preserves ordinary histo
   await page.request.post("/api/tasks", { data: { items: Array.from({ length: 6 }, (_, index) => ({ title: `Existing focus item ${index}`, priority: 1 })) } });
   await page.route("**/api/agent/extract", route => route.fulfill({ json: { ok: true, result: { kind: "tasks", items: [{ title: "Auto extracted task", body: "", priority: 3, estimateMin: 30, due: null, scheduled: null, status: "todo", category: null, context: null, tags: [], links: [], repeat: null, repeatUntil: null, collection: null, inferred: [] }] } } }));
   await page.goto("/"); await page.keyboard.press("/");
-  await sheet(page).getByRole("switch", { name: "Approve for me" }).check();
+  await sheet(page).getByRole("switch", { name: "AutoApprove" }).check();
   const added = page.waitForResponse(response => response.url().endsWith("/api/tasks") && response.request().method() === "POST");
   await input(page).fill("Create my task"); await input(page).press("Enter");
   const answer = await (await added).json(); expect(answer.ok).toBe(true);
@@ -157,7 +157,7 @@ test("bottom Ask automatically applies a priority edit once and ordinary Undo re
   const id = await appointment(request, "Bottom Ask automatic appointment");
   await page.goto("/"); await page.keyboard.press("/");
   await sheet(page).locator('[data-mode="ask"]').click();
-  await sheet(page).getByRole("switch", { name: "Approve for me" }).check();
+  await sheet(page).getByRole("switch", { name: "AutoApprove" }).check();
   let attempts = 0;
   page.on("request", req => { if (req.url().endsWith("/api/agent/apply")) attempts++; });
   const applied = page.waitForResponse(response => response.url().endsWith("/api/agent/apply"));
@@ -175,7 +175,7 @@ test("bottom Ask automatically applies a priority edit once and ordinary Undo re
 
 test("turning approval off during an automatic write leaves queued proposals for review", async ({ page }) => {
   await newConversation(page);
-  const toggle = page.getByRole("switch", { name: "Approve for me" });
+  const toggle = page.getByRole("switch", { name: "AutoApprove" });
   await toggle.check();
   let attempts = 0;
   let firstKind = "";

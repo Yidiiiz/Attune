@@ -33,7 +33,7 @@ test("new chats use GPT and adjacent controls and file icon are aligned", async 
  await expect(header.getByTestId("model-select")).toHaveCount(0);
  expect((await context.boundingBox())!.height).toBe(32);
  expect((await model.boundingBox())!.height).toBe(24);
- const input=page.getByTestId("chat-input"),send=page.getByTestId("send"),attach=page.getByTitle("Attach a file",{exact:true});
+ const input=page.getByTestId("chat-input"),send=page.getByTestId("send"),attach=page.getByTestId("composer").getByTitle("Attach a file",{exact:true});
  const i=(await input.boundingBox())!,s=(await send.boundingBox())!,a=(await attach.boundingBox())!;
  expect((await model.boundingBox())!.y).toBeGreaterThanOrEqual(i.y+i.height);
  expect(i.height).toBe(40);expect(s.height).toBe(40);expect(a.height).toBe(40);expect(Math.abs(s.y-a.y)).toBeLessThanOrEqual(1);

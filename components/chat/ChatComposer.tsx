@@ -27,6 +27,7 @@ import Attachments, { AttachButton } from "@/components/composer/Attachments";
 import type { Attachment } from "@/components/composer/Attachments";
 import styles from "./Chat.module.css";
 import ApprovalToggle from "@/components/composer/ApprovalToggle";
+import Icon from "@/components/ui/Icon";
 
 /** Just enough of a `ModelEntry` to draw an option — server-provided labels keep provider code out of client bundles. */
 export interface ModelChoice {
@@ -168,11 +169,13 @@ export default function ChatComposer({
           <button
             type="button"
             className={styles.sendButton}
+            aria-label={busy ? "Sending" : "Send"}
+            title="Send"
             onClick={() => void submit()}
             disabled={busy || (text.trim().length === 0 && files.length === 0)}
             data-ui="send"
           >
-            {busy ? "Sending…" : "Send"}
+            <Icon name="send" size={18} />
           </button>
         )}
       </div>

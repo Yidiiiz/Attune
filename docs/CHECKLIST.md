@@ -1046,3 +1046,11 @@ TypeScript/library/deterministic/build/startup evidence and unchanged residuals.
 loads and production build passed; final icon check 1/1. App runs localhost:3000,
 PID 46548, four main pages returned complete HTTP 200 responses. The reported
 appointment remains completed, only in Done; no personal data was changed.
+
+
+### 11.13 Crescent and task separators — **verified locally, 2026-10-16**
+
+Source 5dfbff1/Decision 132: recognizable centered narrow crescent, theme-aware colors,
+no task bottom borders, straight inset line only between adjacent tasks. Focused
+browser 4/4 in 31.3s, TypeScript passed; light/dark screenshots inspected. No data
+changes. Production rebuild/startup and unchanged residuals: docs/progress.md.

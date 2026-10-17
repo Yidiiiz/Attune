@@ -136,3 +136,9 @@ AutoApprove keeps its existing opt-in storage and uses muted opacity when off,
 full opacity on hover/focus or when enabled. Main send/resend controls are square,
 centered arrow icons with accessible labels. Files uses a standard folded page;
 the theme-aware moon mark has bounds centered at 16,16 inside its 32px view box.
+
+
+Crescent/separator correction (Decision 132): the theme-aware moon uses a visibly
+narrow crescent silhouette, centered by its visible bounds. Task hover surfaces
+keep their rounding, but rows have no bottom border. A straight inset 1px separator
+belongs only between adjacent tasks, with no rule under the last task.

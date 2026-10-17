@@ -839,3 +839,31 @@ returned HTTP 200. Readback again confirms the reported appointment is done and
 only in Done, without changing its private record. Refresh for new assets. No
 unfinished implementation checks for this refinement; existing physical/manual/
 provider residuals remain unchanged. No owner-data writes or external publication.
+
+
+## Crescent moon and between-task separators — 2026-10-16
+
+Owner requested a recognizable crescent instead of an eclipse-like mark and a line
+between tasks instead of rounded under-borders. Decision 132 (98fd48d), source
+5dfbff1. The moon is a narrower arc silhouette with centered visible bounds and
+existing theme-derived colors. Rows have no bottom border; an inset straight 1px
+pseudo-element exists only before a row that follows another row. Rounded hover
+surfaces and existing task operations are preserved. No private task/state writes.
+
+Focused existing compact-control group plus new silhouette/separator acceptance
+passed 4/4 in 31.3s, native exit 0 (.agent/crescent-separators-ui.log). Assertions
+cover no first/last under-border, straight adjacent separator, narrow crescent,
+centering and theme changes. Light/dark screenshots inspected and retained under
+.agent/crescent-separators-screenshots/. TypeScript passed. Source hook: three files
+clean. Prior 818-test evidence belongs to the preceding source; no full deterministic
+rerun is claimed or required for this SVG/CSS-only correction. Production rebuild
+and restart follow. HANDOFF.md preserved. No model call, worker, supervisor, push,
+publication or budget reset; budget stays 2/6. Existing residual checks unchanged.
+
+Production build native exit 0 (.agent/crescent-separators-build.log). App runs at
+http://localhost:3000 PID 35848, saved .agent/app-server.pid; logs
+.agent/app-crescent-separators-production.log and
+.agent/app-crescent-separators-production-error.log. Full home response returned
+200. Refresh to see the updated favicon and list separators. No implementation
+checks remain unfinished for this correction; earlier manual/provider residuals
+remain unchanged.

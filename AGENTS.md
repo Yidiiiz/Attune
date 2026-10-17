@@ -2,6 +2,14 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Crescent/separator correction — 2026-10-16.** Source 5dfbff1, Decision 132:
+centered narrow crescent silhouette and straight inset separators only between
+adjacent tasks, no rounded bottom borders. Focused browser 4/4 in 31.3s, TypeScript
+and production build passed; both theme screenshots inspected. Prior 818 test run
+belongs to preceding source, not rerun for this SVG/CSS-only correction. No private
+writes or inference. App runs localhost:3000 PID 35848; docs/progress.md has logs.
+No worker, supervisor, push, publication or budget reset; budget 2/6. Residuals unchanged.
+
 **Compact controls/Done close — 2026-10-16.** Source d2e2854 implements Decision
 131: collapsible Done with count and initial preference, identical 40px/24px composer
 toggle geometry in both states, quieter renamed AutoApprove preserving opt-in,

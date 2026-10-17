@@ -464,6 +464,8 @@ existing browser check, then inspect a real generated palette in the sandbox.
 
 131. **Owner compact-controls refinement, 2026-10-16.** Done uses the same local expand/collapse affordance as Also possible, with its initial visibility taken from showCompleted and count always visible. Keep the existing bottom-right composer toggle at identical 40px dimensions and 24px offsets in both states; rotate only its glyph, reserve space so it cannot overlap inputs. Rename the per-device approval control AutoApprove, keep it muted when off and legible when enabled/focused; preserve existing stored opt-in. Shared main send controls use a centered arrow SVG with accessible Send/Sending labels. Use a standard folded-page Files glyph and center the theme-aware moon mark geometrically. Read the reported appointment before any change: a completed record belongs only in its recorded completion day's Done section; do not infer another completion or rewrite its timestamp.
 
+132. **Crescent and task separators, 2026-10-16.** Owner wants a recognizable crescent rather than the previous eclipse-like mark. Use a narrower crescent silhouette with centered visible bounds, still deriving colors from the active palette. Task rows have no bottom border; draw one straight inset separator only between adjacent rows, independently of rounded hover surfaces. Preserve task data, menus and completion semantics.
+
 ## 1. Hard rules
 
 These override anything else in this document.

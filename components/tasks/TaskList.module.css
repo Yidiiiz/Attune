@@ -86,12 +86,19 @@
   align-items: flex-start;
   gap: 10px;
   padding: 12px 10px 12px 12px;
-  border-bottom: 1px solid var(--border);
+  position: relative;
   border-radius: var(--radius-md);
 }
 
-.row:last-child {
-  border-bottom: 0;
+.row + .row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 10px;
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
 }
 
 .overdueRow {

@@ -70,3 +70,32 @@ test("theme-aware moon logo is centered within its square", async ({ page }) => 
   }, svg);
   expect(center.x).toBeCloseTo(16, 4); expect(center.y).toBeCloseTo(16, 4);
 });
+
+test("task separators sit between rows, with no rounded bottom border; moon has a narrow crescent silhouette", async ({ page, request }, info) => {
+  await request.post("/api/tasks", { data: { items: [{ title: "Separator first", due: "2035-06-12" }, { title: "Separator second", due: "2035-06-12" }] } });
+  await page.goto("/?date=2035-06-12");
+  const rows = page.getByRole("link", { name: /^Separator / }).locator("xpath=ancestor::li[1]");
+  await expect(rows).toHaveCount(2);
+  const styles = await rows.evaluateAll(nodes => nodes.map(node => {
+    const row = getComputedStyle(node), separator = getComputedStyle(node, "::before");
+    return { bottom: row.borderBottomWidth, content: separator.content, height: separator.height, top: separator.top, radius: separator.borderRadius };
+  }));
+  expect(styles.map(style => style.bottom)).toEqual(["0px", "0px"]);
+  expect(styles[0].content).toBe("none");
+  expect(styles[1]).toMatchObject({ height: "1px", top: "0px", radius: "0px" });
+  const href = await page.locator("#attune-app-icon").getAttribute("href");
+  const svg = decodeURIComponent(href!.split(",")[1]);
+  const shape = await page.evaluate(svg => {
+    const wrapper = document.createElement("div"); wrapper.innerHTML = svg; document.body.append(wrapper);
+    const box = wrapper.querySelector("path")!.getBBox(); wrapper.remove();
+    return { width: box.width, height: box.height };
+  }, svg);
+  expect(shape.width / shape.height).toBeLessThanOrEqual(.55);
+  await page.evaluate(svg => { const preview = document.createElement("div"); preview.id = "moon-review"; preview.style.cssText = "position:fixed;right:24px;top:72px;width:64px;height:64px"; preview.innerHTML = svg; document.body.append(preview); }, svg);
+  await page.screenshot({ path: info.outputPath("crescent-separators-light.png") });
+  await page.evaluate(() => { document.documentElement.setAttribute("data-theme", "dark"); document.documentElement.setAttribute("data-theme-base", "dark"); });
+  await expect.poll(() => page.locator("#attune-app-icon").getAttribute("href")).not.toBe(href);
+  const dark = decodeURIComponent((await page.locator("#attune-app-icon").getAttribute("href"))!.split(",")[1]);
+  await page.evaluate(svg => { document.getElementById("moon-review")!.innerHTML = svg; }, dark);
+  await page.screenshot({ path: info.outputPath("crescent-separators-dark.png") });
+});

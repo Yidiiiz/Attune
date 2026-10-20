@@ -2,6 +2,14 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Upload icon clarification — 2026-10-20.** Source e112ab2/Decision 135 restores
+the earlier Files outline and redraws the attachment control as an upload arrow/tray.
+Focused browser 2/2 (1.0m), actual sandbox upload/send/persistence and icon/geometry
+checks passed; screenshot inspected. TypeScript and production build passed. App
+localhost:3000 PID 122232, HTTP 200. No private write, inference, worker, supervisor,
+push, publication or budget reset; budget 2/6. Existing residuals unchanged.
+Exact evidence and logs: docs/progress.md.
+
 **Wants and spacious Schedule — 2026-10-20.** Source 911f415, Decision 134:
 standard folded-page Files glyph with text strokes; collapsed Wants with three-item
 expansion; Work/Want and flexible This week/Next week via existing tags/history/Undo.

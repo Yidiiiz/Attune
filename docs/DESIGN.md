@@ -165,3 +165,8 @@ time inputs inside cards. The selected item has a separate start-time editor;
 the item picker reaches even tiny or overlapping blocks. Keyboard selection,
 pointer dragging and ordinary Undo use the existing task actions. Phone controls
 wrap above the grid instead of compressing task titles.
+
+
+Icon clarification (Decision 135): restore the earlier plain folded-page Files rail
+glyph. Upload/attachment uses a centered arrow into a tray, retaining the same
+Attach a file label and picker behavior in both composer surfaces.

@@ -967,3 +967,26 @@ http://localhost:3000, PID 123272 (.agent/app-server.pid), logs
 .agent/app-wants-schedule-production-error.log. Home, Chat, Calendar and Settings
 returned complete HTTP 200 responses. Refresh to load the new assets. No unfinished
 implementation checks for this refinement; provider/manual limits above remain.
+
+
+## Upload icon clarification — 2026-10-20
+
+Owner clarified that the previous Files icon was preferred and the upload icon
+was the intended redesign. Decision 135 (5be134d), source e112ab2 restores the
+Decision 131 Files outline exactly and replaces the attachment glyph with a
+centered upload arrow/tray. Shared SVG styling, accessible labels and upload
+behavior remain. No private writes or provider inference.
+
+Existing focused browser checks: 2/2 in 1.0m, native exit 0, including actual
+sandbox image upload/send/persistence and desktop/tablet/phone control geometry.
+Files exact path and visible Chat upload glyph asserted; screenshot inspected.
+Evidence: check-ui-evidence/2026-10-20T22-50-59-597Z. TypeScript passed. Prior
+823-test evidence belongs to preceding source; no full rerun for this SVG-only
+correction. Production log .agent/upload-icon-build.log; startup result follows.
+No supervisor, extra worker, push, publication or budget reset; budget 2/6.
+Earlier manual/provider residuals remain. HANDOFF.md preserved.
+
+Production build native exit 0. App intentionally running localhost:3000 PID 122232
+(.agent/app-server.pid), logs .agent/app-upload-icon-production.log and
+.agent/app-upload-icon-production-error.log. Complete home response HTTP 200.
+Refresh for the restored Files and revised upload icons.

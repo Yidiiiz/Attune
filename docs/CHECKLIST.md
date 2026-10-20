@@ -1079,3 +1079,11 @@ keyboard/time editing, exact-byte Undo and access to short/overlapping commitmen
 Screenshots inspected. Production/startup evidence is in docs/progress.md.
 No private task changes or live inference; new prompt interpretation remains a
 provider-specific check, and existing manual/provider residuals remain explicit.
+
+
+### 11.16 Upload icon correction — verified locally, 2026-10-20
+
+Decision 135/source e112ab2: earlier Files glyph restored, upload arrow/tray on
+attachment controls. Focused browser 2/2 (1.0m), real sandbox upload/send/persistence,
+control geometry and exact glyph assertions; screenshot inspected. TypeScript
+passed. Production/startup evidence: docs/progress.md. Existing residuals unchanged.

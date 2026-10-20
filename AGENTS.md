@@ -2,6 +2,16 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Today emphasis ? 2026-10-19.** Source 97a534a, Decision 133: Done starts
+collapsed on each visit; later/undated open work dims until all viewed-day deadlines
+are complete, then restores full opacity. Overdue work stays emphasized; hover/focus
+keeps dimmed controls legible. Obsolete Show completed UI removed, stored settings
+preserved. Final browser 5/5 in 38.2s after retained 4/5 test-assumption failure;
+focused rank/component checks 33/33, TypeScript, 92 library loads and production build
+passed. Before/after screenshots inspected. App localhost:3000 PID 101956, HTTP 200.
+No personal write, inference, supervisor, worker, push, publication or budget reset;
+budget 2/6. Existing manual/provider residuals unchanged. See docs/progress.md.
+
 **Crescent/separator correction — 2026-10-16.** Source 5dfbff1, Decision 132:
 centered narrow crescent silhouette and straight inset separators only between
 adjacent tasks, no rounded bottom borders. Focused browser 4/4 in 31.3s, TypeScript

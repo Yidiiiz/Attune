@@ -129,8 +129,7 @@ with an effective 11:59 p.m. cutoff. Existing explicit timestamps retain their b
 
 
 Compact controls (Decision 131): Done has the same local collapse control as Also
-possible, initially following the completed-visibility preference with count always
-visible. The bottom-right composer toggle stays 40px square at 24px from both edges
+possible, initially collapsed with count always visible (Decision 133). The bottom-right composer toggle stays 40px square at 24px from both edges
 in open/closed states; only the plus glyph rotates. Input controls reserve its area.
 AutoApprove keeps its existing opt-in storage and uses muted opacity when off,
 full opacity on hover/focus or when enabled. Main send/resend controls are square,
@@ -142,3 +141,11 @@ Crescent/separator correction (Decision 132): the theme-aware moon uses a visibl
 narrow crescent silhouette, centered by its visible bounds. Task hover surfaces
 keep their rounding, but rows have no bottom border. A straight inset 1px separator
 belongs only between adjacent tasks, with no rule under the last task.
+
+
+Today emphasis (Decision 133): Done starts collapsed on each visit. Later and
+undated open tasks use 55% opacity while any task is due on the viewed date;
+hover/focus restores full opacity for interaction. Once those deadlines are all
+complete, ordinary opacity returns in both Focus and Also possible. Earlier
+overdue tasks retain their emphasis. The obsolete Show completed setting control
+is removed, with stored values preserved for compatibility.

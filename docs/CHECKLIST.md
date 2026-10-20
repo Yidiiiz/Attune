@@ -1054,3 +1054,13 @@ Source 5dfbff1/Decision 132: recognizable centered narrow crescent, theme-aware 
 no task bottom borders, straight inset line only between adjacent tasks. Focused
 browser 4/4 in 31.3s, TypeScript passed; light/dark screenshots inspected. No data
 changes. Production rebuild/startup and unchanged residuals: docs/progress.md.
+
+
+### 11.14 Collapsed Done and Today emphasis ? verified locally, 2026-10-19
+
+Decision 133/source 97a534a: Done starts collapsed, stays manually expandable;
+later/undated tasks dim until every viewed-day deadline is complete, then restore
+full opacity in Focus and Also possible. Earlier overdue tasks stay emphasized.
+Final browser group 5/5 (38.2s), focused rank/component checks 33/33, TypeScript
+and 92 library loads passed. Initial 4/5 test-assumption failure is retained in
+docs/progress.md alongside production/startup evidence. No personal data changed.

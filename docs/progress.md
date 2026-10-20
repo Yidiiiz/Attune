@@ -867,3 +867,39 @@ http://localhost:3000 PID 35848, saved .agent/app-server.pid; logs
 200. Refresh to see the updated favicon and list separators. No implementation
 checks remain unfinished for this correction; earlier manual/provider residuals
 remain unchanged.
+
+
+## Collapsed Done and Today emphasis ? 2026-10-19
+
+Owner requested Done to start hidden and later work to be lower opacity until
+all tasks due on the day are complete. Decision 133 (2aaf8d6), source 97a534a.
+Done initially collapses regardless of the old visibility preference; its count
+and mouse/keyboard expansion remain. Later/undated open tasks dim to 55%, with
+full opacity on hover/focus; they return to normal after the last viewed-date
+deadline completes. Earlier overdue work remains fully emphasized. Also possible
+now shares conditional emphasis instead of permanent muting. Removed the obsolete
+Show completed Settings control; stored settings and task bytes remain untouched.
+
+Final affected browser group: 5/5 in 38.2s, native exit 0. Evidence:
+check-ui-evidence/2026-10-20T03-43-48-661Z. Initial group was 4/5 (1.3m), retained
+at check-ui-evidence/2026-10-20T03-42-14-120Z: the new test used checkbox.check()
+against the deliberately non-optimistic async completion control. Corrected to
+click and wait for the row to disappear, and isolated its viewed date from the
+preceding separator fixture before verifying full-opacity restoration. No app
+behavior workaround or weakened timeout/retry/threshold. Before/after screenshots
+inspected and retained under .agent/today-emphasis-screenshots/.
+
+TypeScript passed; 92 library modules load in plain Node. Focused rank and
+component test-hook checks: 33/33 in two files (1.28s). Prior 818-test results
+belong to earlier source; no full deterministic run is claimed. Production build
+log: .agent/today-emphasis-build.log. Startup result follows. No owner-data write,
+inference, worker, supervisor, publication, push or budget reset; budget 2/6.
+Earlier manual/provider residuals remain unchanged. HANDOFF.md preserved.
+
+
+Production build passed (native exit 0). App intentionally runs at
+http://localhost:3000, PID 101956 (.agent/app-server.pid), logs
+.agent/app-today-emphasis-production.log and
+.agent/app-today-emphasis-production-error.log. Complete home response HTTP 200.
+Refresh to load the new UI. No unfinished checks specific to this change;
+existing manual/provider residuals remain as recorded.

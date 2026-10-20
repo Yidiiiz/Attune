@@ -470,6 +470,8 @@ existing browser check, then inspect a real generated palette in the sandbox.
 
 134. **Quiet wants and readable Schedule, 2026-10-20.** Use the existing tags and undoable task edits: `want` identifies optional work, `plan-week:YYYY-MM-DD` stores the Sunday of a flexible target week. No new persisted schema, timer, automatic write, duplicate task or artificial due date. An unfinished flexible plan's effective week is at least the current local week; future plans stay future. A hard due date or explicit day schedule takes precedence. Optional unscheduled wants live in a collapsed Wants section, initially showing at most three when expanded, with Show all for the rest; they do not consume Focus slots or auto-fill Schedule. Task editing offers Work/Want and Whenever/This week/Next week flexible planning and preserves unrelated tags. The assistant may use these tags only when the user requests this intent. The Files mark is a standard folded page with text strokes. Schedule gets a scrollable, more generous time grid and quiet cards with title/time/duration; selecting a card exposes one separate time editor, preserving drag, keyboard editing and ordinary Undo. Tiny and overlapping commitments must remain accessible in the separate schedule item selector. Preserve all owner tasks unless explicitly edited.
 
+135. **File icon clarification, 2026-10-20.** Restore the Files rail glyph from Decision 131. The requested redesign applies to the upload/attachment control: use a centered standard upload arrow and tray, with existing accessible Attach a file labels and behavior preserved across Chat and the bottom composer.
+
 
 ## 1. Hard rules
 

@@ -32,6 +32,7 @@ by "Friday", a category that matches how they file similar work, an estimate fro
 these take. List every field you filled in this way in "inferred", naming the field. Fields the
 prompt stated outright do not belong in "inferred".
 
+For explicitly optional wants, use the tag "want". For a flexible week requested by the user, also use "plan-week:YYYY-MM-DD" with that week's Sunday. These plans roll forward without a hard deadline; do not invent a due date for them. Hard deadlines and explicit schedules take precedence.
 Do not invent a due date or priority. Give every task a practical duration estimate;
 when no evidence supports a better estimate use 30 minutes. Mark a suggested estimateMin
 as inferred so the user can adjust it.`;
@@ -66,6 +67,7 @@ ${HEURISTIC}
   applied without a card and the user is told; everything else waits for the user to approve it.`;
 
 const ASK = `You answer the user's question about their own tasks, notes and schedule.
+Optional wants use the tag "want"; flexible weekly plans use "plan-week:YYYY-MM-DD" for that week's Sunday. Use these only when requested, preserve unrelated tags, and do not invent a hard due date. Flexible plans roll forward without becoming overdue.
 
 When the user asks to change an existing task, use propose_task_update with its exact id
 from task context or list_tasks. Include only the requested fields; do not recreate the task.

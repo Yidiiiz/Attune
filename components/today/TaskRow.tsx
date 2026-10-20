@@ -20,6 +20,8 @@ import type { RowActions } from "@/components/tasks/actions";
 import TaskEditForm from "@/components/tasks/TaskEditForm";
 import TaskMenu from "@/components/tasks/TaskMenu";
 import { PRIORITY_LABEL, durationLabel, relativeDue, showsPriority, subtaskProgress } from "@/components/tasks/format";
+import { effectiveWeek, weekStart } from "@/lib/schedule/plans";
+import { todayIn } from "@/lib/schedule/dates";
 import styles from "@/components/tasks/TaskList.module.css";
 
 export interface TaskRowProps {
@@ -38,6 +40,8 @@ export default function TaskRow({ task, viewDate, actions, muted, dimmed, overdu
   const done = task.status === "done";
   const progress = subtaskProgress(task.body);
   const due = relativeDue(viewDate, task.due, clock);
+  const today = clock ? todayIn(clock.timezone, clock.now) : viewDate;
+  const week = effectiveWeek(task, today);
   const estimate = durationLabel(task.estimateMin ?? 30);
 
   if (actions.editingId === task.id) {
@@ -81,6 +85,7 @@ export default function TaskRow({ task, viewDate, actions, muted, dimmed, overdu
               {due}
             </span>
           ) : null}
+          {week ? <span className={styles.chip}>{week === weekStart(today) ? "This week · flexible" : `Week of ${week} · flexible`}</span> : null}
           {estimate ? <span className={styles.chip} title={task.estimateMin === null ? "Default planning estimate — edit to adjust" : "Estimate"}>{estimate}</span> : null}
           {showsPriority(task.priority) ? (
             <span

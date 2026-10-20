@@ -12,7 +12,8 @@
 
 import { useState } from "react";
 import type { Task } from "@/lib/store/tasks";
-import { datePart } from "@/lib/schedule/dates";
+import { addDays, datePart, todayIn } from "@/lib/schedule/dates";
+import { isWant, planTags, plannedWeek, weekStart } from "@/lib/schedule/plans";
 import { PRIORITY_LABEL } from "./format";
 import styles from "./TaskList.module.css";
 
@@ -37,6 +38,9 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
   const [dueTime, setDueTime] = useState(timePart(task.due));
   const [day, setDay] = useState(task.scheduled ? datePart(task.scheduled) : "");
   const [time, setTime] = useState(timePart(task.scheduled));
+  const [want, setWant] = useState(isWant(task));
+  const [week, setWeek] = useState(plannedWeek(task));
+  const thisWeek = weekStart(todayIn(Intl.DateTimeFormat().resolvedOptions().timeZone));
   const [notes, setNotes] = useState(task.body);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +58,7 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
         ? task.due : due ? (dueTime ? `${due}T${dueTime}` : due) : null,
       scheduled,
       body: notes,
+      tags: want === isWant(task) && week === plannedWeek(task) ? task.tags : planTags(task.tags, want, week),
     };
 
     const current: Record<string, unknown> = {
@@ -64,6 +69,7 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
       due: task.due,
       scheduled: task.scheduled,
       body: task.body,
+      tags: task.tags,
     };
 
     const changes: Record<string, unknown> = {};
@@ -97,6 +103,15 @@ export default function TaskEditForm({ task, busy, onCancel, onSave }: TaskEditF
       />
 
       <div className={styles.formGrid}>
+        <label><span>Kind</span><select aria-label="Kind" value={want ? "want" : "work"} onChange={event => setWant(event.target.value === "want")}>
+          <option value="work">Work</option><option value="want">Want</option>
+        </select></label>
+        <label><span>Flexible plan</span><select aria-label="Flexible plan" value={week ?? ""} onChange={event => setWeek(event.target.value || null)}>
+          <option value="">Whenever</option>
+          {week && week !== thisWeek && week !== addDays(thisWeek, 7) ? <option value={week}>{week < thisWeek ? "This week" : `Week of ${week}`} · rolls forward</option> : null}
+          <option value={thisWeek}>This week · rolls forward</option>
+          <option value={addDays(thisWeek, 7)}>Next week · rolls forward</option>
+        </select></label>
         <label>
           <span>Due</span>
           <input type="date" value={due} onChange={(event) => setDue(event.target.value)} />

@@ -1,5 +1,5 @@
-// Owns: the four sections of the Today body (PROJECT.md §10.1) — Overdue, Today's focus, Also
-// possible, Done today — and nothing about what a row does. The order and membership were decided
+// Owns: the work and optional sections of the Today body (PROJECT.md §10.1) — Overdue, Today's focus, Also
+// possible, Wants, Done today — and nothing about what a row does. The order and membership were decided
 // by `rankDay` before this file saw them; this is the part that draws them.
 //
 // Failure behavior: an empty day renders a sentence rather than four empty headings, and a section
@@ -69,11 +69,13 @@ export default function TaskList({ ranked, viewDate, actions, clock }: TaskListP
   }, [clock?.timezone]);
   const currentClock = clock && now ? { ...clock, now } : undefined;
   const [alsoOpen, setAlsoOpen] = useState(false);
+  const [wantsOpen, setWantsOpen] = useState(false);
+  const [allWants, setAllWants] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
-  const { overdue, focus, alsoPossible, doneToday } = ranked;
+  const { overdue, focus, alsoPossible, doneToday, wants = [] } = ranked;
   const dimOthers = [...overdue, ...focus, ...alsoPossible].some(task =>
     (task.status === "todo" || task.status === "doing") && task.due !== null && datePart(task.due) === viewDate);
-  const total = overdue.length + focus.length + alsoPossible.length + doneToday.length;
+  const total = overdue.length + focus.length + alsoPossible.length + doneToday.length + wants.length;
 
   if (total === 0) {
     return <p className={styles.empty}>Nothing for this day. A clear day is an answer too.</p>;
@@ -110,6 +112,19 @@ export default function TaskList({ ranked, viewDate, actions, clock }: TaskListP
             <span className={styles.count}>{alsoPossible.length}</span>
           </button>
           {alsoOpen ? <Rows tasks={alsoPossible} viewDate={viewDate} actions={actions} dimOthers={dimOthers} clock={currentClock} /> : null}
+        </section>
+      ) : null}
+
+      {wants.length > 0 ? (
+        <section className={styles.section} aria-label="Wants">
+          <button type="button" className={`${styles.heading} ${styles.toggleHeading}`} onClick={() => setWantsOpen(open => !open)} aria-expanded={wantsOpen}>
+            <span className={styles.caret} aria-hidden="true">{wantsOpen ? "▾" : "▸"}</span>Wants
+            <span className={styles.count}>{wants.length}</span>
+          </button>
+          {wantsOpen ? <>
+            <Rows tasks={allWants ? wants : wants.slice(0, 3)} viewDate={viewDate} actions={actions} dimOthers={dimOthers} clock={currentClock} />
+            {wants.length > 3 ? <button className={styles.moreWants} type="button" onClick={() => setAllWants(all => !all)}>{allWants ? "Show less" : `Show all ${wants.length}`}</button> : null}
+          </> : null}
         </section>
       ) : null}
 

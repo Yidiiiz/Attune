@@ -1,9 +1,9 @@
 // Owns: listing tasks for a day and creating them in one batch (PROJECT.md §14).
 //
-// GET answers with the four §10.1 sections and nothing else. The unranked `tasks` array it also
+// GET answers with the §10.1 work and optional sections and nothing else. The unranked `tasks` array it also
 // returned was a Phase 2 placeholder for the days before `rank.ts` existed; nothing consumes it now
 // — Today reads the store directly as a route-level server file (§3), and the calendar has its own
-// route — and a flat list is a concatenation of the four sections for anyone who ever wants one.
+// route — and a flat list is a concatenation of those sections for anyone who ever wants one.
 
 import { z } from "zod";
 import { TaskDraftSchema } from "@/lib/history/actions";

@@ -19,8 +19,8 @@ import { dayWindow, packDay, unplaced } from "@/lib/schedule/timeline";
 import { clockLabel, durationLabel } from "@/components/tasks/format";
 import styles from "./Timeline.module.css";
 
-/** Pixels per minute. A ten-hour day is 480px, which fits a laptop screen without scrolling. */
-const SCALE = 0.8;
+/** Generous clock spacing in a bounded scroll area; durations remain proportional. */
+const SCALE = 1.6;
 
 /** Moves land on a five-minute grid: finer than that is a precision the estimate does not have. */
 const STEP_MIN = 5;
@@ -35,11 +35,14 @@ export interface TimelineProps {
 }
 
 export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSchedule }: TimelineProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; offset: number } | null>(null);
 
   const now = new Date(nowMs);
   const bounds = dayWindow(viewDate, settings, now);
   const blocks = packDay({ focus, fixed, now, viewDate, settings });
+  const scheduledBlocks = blocks.filter(block => block.taskId);
+  const selected = scheduledBlocks.find(block => block.taskId === selectedId) ?? scheduledBlocks[0];
   const didNotFit = unplaced(focus, blocks);
 
   const byId = new Map<string, Task>();
@@ -100,6 +103,22 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
 
   return (
     <section className={styles.timeline} aria-label="Day schedule">
+      <div className={styles.scheduleHeading}><h2>Day plan</h2><span>Drag to move · select to edit</span></div>
+      {selected ? <div className={styles.selection}>
+        <label className={styles.itemPicker}><span className={styles.visuallyHidden}>Schedule item</span>
+          <select aria-label="Schedule item" value={selected.taskId} onChange={event => setSelectedId(event.target.value)}>
+            {scheduledBlocks.map(block => <option key={block.taskId} value={block.taskId}>{byId.get(block.taskId!)?.title}</option>)}
+          </select>
+        </label>
+        <label className={styles.at}><span>Start</span><input type="time" step={STEP_MIN * 60}
+          aria-label={`Start time for ${byId.get(selected.taskId!)?.title}`}
+          value={clockLabel(selected.startMin)} onChange={event => {
+            const [hours, minutes] = event.target.value.split(":").map(Number);
+            const task = byId.get(selected.taskId!);
+            if (task && Number.isFinite(hours) && Number.isFinite(minutes)) onSchedule(task, hours * 60 + minutes);
+          }} /></label>
+      </div> : null}
+      <div className={styles.viewport}>
       <div className={styles.column} style={{ height }}>
         {hours.map(minute => <div key={minute} className={`${styles.timeTick} ${minute === bounds.start ? styles.firstTick : ""} ${minute === bounds.end ? styles.lastTick : ""}`} style={{ top: (minute - bounds.start) * SCALE }} data-ui="timeline-hour"><span>{clockLabel(minute)}</span></div>)}
         {blocks.filter(block => block.kind !== "gap").map((block) => {
@@ -111,29 +130,20 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
           return (
             <div
               key={`${block.kind}-${block.startMin}-${block.taskId ?? ""}`}
-              className={`${styles.block} ${styles[block.kind]} ${offset !== 0 ? styles.moving : ""}`}
+              className={`${styles.block} ${styles[block.kind]} ${offset !== 0 ? styles.moving : ""} ${selected?.taskId && selected.taskId === block.taskId ? styles.selected : ""} ${size < 22 ? styles.compact : ""}`}
               style={{ top, height: Math.max(size, 2) }}
+              role={task ? "button" : undefined}
+              tabIndex={task ? 0 : undefined}
+              aria-label={task ? `Schedule ${task.title}` : undefined}
+              aria-pressed={task ? selected?.taskId === task.id : undefined}
+              onClick={task ? () => setSelectedId(task.id) : undefined}
+              onKeyDown={task ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(task.id); } } : undefined}
               onPointerDown={task ? (event) => startDrag(event, task.id) : undefined}
             >
               <span className={styles.clock}>{clockLabel(block.startMin + offset)}</span>
               {task ? (
                 <>
                   <span className={styles.blockTitle}>{task.title}</span>
-                  <label className={styles.at}>
-                    <span className={styles.visuallyHidden}>Start time for {task.title}</span>
-                    <input
-                      type="time"
-                      step={STEP_MIN * 60}
-                      value={clockLabel(block.startMin)}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onChange={(event) => {
-                        const [hours, minutes] = event.target.value.split(":").map(Number);
-                        if (Number.isFinite(hours) && Number.isFinite(minutes)) {
-                          onSchedule(task, hours * 60 + minutes);
-                        }
-                      }}
-                    />
-                  </label>
                   <span className={styles.blockEstimate}>{durationLabel(block.endMin - block.startMin)}</span>
                 </>
               ) : (
@@ -142,6 +152,8 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
             </div>
           );
         })}
+      </div>
+
       </div>
 
       {didNotFit.length > 0 ? (
@@ -159,7 +171,7 @@ export default function Timeline({ focus, fixed, settings, viewDate, nowMs, onSc
       ) : null}
 
       <p className={styles.hint}>
-        Drag a block, or set its time, to schedule it. Use the task menu to ask about a plan.
+        Suggested blocks stay flexible until you move or set a time.
       </p>
     </section>
   );

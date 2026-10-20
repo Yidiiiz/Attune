@@ -57,10 +57,10 @@ test("timeline pointer and time input schedule real tasks; Undo restores bytes",
   const input = page.getByLabel("Start time for Acceptance timeline");
   await expect(input).toHaveValue("10:00");
   const before = taskFile(id), logBefore = actions().length;
-  const block = input.locator("xpath=../..");
+  const block = page.getByRole("button", { name: "Schedule Acceptance timeline", exact: true });
   const box = await block.boundingBox();
   await page.mouse.move(box!.x + box!.width / 2, box!.y + 8);
-  await page.mouse.down(); await page.mouse.move(box!.x + box!.width / 2, box!.y + 56, { steps: 8 });
+  await page.mouse.down(); await page.mouse.move(box!.x + box!.width / 2, box!.y + 8 + box!.height * 2, { steps: 8 });
   await expect(block).toContainText("11:00");
   await page.mouse.up();
   await expect(input).toHaveValue("11:00");

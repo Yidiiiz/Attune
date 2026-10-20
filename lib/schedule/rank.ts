@@ -14,6 +14,7 @@
 import { datePart, daysUntil, minutesFromMidnight, splitLocalIso, todayIn } from "./dates.ts";
 import type { Task } from "../store/tasks.ts";
 import type { Settings } from "../store/settings.ts";
+import { effectiveWeek, isWant, weekStart } from "./plans.ts";
 import { deadlineTime, deadlineKey } from "./deadlines.ts";
 
 /** §10.1's weights. A critical undated task (11) outranks a someday task due tomorrow (9). */
@@ -27,6 +28,7 @@ export interface RankedDay {
   focus: Task[];
   alsoPossible: Task[];
   doneToday: Task[];
+  wants?: Task[];
 }
 
 /** The score broken into the columns of the §10.1 worked example, so the table can be asserted. */
@@ -120,7 +122,7 @@ function beyondLookahead(task: Task, viewDate: string, settings: Settings): bool
 }
 
 /**
- * Split a day's tasks into the four sections of §10.1. `now` is an argument rather than a call to
+ * Split a day's tasks into the work and optional sections of §10.1. `now` is an argument rather than a call to
  * `new Date()` so that the same inputs always give the same output — the property the "rendering
  * twice yields identical order" check is about.
  *
@@ -129,9 +131,11 @@ function beyondLookahead(task: Task, viewDate: string, settings: Settings): bool
  */
 export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now: Date): RankedDay {
   const minutes = availableMinutes(viewDate, settings, now);
+  const today = todayIn(settings.timezone, now);
 
   const overdue: Task[] = [];
   const doneToday: Task[] = [];
+  const wants: Task[] = [];
   const eligible: { task: Task; total: number; focusable: boolean }[] = [];
 
   for (const task of tasks) {
@@ -146,10 +150,15 @@ export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now
     // meant. `scheduled` in the past keeps it eligible — a missed plan is still work to do.
     if (task.scheduled !== null && datePart(task.scheduled) > viewDate && datePart(task.due ?? "") !== viewDate) continue;
 
+    if (isWant(task) && task.due === null && task.scheduled === null) {
+      wants.push(task);
+      continue;
+    }
+    const week = effectiveWeek(task, today);
     eligible.push({
       task,
       total: scoreParts(task, viewDate, minutes).total,
-      focusable: !beyondLookahead(task, viewDate, settings),
+      focusable: !beyondLookahead(task, viewDate, settings) && (task.due !== null || task.scheduled !== null || week === null || week <= weekStart(viewDate)),
     });
   }
 
@@ -170,5 +179,6 @@ export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now
     else alsoPossible.push(entry.task);
   }
 
-  return { overdue, focus, alsoPossible, doneToday };
+  wants.sort((a, b) => (effectiveWeek(a, today) ?? "9999").localeCompare(effectiveWeek(b, today) ?? "9999") || tieBreak(a, b));
+  return { overdue, focus, alsoPossible, doneToday, wants };
 }

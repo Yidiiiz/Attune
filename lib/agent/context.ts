@@ -193,11 +193,11 @@ export function tasksTable(tasks: Task[]): string {
     (task) =>
       "| " + task.id + " | " + task.title + " | " + task.status + " | " + task.priority + " | " +
       cell(task.due) + " | " + cell(task.scheduled) + " | " + cell(task.estimateMin) + " | " +
-      cell(task.category) + " |",
+      cell(task.category) + " | " + cell(task.tags.join(", ")) + " |",
   );
   return [
-    "| id | title | status | priority | due | scheduled | est | category |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| id | title | status | priority | due | scheduled | est | category | tags |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...rows,
   ].join("\n");
 }

@@ -242,7 +242,7 @@ describe("rankDay", () => {
 
   it("returns empty sections for an empty day", () => {
     expect(rankDay([], VIEW_DATE, settings(), NOW)).toEqual({
-      overdue: [], focus: [], alsoPossible: [], doneToday: [],
+      overdue: [], focus: [], alsoPossible: [], doneToday: [], wants: [],
     });
   });
 });
@@ -287,5 +287,34 @@ describe("deadline cutoffs", () => {
     expect(isOverdue(item, "2026-09-10", config, NOW)).toBe(true);
     expect(isOverdue({ ...item, due: null }, VIEW_DATE, config, NOW)).toBe(false);
     expect(isOverdue({ ...item, due: "invalid" }, VIEW_DATE, config, NOW)).toBe(false);
+  });
+});
+
+
+describe("optional wants and flexible weeks", () => {
+  it("keeps optional wants out of Focus without losing hard deadlines or explicit schedules", () => {
+    const want = task({ id: "want", title: "Want", tags: ["want", "plan-week:2026-09-06"] });
+    const due = task({ ...want, id: "due", due: VIEW_DATE });
+    const pinned = task({ ...want, id: "pinned", scheduled: VIEW_DATE });
+    const day = rankDay([want, due, pinned, EMAIL], VIEW_DATE, settings(), NOW);
+    expect(day.wants).toEqual([want]);
+    expect(day.focus.map(task => task.id)).toContain("due");
+    expect(day.focus.map(task => task.id)).toContain("pinned");
+    expect(day.focus.map(task => task.id)).toContain(EMAIL.id);
+  });
+  it("rolls unfinished work forward without changing its due date, tags, or task count", () => {
+    const plan = task({ id: "plan", title: "Flexible work", tags: ["plan-week:2026-09-06"] });
+    const before = JSON.stringify(plan);
+    const next = rankDay([plan], "2026-09-15", settings(), new Date("2026-09-15T12:00:00Z"));
+    expect(next.focus).toEqual([plan]); expect(next.overdue).toEqual([]);
+    expect(JSON.stringify(plan)).toBe(before);
+    const future = task({ ...plan, tags: ["plan-week:2026-09-20"] });
+    const day = rankDay([future], VIEW_DATE, settings(), NOW);
+    expect(day.focus).toEqual([]); expect(day.alsoPossible).toEqual([future]);
+    expect(rankDay([plan], "2026-09-01", settings(), NOW).focus).toEqual([]);
+  });
+  it("never revives completed or archived wants", () => {
+    const items = ["done", "archived"].map(status => task({ id: status, title: status, tags: ["want"], status: status as Task["status"] }));
+    expect(rankDay(items, VIEW_DATE, settings(), NOW).wants).toEqual([]);
   });
 });

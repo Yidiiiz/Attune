@@ -1064,3 +1064,18 @@ full opacity in Focus and Also possible. Earlier overdue tasks stay emphasized.
 Final browser group 5/5 (38.2s), focused rank/component checks 33/33, TypeScript
 and 92 library loads passed. Initial 4/5 test-assumption failure is retained in
 docs/progress.md alongside production/startup evidence. No personal data changed.
+
+
+### 11.15 Wants, flexible plans and Schedule — verified locally, 2026-10-20
+
+Decision 134/source 911f415: standard centered file glyph; collapsed Wants with
+three-item expansion; undoable Work/Want and optional rolling weekly targets;
+explicit deadlines/schedules retain precedence. Weekly carry-forward is read-only,
+with no invented deadline or duplicate. Spacious responsive Schedule retains drag,
+keyboard/time editing, exact-byte Undo and access to short/overlapping commitments.
+823/823 deterministic checks in 76 files (74.31s), final affected browser 14/14
+(58.9s), subsequent final stacking/hit-target group 2/2 (18.1s), TypeScript and
+93 library loads passed. Initial 12/14 and corrected focused 2/2 remain recorded.
+Screenshots inspected. Production/startup evidence is in docs/progress.md.
+No private task changes or live inference; new prompt interpretation remains a
+provider-specific check, and existing manual/provider residuals remain explicit.

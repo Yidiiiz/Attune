@@ -2,6 +2,21 @@
 
 Read `PROJECT.md` first; it is the specification. This file is how to work, not what to build.
 
+**Wants and spacious Schedule — 2026-10-20.** Source 911f415, Decision 134:
+standard folded-page Files glyph with text strokes; collapsed Wants with three-item
+expansion; Work/Want and flexible This week/Next week via existing tags/history/Undo.
+Effective Sunday targets carry forward read-only, without deadlines or duplicates;
+explicit due dates/schedules take precedence. Schedule has a roomy scrolling grid,
+one selected-item time editor, keyboard/pointer access and a picker for tiny/overlapping
+blocks. Final selected cards render in front and pass actual hit testing. Full 823/823
+in 76 files (74.31s) precedes the final CSS stacking fix; affected browser 14/14 (58.9s),
+final stacking group 2/2 (18.1s), TypeScript, 93 library loads and production build
+passed. Initial 12/14 label failures and intervening 2/2 are retained in progress.
+Screenshots inspected. App localhost:3000 PID 123272; four main pages HTTP 200.
+No private writes, inference, worker, supervisor, push, publication or budget reset;
+budget 2/6. New prompt interpretation and earlier manual/provider residuals remain.
+See docs/progress.md for exact evidence and startup logs.
+
 **Today emphasis ? 2026-10-19.** Source 97a534a, Decision 133: Done starts
 collapsed on each visit; later/undated open work dims until all viewed-day deadlines
 are complete, then restores full opacity. Overdue work stays emphasized; hover/focus

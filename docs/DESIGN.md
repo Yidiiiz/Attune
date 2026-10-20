@@ -149,3 +149,19 @@ hover/focus restores full opacity for interaction. Once those deadlines are all
 complete, ordinary opacity returns in both Focus and Also possible. Earlier
 overdue tasks retain their emphasis. The obsolete Show completed setting control
 is removed, with stored values preserved for compatibility.
+
+
+Wants and flexible planning (Decision 134): optional unscheduled wants have their
+own collapsed section, with three items on expansion and Show all for the rest.
+They do not take Focus slots or fill the time grid. Edit a task and choose Kind:
+Want, then Flexible plan: Whenever, This week or Next week. Weekly plans carry
+forward unfinished work without inventing a due date or duplicating the task.
+Explicit schedules and hard deadlines remain ordinary work commitments. Flexible
+targets use Sunday weeks, matching the calendar; unrelated tags are preserved.
+
+The Files glyph is a centered folded page with two text strokes. Schedule uses
+96px/hour inside a bounded scrolling grid, restrained surfaces and no repeated
+time inputs inside cards. The selected item has a separate start-time editor;
+the item picker reaches even tiny or overlapping blocks. Keyboard selection,
+pointer dragging and ordinary Undo use the existing task actions. Phone controls
+wrap above the grid instead of compressing task titles.

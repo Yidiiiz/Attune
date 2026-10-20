@@ -903,3 +903,67 @@ http://localhost:3000, PID 101956 (.agent/app-server.pid), logs
 .agent/app-today-emphasis-production-error.log. Complete home response HTTP 200.
 Refresh to load the new UI. No unfinished checks specific to this change;
 existing manual/provider residuals remain as recorded.
+
+
+## Wants, flexible weeks and spacious Schedule — 2026-10-20
+
+Owner asked for a standard file icon, a quieter place for optional wants, flexible
+weekly plans that carry unfinished work forward, and a cleaner Schedule. Decision
+134 (9a1a8b9), source 911f415. The file glyph is a centered folded page with two
+text strokes. Wants is a separate collapsed section with three rows on expansion
+and Show all for the rest; wants do not consume Focus slots or auto-fill Schedule.
+Hard deadlines and explicit day schedules take precedence.
+
+Task Edit offers Kind: Work/Want and Flexible plan: Whenever/This week/Next week.
+It reuses tags (`want`, `plan-week:YYYY-MM-DD`) and ordinary history/Undo, retaining
+unrelated tags and untouched explicit timestamps. Sunday target weeks align with
+the calendar. The effective week advances on read while unfinished, without a
+hard deadline, duplicate task, timer, background write, schema migration or new
+dependency. Existing tasks have not been reclassified or edited. Assistant
+instructions and task context expose the same representation; live model
+interpretation of these new instructions was not exercised or claimed.
+
+Schedule has 96px/hour in a bounded scroll pane, quiet cards and one selected-item
+start-time editor above the grid. The picker reaches tiny/overlapping commitments;
+keyboard selection, pointer drag and ordinary exact-byte Undo remain. Phone controls
+wrap instead of compressing titles. Visual review found that selected overlapping
+cards could sit behind a sibling; final CSS brings selected and moving cards forward,
+and a real center-point hit assertion now pins the result. Tiny block labels are
+hidden where their true duration cannot fit text; their names/time remain in the
+accessible picker. No time geometry is falsified with overlapping minimum heights.
+
+Verification:
+- Focused ranking/plan/timeline/component checks: 58/58 in four files (0.954s).
+- Full deterministic suite: 823/823 in 76 files (74.31s), native exit 0;
+  .agent/wants-schedule-unit.log. This precedes the final CSS stacking correction
+  and comment-only cleanup; no repeated full run is claimed for those changes.
+- Initial affected browser group: 12/14 (3.0m), retained at
+  check-ui-evidence/2026-10-20T20-34-03-989Z. New dropdown label lookups stalled;
+  explicit accessible names fixed both controls, and task Save was scoped to its
+  form instead of the separate onboarding Save. No timeout, retry or threshold
+  changed. Focused rerun 2/2 (18.5s), evidence 2026-10-20T20-37-12-890Z.
+- Final affected group: 14/14 (58.9s), native exit 0, including real drag/time edit,
+  Undo, calendar operations, conditional opacity, collapse, icon geometry and both
+  new cases. Log .agent/wants-schedule-ui-final.log; evidence
+  check-ui-evidence/2026-10-20T20-39-03-505Z.
+- After the visual stacking correction: focused 2/2 (18.1s), native exit 0, with
+  keyboard selection and actual hit target on desktop and phone. Evidence
+  check-ui-evidence/2026-10-20T20-40-42-543Z. Final screenshots inspected and kept
+  under .agent/wants-schedule-screenshots/. Onboarding was dismissed through its
+  normal control in screenshot fixtures so the changed UI is visible.
+- Final TypeScript passed (.agent/wants-schedule-types.log); 93 library modules
+  load in plain Node. Source hook scanned 17 files clean. Production rebuild log:
+  .agent/wants-schedule-build.log; startup result follows.
+
+No owner-data writes, inference, worker, supervisor, push, publication or budget
+reset. Budget remains 2/6; prior physical/manual/provider residuals unchanged.
+HANDOFF.md remains untracked and preserved. Existing production process 101956
+was verified by command line and stopped before the isolated browser runs.
+
+
+Production build passed (native exit 0). App intentionally runs at
+http://localhost:3000, PID 123272 (.agent/app-server.pid), logs
+.agent/app-wants-schedule-production.log and
+.agent/app-wants-schedule-production-error.log. Home, Chat, Calendar and Settings
+returned complete HTTP 200 responses. Refresh to load the new assets. No unfinished
+implementation checks for this refinement; provider/manual limits above remain.

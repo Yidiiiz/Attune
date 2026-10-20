@@ -26,13 +26,14 @@ export interface TaskRowProps {
   task: Task;
   viewDate: string;
   actions: RowActions;
-  /** "Also possible" and "Done today" are grayed; the section decides, not the row. */
+  /** Completed rows stay muted; open rows follow the day's deadline emphasis. */
   muted?: boolean;
+  dimmed?: boolean;
   overdue?: boolean;
   clock?: { now: Date; timezone: string; defaultTime: string };
 }
 
-export default function TaskRow({ task, viewDate, actions, muted, overdue, clock }: TaskRowProps) {
+export default function TaskRow({ task, viewDate, actions, muted, dimmed, overdue, clock }: TaskRowProps) {
   const busy = actions.busyId === task.id;
   const done = task.status === "done";
   const progress = subtaskProgress(task.body);
@@ -54,7 +55,7 @@ export default function TaskRow({ task, viewDate, actions, muted, overdue, clock
 
   return (
     <li
-      className={`${styles.row} ${muted ? styles.muted : ""} ${overdue ? styles.overdueRow : ""} ${busy ? styles.busy : ""}`}
+      className={`${styles.row} ${muted ? styles.muted : ""} ${dimmed ? styles.dimmed : ""} ${overdue ? styles.overdueRow : ""} ${busy ? styles.busy : ""}`}
     >
       <input
         type="checkbox"

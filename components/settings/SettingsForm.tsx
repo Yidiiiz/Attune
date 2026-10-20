@@ -43,7 +43,6 @@ export default function SettingsForm({ initial }: { initial: Settings }) {
     {section("list", "List behavior", <div className={styles.row}>
       <label>Focus size<input type="number" min="0" max="100" value={value.list.focusSize} onChange={event => form.change("list", { ...value.list, focusSize: Number(event.target.value) })} onBlur={() => void form.save("list")} /></label>
       <label>Lookahead days<input type="number" min="0" max="365" value={value.list.lookaheadDays} onChange={event => form.change("list", { ...value.list, lookaheadDays: Number(event.target.value) })} onBlur={() => void form.save("list")} /></label>
-      <label>Show completed<input type="checkbox" checked={value.list.showCompleted} onChange={event => form.change("list", { ...value.list, showCompleted: event.target.checked })} onBlur={() => void form.save("list")} /></label>
     </div>)}
     {section("deadlines", "Deadlines", <>
       <label>Untimed due time<input type="time" value={value.deadlines.defaultTime} onChange={event => form.change("deadlines", { ...value.deadlines, defaultTime: event.target.value })} onBlur={() => void form.save("deadlines")} /></label>

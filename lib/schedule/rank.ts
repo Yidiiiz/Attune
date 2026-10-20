@@ -124,9 +124,8 @@ function beyondLookahead(task: Task, viewDate: string, settings: Settings): bool
  * `new Date()` so that the same inputs always give the same output — the property the "rendering
  * twice yields identical order" check is about.
  *
- * `doneToday` is returned whether or not `settings.list.showCompleted` is set; that flag governs
- * whether the section is displayed, and hiding data at the ranker would leave the caller unable to
- * show a count.
+ * `doneToday` is always returned. Today starts collapsed (Decision 133); keeping the
+ * records here lets its local toggle show the count before expansion.
  */
 export function rankDay(tasks: Task[], viewDate: string, settings: Settings, now: Date): RankedDay {
   const minutes = availableMinutes(viewDate, settings, now);

@@ -15,9 +15,10 @@ test("Done collapses like Also possible and completed tasks stay out of open sec
   await page.goto("/");
   const toggle = page.getByRole("button", { name: /^Done/ });
   const row = page.getByRole("link", { name: "Completed section check", exact: true });
-  await expect(row).toBeVisible(); await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false"); await expect(row).toHaveCount(0);
   await toggle.press("Enter"); await expect(row).toBeVisible();
+  await page.reload(); await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click(); await expect(row).toBeVisible();
   const original = (await (await request.get("/api/settings")).json()).settings.list;
   try {
     await request.put("/api/settings", { data: { section: "list", value: { ...original, showCompleted: false } } });
@@ -98,4 +99,38 @@ test("task separators sit between rows, with no rounded bottom border; moon has 
   const dark = decodeURIComponent((await page.locator("#attune-app-icon").getAttribute("href"))!.split(",")[1]);
   await page.evaluate(svg => { document.getElementById("moon-review")!.innerHTML = svg; }, dark);
   await page.screenshot({ path: info.outputPath("crescent-separators-dark.png") });
+});
+
+
+test("later tasks regain full opacity only after all viewed-day deadlines are complete", async ({ page, request }, info) => {
+  await request.post("/api/tasks", { data: { items: [
+    { title: "Emphasis first due", due: "2035-07-12T00:01" },
+    { title: "Emphasis last due", due: "2035-07-12" },
+    { title: "Emphasis later", due: "2035-07-13" },
+    { title: "Emphasis undated" },
+    { title: "Emphasis overdue", due: "2035-07-11" },
+    { title: "Emphasis distant", due: "2035-08-20" },
+  ] } });
+  await page.goto("/?date=2035-07-12");
+  await page.getByRole("button", { name: /^Also possible/ }).click();
+  const row = (name: string) => page.getByRole("link", { name, exact: true }).locator("xpath=ancestor::li[1]");
+  const opacity = (name: string) => row(name).evaluate(el => getComputedStyle(el).opacity);
+  for (const name of ["Emphasis first due", "Emphasis last due", "Emphasis overdue"]) {
+    await expect.poll(() => opacity(name)).toBe("1");
+  }
+  for (const name of ["Emphasis later", "Emphasis undated", "Emphasis distant"]) {
+    await expect.poll(() => opacity(name)).toBe("0.55");
+  }
+  await page.screenshot({ path: info.outputPath("today-dimmed.png") });
+  await page.getByRole("checkbox", { name: "Complete Emphasis first due", exact: true }).click();
+  await expect(row("Emphasis first due")).toHaveCount(0);
+  await page.mouse.move(0, 0);
+  await expect.poll(() => opacity("Emphasis later")).toBe("0.55");
+  await page.getByRole("checkbox", { name: "Complete Emphasis last due", exact: true }).click();
+  await expect(row("Emphasis last due")).toHaveCount(0);
+  await page.mouse.move(0, 0);
+  for (const name of ["Emphasis later", "Emphasis undated", "Emphasis distant"]) {
+    await expect.poll(() => opacity(name)).toBe("1");
+  }
+  await page.screenshot({ path: info.outputPath("today-restored.png") });
 });

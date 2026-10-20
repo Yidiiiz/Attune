@@ -111,7 +111,6 @@ export default function TodayView({ date, today, settings, ranked, fixed, errors
         clock={{ now: new Date(nowMs), timezone: settings.timezone, defaultTime: settings.deadlines.defaultTime }}
         ranked={ranked}
         viewDate={date}
-        showCompleted={settings.list.showCompleted}
         actions={actions}
       />
     </div>

@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import type { Task } from "@/lib/store/tasks";
+import { datePart } from "@/lib/schedule/dates";
 import type { RankedDay } from "@/lib/schedule/rank";
 import TaskRow from "./TaskRow";
 import type { RowActions } from "@/components/tasks/actions";
@@ -17,7 +18,6 @@ import styles from "@/components/tasks/TaskList.module.css";
 export interface TaskListProps {
   ranked: RankedDay;
   viewDate: string;
-  showCompleted: boolean;
   actions: RowActions;
   clock?: { now: Date; timezone: string; defaultTime: string };
 }
@@ -28,6 +28,7 @@ function Rows({
   actions,
   muted,
   overdue,
+  dimOthers,
   clock,
 }: {
   tasks: Task[];
@@ -35,6 +36,7 @@ function Rows({
   actions: RowActions;
   muted?: boolean;
   overdue?: boolean;
+  dimOthers?: boolean;
   clock?: { now: Date; timezone: string; defaultTime: string };
 }) {
   return (
@@ -46,6 +48,7 @@ function Rows({
           viewDate={viewDate}
           actions={actions}
           muted={muted}
+          dimmed={dimOthers && (task.due === null || datePart(task.due) > viewDate)}
           overdue={overdue}
           clock={clock}
         />
@@ -54,7 +57,7 @@ function Rows({
   );
 }
 
-export default function TaskList({ ranked, viewDate, showCompleted, actions, clock }: TaskListProps) {
+export default function TaskList({ ranked, viewDate, actions, clock }: TaskListProps) {
   const [now, setNow] = useState(clock?.now);
   useEffect(() => {
     if (!clock) return;
@@ -66,8 +69,10 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions, clo
   }, [clock?.timezone]);
   const currentClock = clock && now ? { ...clock, now } : undefined;
   const [alsoOpen, setAlsoOpen] = useState(false);
-  const [doneOpen, setDoneOpen] = useState(showCompleted);
+  const [doneOpen, setDoneOpen] = useState(false);
   const { overdue, focus, alsoPossible, doneToday } = ranked;
+  const dimOthers = [...overdue, ...focus, ...alsoPossible].some(task =>
+    (task.status === "todo" || task.status === "doing") && task.due !== null && datePart(task.due) === viewDate);
   const total = overdue.length + focus.length + alsoPossible.length + doneToday.length;
 
   if (total === 0) {
@@ -86,7 +91,7 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions, clo
       {focus.length > 0 ? (
         <section className={styles.section}>
           <h2 className={styles.heading}>Today&rsquo;s focus</h2>
-          <Rows tasks={focus} viewDate={viewDate} actions={actions} clock={currentClock} />
+          <Rows tasks={focus} viewDate={viewDate} actions={actions} dimOthers={dimOthers} clock={currentClock} />
         </section>
       ) : null}
 
@@ -104,7 +109,7 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions, clo
             Also possible
             <span className={styles.count}>{alsoPossible.length}</span>
           </button>
-          {alsoOpen ? <Rows tasks={alsoPossible} viewDate={viewDate} actions={actions} muted clock={currentClock} /> : null}
+          {alsoOpen ? <Rows tasks={alsoPossible} viewDate={viewDate} actions={actions} dimOthers={dimOthers} clock={currentClock} /> : null}
         </section>
       ) : null}
 
@@ -115,7 +120,7 @@ export default function TaskList({ ranked, viewDate, showCompleted, actions, clo
             Done
             <span className={styles.count}>{doneToday.length}</span>
           </button>
-          {/* Settings chooses initial visibility; the local toggle never hides the count. */}
+          {/* Start collapsed on every visit; the local toggle never hides the count. */}
           {doneOpen ? (
             <Rows tasks={doneToday} viewDate={viewDate} actions={actions} muted />
           ) : null}

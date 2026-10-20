@@ -115,6 +115,15 @@
   color: var(--fg-muted);
 }
 
+.dimmed {
+  opacity: 0.55;
+}
+
+.dimmed:focus-within,
+.dimmed:hover {
+  opacity: 1;
+}
+
 .busy {
   opacity: 0.55;
 }

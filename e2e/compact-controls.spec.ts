@@ -55,7 +55,9 @@ test("bottom toggle stays in place, AutoApprove is quiet, and icon sends stay ce
   const send = page.getByRole("button", { name: "Send", exact: true });
   await expect(send.locator("svg")).toHaveCount(1); expect(await send.innerText()).toBe("");
   const file = page.getByRole("button", { name: "Files", exact: true }).locator("svg");
-  await expect(file.locator("path")).toHaveAttribute("d", /M8 13h8M8 17h8/);
+  await expect(file.locator("path")).toHaveAttribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8L14 2Zm0 0v6h6");
+  const upload = page.getByTestId("composer").getByTitle("Attach a file", { exact: true }).locator("svg");
+  await expect(upload.locator("path")).toHaveAttribute("d", /M12 16V3/);
   const center = await file.evaluate(el => { const box = el.querySelector("path")!.getBBox(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; });
   expect(center).toEqual({ x: 12, y: 12 });
   await page.screenshot({ path: info.outputPath("chat-icons.png") });

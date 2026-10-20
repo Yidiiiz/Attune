@@ -466,6 +466,8 @@ existing browser check, then inspect a real generated palette in the sandbox.
 
 132. **Crescent and task separators, 2026-10-16.** Owner wants a recognizable crescent rather than the previous eclipse-like mark. Use a narrower crescent silhouette with centered visible bounds, still deriving colors from the active palette. Task rows have no bottom border; draw one straight inset separator only between adjacent rows, independently of rounded hover surfaces. Preserve task data, menus and completion semantics.
 
+133. **Today emphasis, 2026-10-19.** Done starts collapsed on each Today mount, regardless of the saved showCompleted preference; its count and manual toggle remain. While any open task is due on the viewed date (including a deadline already passed that day), later and undated open rows use reduced opacity. Restore ordinary opacity as soon as the last such task is completed. Keep earlier overdue work fully legible and preserve ranking, task data and completion history. Also possible uses the same conditional emphasis rather than permanent muting.
+
 ## 1. Hard rules
 
 These override anything else in this document.
@@ -1134,7 +1136,7 @@ Identical to Build mode in the Chat tab (§13.4); the sheet shows the plan, the 
 1. **Overdue** — `status ∈ {todo, doing}` and the due cutoff has passed, sorted by `due` asc. Date-only values use `deadlines.defaultTime`; `00:00` means the following local midnight, ending the listed date. Explicit times take precedence. Today compares the local clock; other viewed days compare their start. Red left border. Absent when empty.
 2. **Today's focus** — the top `settings.list.focusSize` of the eligible ranked list.
 3. **Also possible** — the remaining eligible tasks, grayed, collapsed by default with a count.
-4. **Done today** — tasks with `completedAt` on `viewDate`, shown struck through when `settings.list.showCompleted`.
+4. **Done today** — tasks with `completedAt` on `viewDate`, shown struck through when its local Done toggle is expanded (initially collapsed; Decision 133).
 
 **Row:** checkbox (left) · title · context subheader · metadata chips (due as relative text, estimate, priority glyph, subtask progress) · `⋯` menu: Edit (inline form), Duplicate, Reschedule (date picker), Delete (confirm), **Ask about this** (opens the composer in Ask mode with `context.taskIds=[id]`). Clicking the title opens the task in the document view.
 
